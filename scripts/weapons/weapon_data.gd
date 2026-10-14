@@ -12,10 +12,10 @@ enum Secondary { NONE, ZOOM, ALT }
 @export var damage: float = 25.0
 ## Helmet hits (group hitbox_head_armored, or legacy hitbox_head).
 @export var headshot_armored_multiplier: float = 2.0
-## Face/visor and neck hits (group hitbox_head_unarmored). Default 5.0 one-shots a 100 HP
-## target even at the falloff floor for the pistol: 34 * 0.6 * 5.0 = 102 >= 100.
-## Weapons with lower damage need a higher value, or should accept a two-shot.
-@export var headshot_unarmored_multiplier: float = 5.0
+## Face/visor and neck hits (group hitbox_head_unarmored). Defaults to the armored value so
+## new weapons get no surprise one-shots. Weapons opt in per resource; the Service Pistol uses
+## 5.0 so it one-shots 100 HP even at the falloff floor: 34 * 0.6 * 5.0 = 102 >= 100.
+@export var headshot_unarmored_multiplier: float = 2.0
 @export var max_range: float = 150.0
 ## Full damage up to this distance.
 @export var falloff_start: float = 30.0

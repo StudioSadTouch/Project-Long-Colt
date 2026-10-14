@@ -28,6 +28,9 @@ const LAYER_HITBOX := 1 << 5
 const HIT_MASK := 1 | 4 | LAYER_HITBOX
 ## Non-hitbox Areas a single ray may skip before giving up.
 const MAX_AREA_SKIPS := 8
+## The visor probe only upgrades shots within ~45 degrees of straight into the face:
+## dot(shot_dir, -face_forward) must exceed this. Face forward is the unarmored collider's -Z.
+const ZONE_PROBE_MIN_FACING := 0.7
 ## How far past a non-unarmored hit to probe for an overlapping unarmored collider.
 const ZONE_PROBE := 0.05
 const ZONE_NAMES := ["body", "head_armored", "head_unarmored"]
@@ -371,7 +374,8 @@ static func zone_color(zone: int) -> Color:
 
 
 ## Unarmored wins over overlap: if the first hit isn't unarmored, probe a few cm further
-## (from inside shapes too) for an unarmored collider on the same target.
+## (from inside shapes too) for an unarmored collider on the same target, but only for shots
+## roughly head-on to that collider's face (its -Z).
 func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZone:
 	var zone := zone_of(hit.collider)
 	if zone == HitZone.HEAD_UNARMORED:
@@ -382,6 +386,10 @@ func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZo
 	if probe.is_empty() or zone_of(probe.collider) != HitZone.HEAD_UNARMORED:
 		return zone
 	if _damage_receiver(probe.collider) != target:
+		return zone
+	# Steep shots skimming the helmet edge or neck must not get upgraded.
+	var face_forward := -(probe.collider as Node3D).global_basis.z
+	if direction.dot(-face_forward) <= ZONE_PROBE_MIN_FACING:
 		return zone
 	hit.collider = probe.collider
 	return HitZone.HEAD_UNARMORED
