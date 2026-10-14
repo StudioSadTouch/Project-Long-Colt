@@ -49,6 +49,9 @@ const HURTBOX_MIN_HEIGHT := 0.7
 const PICKUP_REACH := 1.3
 const PICKUP_REACH_Y := 1.6
 const DROP_MASK := 1
+## Half the spacing between the two weapons a dead bot drops (Halo 2 drops both). The pickup
+## trigger spheres have radius 1.0, so 2 x 1.1 m keeps them apart; walls shorten it.
+const DROP_SPREAD := 1.1
 const FALL_KILL_Y := -9.0
 const BODY_AIM_HEIGHT := 0.7
 
@@ -118,6 +121,8 @@ func _ready() -> void:
 	_apply_capsule()
 	add_to_group(&"bot")
 	add_to_group(&"aim_target")
+	# Level GravLift will push this group (LC Programmer); until then BotGravLift does.
+	add_to_group(&"lift_rider")
 	health_shield.died.connect(_on_health_died)
 	health_shield.changed.connect(_on_health_changed)
 	slots.resize(SLOT_COUNT)
@@ -615,7 +620,7 @@ func _top_up(carried: BotWeapon, pickup: WeaponPickup) -> bool:
 
 
 ## Drops weapon as a real pickup (the player weapon scene, so the player can take it).
-func _drop(weapon: BotWeapon) -> void:
+func _drop(weapon: BotWeapon, side: float = 0.0) -> void:
 	var magazine := weapon.magazine
 	var reserve := weapon.reserve
 	var scene := weapon.source_scene
@@ -638,15 +643,49 @@ func _drop(weapon: BotWeapon) -> void:
 	var parent: Node = (
 		get_tree().current_scene if get_tree().current_scene != null else get_parent()
 	)
-	WeaponPickup.drop(real, parent, _drop_position())
+	WeaponPickup.drop(real, parent, _drop_position(side))
 
 
-func _drop_position() -> Vector3:
+## Halo 2 style: both carried weapons drop, side by side across the bot's facing (active on
+## the right), each keeping its own magazine and reserve. Empty weapons aren't dropped.
+func _drop_all() -> void:
+	var carried: Array[BotWeapon] = []
+	for i in SLOT_COUNT:
+		var index := (active_index + i) % SLOT_COUNT
+		var w := slots[index]
+		if w == null:
+			continue
+		slots[index] = null
+		if w.get_parent() != null:
+			w.get_parent().remove_child(w)
+		carried.append(w)
+	for i in carried.size():
+		var side := 0.0 if carried.size() == 1 else (1.0 if i == 0 else -1.0)
+		_drop(carried[i], side)
+
+
+## Floor point under the bot, offset `side` x DROP_SPREAD along its right vector (pulled in
+## short of any wall in the way).
+func _drop_position(side: float = 0.0) -> Vector3:
 	var space := get_world_3d().direct_space_state
-	var from := global_position + Vector3.UP * 1.0
+	var centre := global_position + Vector3.UP * 1.0
+	var from := centre
+	if side != 0.0:
+		var right := global_transform.basis.x
+		right.y = 0.0
+		right = right.normalized() if right.length_squared() > 0.001 else Vector3.RIGHT
+		var target := centre + right * side * DROP_SPREAD
+		var wall := space.intersect_ray(
+			PhysicsRayQueryParameters3D.create(centre, target, DROP_MASK)
+		)
+		if wall.is_empty():
+			from = target
+		else:
+			var reach := maxf(centre.distance_to(wall.position) - 0.3, 0.0)
+			from = centre + right * side * reach
 	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 3.0, DROP_MASK)
 	var hit := space.intersect_ray(query)
-	return hit.position if not hit.is_empty() else global_position
+	return hit.position if not hit.is_empty() else Vector3(from.x, global_position.y, from.z)
 
 
 # ------------------------------------------------------------------ death
@@ -665,10 +704,8 @@ func _on_health_died() -> void:
 	if weapon != null:
 		weapon.release_trigger()
 		weapon.holster()
-		if drop_weapon_on_death and not last_damage_info.get("kill_volume", false):
-			slots[active_index] = null
-			weapon_mount.remove_child(weapon)
-			_drop(weapon)
+	if drop_weapon_on_death and not last_damage_info.get("kill_volume", false):
+		_drop_all()
 	# Deferred: death can come from a KillVolume body_entered during the physics flush.
 	for body: CollisionObject3D in _layers:
 		body.set_deferred(&"collision_layer", 0)

@@ -21,6 +21,8 @@ SRC = Path(__file__).with_name("build_lockout.py")
 OUT = ROOT / "scenes/main/arena_lockout.tscn"
 AGENT_R = 0.35
 AGENT_H = 1.8
+# Default match: 4-player FFA (the player plus 3 bots). Keep in sync with SpawnManager.bot_count.
+BOT_COUNT = 3
 
 lists = {}
 for node in ast.parse(SRC.read_text()).body:
@@ -231,6 +233,8 @@ for name, kind, a, b, lip, layer, release_y in LINKS:
     if kind == "lift":
         lines.append(f"metadata/release_y = {fmt(release_y)}")
     nodes.append("\n".join(lines) + "\n")
+# TODO(lift_rider): drop BotGravLift (and Shape_BotLift / 9_botlift) once the level GravLift
+# pushes group "lift_rider"; see scripts/ai/bot_grav_lift.gd.
 nodes.append('[node name="BotGravLift" type="Area3D" parent="."]\n'
              f'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {fmt(pad[1])}, {fmt(pad[5] + lift_h / 2)}, {fmt(pad[2])})\n'
              'collision_layer = 16\ncollision_mask = 4\nmonitorable = false\nscript = ExtResource("9_botlift")\n'
@@ -246,7 +250,8 @@ for callout, (x, y, z) in SPAWN_PTS:
     nodes.append(f'[node name="Spawn_{callout}" type="Marker3D" parent="ArenaSpawns"]\n'
                  f'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {fmt(x)}, {fmt(y + 0.05)}, {fmt(z)})\n')
 nodes.append('[node name="SpawnManager" type="Node" parent="."]\nscript = ExtResource("10_spawns")\n'
-             'bot_scene = ExtResource("6_bot")\nbot_count = 3\ndifficulty = ExtResource("11_diff")\n')
+             'bot_scene = ExtResource("6_bot")\n'
+             f'bot_count = {BOT_COUNT}\ndifficulty = ExtResource("11_diff")\n')
 
 head = f"[gd_scene load_steps={len(ext) + len(subs) + 1} format=3]\n\n"
 head += "\n".join(f'[ext_resource type="{t}" path="{p}" id="{i}"]' for t, p, i in ext) + "\n\n"
