@@ -44,18 +44,26 @@ func _on_reload_started() -> void:
 	if not animation_player.has_animation(anim_name):
 		return
 	var length := animation_player.get_animation(anim_name).length
+	animation_player.speed_scale = 1.0
 	animation_player.play(anim_name, 0.0, length / _weapon.data.reload_time)
 	animation_player.seek(0.0, true)
 
 
 func _on_reload_finished() -> void:
+	if _is_melee_playing():
+		return
 	if animation_player.has_animation(&"idle"):
 		animation_player.play(&"idle", return_blend)
 
 
 ## Hard stop: every animated node goes straight back to its rest pose.
+## A melee that is already playing owns the pose (its clip keys every reload track), so a
+## reload cancelled by that melee must not stomp it back to idle.
 func _snap_to_idle() -> void:
+	if _is_melee_playing():
+		return
 	animation_player.stop()
+	animation_player.speed_scale = 1.0
 	if animation_player.has_animation(&"RESET"):
 		animation_player.play(&"RESET")
 		animation_player.seek(0.0, true)
@@ -73,3 +81,7 @@ func _anim_event(event: StringName, kick_deg: float = 0.0) -> void:
 		_audio.play()
 	if kick_deg > 0.0 and _weapon != null:
 		_weapon.add_view_kick(kick_deg)
+
+
+func _is_melee_playing() -> bool:
+	return animation_player.is_playing() and animation_player.current_animation == "melee"
