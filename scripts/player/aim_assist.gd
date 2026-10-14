@@ -68,7 +68,8 @@ func _input(event: InputEvent) -> void:
 		using_controller = true
 	elif event is InputEventJoypadMotion:
 		# Same deadzone as stick look (Player.stick_deadzone); triggers count too.
-		if absf((event as InputEventJoypadMotion).axis_value) > _player.stick_deadzone:
+		var dz := _player.stick_deadzone if _player != null else 0.2
+		if absf((event as InputEventJoypadMotion).axis_value) > dz:
 			using_controller = true
 	elif event is InputEventMouseMotion or event is InputEventMouseButton or event is InputEventKey:
 		using_controller = false
@@ -133,12 +134,24 @@ func _reticle_on_target(data: WeaponData) -> bool:
 	var reach := data.aim_assist_range if data.aim_assist_range > 0.0 else data.max_range
 	var to := from - _camera.global_transform.basis.z * reach
 	var mask := weapon.get_hit_mask() if weapon != null else Weapon.HIT_MASK
-	var query := PhysicsRayQueryParameters3D.create(from, to, mask, [_player.get_rid()])
-	query.collide_with_areas = true
-	var hit := _player.get_world_3d().direct_space_state.intersect_ray(query)
-	if hit.is_empty():
-		return false
-	var collider := hit.collider as CollisionObject3D
+	var exclude: Array[RID] = [_player.get_rid()]
+	var space := _player.get_world_3d().direct_space_state
+	var collider: CollisionObject3D = null
+	# Same rule as Weapon._cast_ray: areas only count on the Hitbox layer.
+	for _i in 8:
+		var query := PhysicsRayQueryParameters3D.create(from, to, mask, exclude)
+		query.collide_with_areas = true
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			return false
+		collider = hit.collider as CollisionObject3D
+		if collider == null:
+			return false
+		if collider is Area3D and not (collider.collision_layer & Weapon.LAYER_HITBOX):
+			exclude.append(hit.rid)
+			collider = null
+			continue
+		break
 	if collider == null:
 		return false
 	if collider.collision_layer & Weapon.LAYER_HITBOX:
