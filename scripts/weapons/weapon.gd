@@ -18,6 +18,10 @@ extends Node3D
 ## (before any reload is cancelled); melee_hit(target, info) fires on the damage tick, the same
 ## frame take_damage is called; melee_whiffed(weapon) fires on a miss or a lunge that times out
 ## (or is interrupted by holstering). melee_swung is a legacy alias emitted with melee_started.
+## melee_hit_surface(position, normal, collider, info) fires INSTEAD of melee_whiffed when the
+## swing connects with non-damageable World geometry within melee_range (in reach, or on lunge
+## arrival). time_to_hit is 0 for an in-reach target or wall, the lunge time for a lunge, and
+## -1 for a swing with nothing in reach (a pure whiff: animators use their default windup).
 ## AI / bot hooks (all optional; defaults keep player behaviour):
 ##   hit_mask_override  int, -1 = HIT_MASK (World, Enemy, Hitbox). Bots shooting the player use
 ##                      e.g. Weapon.HIT_MASK | Weapon.LAYER_PLAYER. Applies to shots, the zone
@@ -49,12 +53,16 @@ signal fire_mode_changed(mode: int)
 ## Legacy alias, emitted right after melee_started.
 signal melee_swung
 ## Swing began. time_to_hit: seconds until the expected damage tick (0 for an in-reach swing,
-## the expected lunge arrival for a lunge, 0 for a swing with no target).
+## a wall in reach, the expected lunge arrival for a lunge, -1 for a whiff with nothing in reach).
 signal melee_started(weapon: Weapon, time_to_hit: float)
 ## Melee damage landed this frame.
 signal melee_hit(target: Node, info: Dictionary)
 ## Swing hit nothing, or a lunge ended without contact.
 signal melee_whiffed(weapon: Weapon)
+## Swing hit World geometry with no damageable in front of it. info: melee, surface (the
+## collider's "surface" metadata, else its physics material's resource_name, else ""),
+## weapon, source, direction.
+signal melee_hit_surface(position: Vector3, normal: Vector3, collider: Object, info: Dictionary)
 signal hit_confirmed(target: Object, info: Dictionary)
 
 enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
@@ -106,6 +114,8 @@ var _reload_left: float = 0.0
 var _reload_refilled: bool = false
 var _melee_target: Object = null
 var _melee_time_to_hit: float = 0.0
+## Nearest World blocker from the last _melee_sweep ({} = none): position, normal, collider.
+var _melee_surface: Dictionary = {}
 var _melee_cast: ShapeCast3D
 var _trigger_buffer_left: float = 0.0
 var _trigger_held: bool = false
@@ -294,7 +304,9 @@ func get_melee_time_to_hit() -> float:
 
 
 func _melee_time_for(hit: Dictionary) -> float:
-	if hit.is_empty() or player == null:
+	if hit.is_empty():
+		return 0.0 if _surface_in_reach() else -1.0
+	if player == null:
 		return 0.0
 	var distance: float = _aim().global_position.distance_to(hit.position)
 	if distance <= data.melee_range:
@@ -445,7 +457,7 @@ func _alt_fire() -> void:
 func _melee(hit: Dictionary) -> void:
 	_melee_target = null
 	if hit.is_empty():
-		melee_whiffed.emit(self)
+		_whiff_or_surface()
 		return
 	var distance: float = _aim().global_position.distance_to(hit.position)
 	if distance <= data.melee_range:
@@ -473,7 +485,7 @@ func _tick_melee() -> void:
 		_apply_melee(hit)
 	elif not player.is_lunging():
 		_melee_target = null
-		melee_whiffed.emit(self)
+		_whiff_or_surface()
 
 
 ## Nearest damageable hit along the camera's forward within distance, or {}. Also used on
@@ -490,14 +502,21 @@ func _melee_sweep(distance: float) -> Dictionary:
 	var best_distance := INF
 	# The nearest non-damageable solid blocks, so melee can't reach through walls.
 	var block_distance := INF
+	_melee_surface = {}
 	for i in _melee_cast.get_collision_count():
 		var collider := _melee_cast.get_collider(i)
 		if _is_ignored_area(collider):
 			continue
 		var point := _melee_cast.get_collision_point(i)
 		var d := _aim().global_position.distance_to(point)
-		if _damage_receiver(collider) == null:
-			block_distance = minf(block_distance, d)
+		if _damage_receiver(collider) == null and d < block_distance:
+			block_distance = d
+			_melee_surface = {
+				"collider": collider,
+				"position": point,
+				"normal": _melee_cast.get_collision_normal(i),
+				"distance": d,
+			}
 	for i in _melee_cast.get_collision_count():
 		var collider := _melee_cast.get_collider(i)
 		if _is_ignored_area(collider):
@@ -516,6 +535,44 @@ func _melee_sweep(distance: float) -> Dictionary:
 				"normal": _melee_cast.get_collision_normal(i),
 			}
 	return best
+
+
+## Last sweep's blocker is World geometry (a body on layer 1) within melee_range.
+func _surface_in_reach() -> bool:
+	if _melee_surface.is_empty() or data == null:
+		return false
+	var body := _melee_surface.collider as PhysicsBody3D
+	if body == null or not is_instance_valid(body) or (body.collision_layer & 1) == 0:
+		return false
+	return _melee_surface.distance <= data.melee_range
+
+
+func _whiff_or_surface() -> void:
+	if not _surface_in_reach():
+		melee_whiffed.emit(self)
+		return
+	var collider: Object = _melee_surface.collider
+	var info := {
+		"melee": true,
+		"surface": _surface_hint(collider),
+		"direction": -_aim().global_transform.basis.z,
+		"weapon": data.display_name,
+		"source": shooter if shooter != null else player,
+	}
+	melee_hit_surface.emit(_melee_surface.position, _melee_surface.normal, collider, info)
+
+
+static func _surface_hint(collider: Object) -> String:
+	if collider == null:
+		return ""
+	if collider.has_meta(&"surface"):
+		return str(collider.get_meta(&"surface"))
+	var material: PhysicsMaterial = null
+	if collider is StaticBody3D:
+		material = (collider as StaticBody3D).physics_material_override
+	elif collider is RigidBody3D:
+		material = (collider as RigidBody3D).physics_material_override
+	return material.resource_name if material != null else ""
 
 
 func _apply_melee(hit: Dictionary) -> void:

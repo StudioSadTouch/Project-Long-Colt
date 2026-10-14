@@ -54,6 +54,9 @@ func _ready() -> void:
 		_weapon.connect(&"melee_hit", _on_melee_hit)
 	elif _weapon.has_signal(&"hit_confirmed"):
 		_weapon.connect(&"hit_confirmed", _on_hit_confirmed)
+	if _weapon.has_signal(&"melee_hit_surface"):
+		# LC Programmer: a wall/floor hit in reach plays the impact, not the whiff.
+		_weapon.connect(&"melee_hit_surface", func(_p, _n, _c, _i): _on_melee_hit())
 	if _weapon.has_signal(&"melee_whiffed"):
 		_weapon.connect(&"melee_whiffed", _on_melee_whiffed)
 	_weapon.visibility_changed.connect(_on_visibility_changed)
