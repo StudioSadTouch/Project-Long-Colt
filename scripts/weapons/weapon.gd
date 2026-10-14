@@ -116,6 +116,8 @@ var _melee_target: Object = null
 var _melee_time_to_hit: float = 0.0
 ## Nearest World blocker from the last _melee_sweep ({} = none): position, normal, collider.
 var _melee_surface: Dictionary = {}
+## The ray about to be fired was bent by aim assist; its zone is capped to BODY.
+var _bent: bool = false
 var _melee_cast: ShapeCast3D
 var _trigger_buffer_left: float = 0.0
 var _trigger_held: bool = false
@@ -431,14 +433,20 @@ func _emit_shots() -> void:
 	_fire_ray(_assisted_direction(_spread_direction(get_spread())))
 
 
-## Bullet bend: only rays that wouldn't already hit something damageable get bent.
+## Bullet bend: only rays that wouldn't already hit something damageable get bent, and only
+## toward a body aim point. Sets _bent so _fire_ray caps the zone to BODY (Halo 3 rule: bend
+## lands the hit, it never upgrades a miss into a headshot). aim_assist may be null (bots).
 func _assisted_direction(direction: Vector3) -> Vector3:
-	if aim_assist == null:
+	_bent = false
+	if aim_assist == null or not is_instance_valid(aim_assist):
 		return direction
 	var hit := _raycast(direction, data.max_range)
 	if not hit.is_empty() and _damage_receiver(hit.collider) != null:
 		return direction
-	return aim_assist.bend(direction, data)
+	var scale_bend := data.aim_bend_auto_scale if fire_mode == WeaponData.FireMode.AUTO else 1.0
+	var bent := aim_assist.bend(direction, data, scale_bend)
+	_bent = not bent.is_equal_approx(direction)
+	return bent
 
 
 ## Override for burst and charge weapons.
@@ -451,7 +459,9 @@ func _alt_fire() -> void:
 	pass
 
 
-## Override for weapon-specific melee. hit is the sweep out to melee_lunge_range ({} = none).
+## Override for weapon-specific melee. Signature changed from _melee() to _melee(hit) in the
+## melee-signal pass: overrides must take the hit Dictionary (the sweep out to
+## melee_lunge_range, {} = none) and must not re-sweep before melee_started has already gone out.
 ## Default: a target in melee_range is hit now; a farther one starts a player lunge and is hit
 ## on arrival. Overrides must emit melee_hit / melee_whiffed (see _apply_melee).
 func _melee(hit: Dictionary) -> void:
@@ -594,7 +604,9 @@ func _fire_ray(direction: Vector3) -> void:
 	var target := _damage_receiver(hit.collider)
 	if target == null:
 		return
-	var zone := _resolve_zone(hit, direction, target)
+	# Bent rays never score a head zone, including via the visor probe in _resolve_zone.
+	var zone := HitZone.BODY if _bent else _resolve_zone(hit, direction, target)
+	_bent = false
 	var distance: float = _aim().global_position.distance_to(hit.position)
 	var amount := data.damage * _falloff(distance)
 	var zone_multiplier := 1.0

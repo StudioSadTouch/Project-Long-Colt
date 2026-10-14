@@ -29,11 +29,15 @@ const SCOPE_RADIUS_FRACTION := 0.44
 const SCOPE_SEGMENTS := 64
 const SCOPE_COLOR := Color(0.0, 0.0, 0.0, 1.0)
 const SCOPE_RETICLE := Color(0.85, 0.95, 0.85, 0.9)
+const RETICLE_COLOR := Color(0.92, 0.93, 0.9, 0.9)
+const RETICLE_TARGET_COLOR := Color(1.0, 0.18, 0.15, 0.95)
 
 @export var holder_path: NodePath
 @export var health_path: NodePath
 ## Shield fraction (0..1) at or below which the meter flashes and beeps.
 @export_range(0.0, 1.0) var low_shield_threshold: float = 0.25
+## Hysteresis: the warning, once on, clears only above this fraction.
+@export_range(0.0, 1.0) var low_shield_exit_threshold: float = 0.30
 ## Seconds between low_shield_beep events while the warning is active.
 @export var low_shield_beep_interval: float = 0.5
 ## Flashes per second while low.
@@ -106,7 +110,8 @@ func _is_scoped() -> bool:
 
 
 func _update_low_shield(delta: float) -> void:
-	var low := _health != null and not _health.dead and _shield_fraction <= low_shield_threshold
+	var limit := low_shield_exit_threshold if _low_shield else low_shield_threshold
+	var low := _health != null and not _health.dead and _shield_fraction <= limit
 	if low != _low_shield:
 		_low_shield = low
 		low_shield_warning.emit(low)
@@ -159,17 +164,21 @@ func _draw_shield_meter() -> void:
 	var bar := Rect2(0.0, 0.0, w, SHIELD_BAR_HEIGHT)
 	shield_meter.draw_rect(bar, SHIELD_EMPTY)
 	var fill := SHIELD_FILL
+	var frame := FRAME_COLOR
 	if _low_shield and fmod(_time * low_shield_flash_rate, 1.0) < 0.5:
 		fill = SHIELD_LOW_FILL
+		# At 0 there is no fill to flash, so flash the frame instead.
+		if _shield_fraction <= 0.0:
+			frame = SHIELD_LOW_FILL
 	if _shield_fraction > 0.0:
 		shield_meter.draw_rect(
 			Rect2(2.0, 2.0, (w - 4.0) * _shield_fraction, SHIELD_BAR_HEIGHT - 4.0), fill
 		)
-	shield_meter.draw_rect(bar, FRAME_COLOR, false, 2.0)
+	shield_meter.draw_rect(bar, frame, false, 2.0)
 	for x in [0.0, w]:
 		var dir := 1.0 if x == 0.0 else -1.0
-		shield_meter.draw_line(Vector2(x, -4.0), Vector2(x + dir * 14.0, -4.0), FRAME_COLOR, 2.0)
-		shield_meter.draw_line(Vector2(x, -4.0), Vector2(x, 4.0), FRAME_COLOR, 2.0)
+		shield_meter.draw_line(Vector2(x, -4.0), Vector2(x + dir * 14.0, -4.0), frame, 2.0)
+		shield_meter.draw_line(Vector2(x, -4.0), Vector2(x, 4.0), frame, 2.0)
 	# Health: segments under the shield bar, centred.
 	var hw := w * HEALTH_BAR_WIDTH_FRACTION
 	var x0 := (w - hw) * 0.5
@@ -226,6 +235,13 @@ func _on_hit(_target: Object, info: Dictionary) -> void:
 	_hit_color = Weapon.zone_color(info.get("hit_zone", Weapon.HitZone.BODY))
 
 
+## Red reticle over an enemy (AimAssist's centre ray; mouse and pad alike).
+func _reticle_on_target() -> bool:
+	if not is_instance_valid(_weapon) or not is_instance_valid(_weapon.aim_assist):
+		return false
+	return _weapon.aim_assist.reticle_on_target
+
+
 func _draw_crosshair() -> void:
 	var center := crosshair.size * 0.5
 	var gap := MIN_GAP
@@ -234,7 +250,11 @@ func _draw_crosshair() -> void:
 		var half_fov := deg_to_rad(_weapon.camera.fov * 0.5)
 		var spread := deg_to_rad(_weapon.get_spread())
 		gap = maxf(MIN_GAP, tan(spread) / tan(half_fov) * crosshair.size.y * 0.5)
-	var color := _hit_color if _hit_flash > 0.0 else Color(0.92, 0.93, 0.9, 0.9)
+	var color := RETICLE_COLOR
+	if _hit_flash > 0.0:
+		color = _hit_color
+	elif _reticle_on_target():
+		color = RETICLE_TARGET_COLOR
 	crosshair.draw_rect(Rect2(center - Vector2.ONE, Vector2(2, 2)), color)
 	for dir in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
 		var a: Vector2 = center + dir * gap

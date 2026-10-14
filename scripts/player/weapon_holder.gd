@@ -21,6 +21,8 @@ const PAD_BUTTON_NAMES := {0: "A", 1: "B", 2: "X", 3: "Y", 4: "Back", 6: "Start"
 @export var pickup_hold_time: float = 0.4
 ## Dropped weapons land this far in front of the player.
 @export var drop_distance: float = 1.2
+## Hand the Player's AimAssist to weapons. Off for bots (weapons then get aim_assist = null).
+@export var use_aim_assist: bool = true
 ## Pickup choice score = view dot - distance * this. Higher favors the nearest over the aimed-at.
 @export var pickup_distance_weight: float = 0.25
 
@@ -303,7 +305,9 @@ func _install(weapon: Weapon, slot: int) -> Weapon:
 		remove_child(old)
 	weapon.camera = _camera
 	weapon.player = _player
-	weapon.aim_assist = _player.get_node_or_null("AimAssist") as AimAssist if _player else null
+	weapon.aim_assist = null
+	if use_aim_assist and _player != null:
+		weapon.aim_assist = _player.get_node_or_null("AimAssist") as AimAssist
 	add_child(weapon)
 	weapon.zoom_changed.connect(_on_zoom_changed)
 	slots[slot] = weapon

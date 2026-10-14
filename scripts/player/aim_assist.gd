@@ -6,8 +6,9 @@ extends Node
 ##              target's angular motion (as seen from the camera). Not a lock: if you stop
 ##              tracking, it stops helping once the target leaves the cone.
 ##   Slowdown   look sensitivity is scaled down while a target is inside the assist cone.
-##   Bend       hitscan rays that would miss are bent onto the nearest valid aim point within
-##              data.aim_bend_angle, with line of sight; heads win only when inside the cone.
+##   Bend       hitscan rays that would miss are bent onto the nearest BODY aim point within
+##              data.aim_bend_angle (x aim_bend_auto_scale in AUTO), with line of sight. Never
+##              toward a head, and Weapon scores every bent ray as BODY.
 ## Mouse (modern-PC "very slight", on by default; mouse_enabled is the master toggle):
 ##   No magnetism and nothing ever moves the camera.
 ##   Slowdown   sensitivity x mouse_slowdown_scale, only while the reticle ray is actually on a
@@ -37,6 +38,8 @@ const MAX_MAGNETISM_RATE := 3.0
 @export_range(0.0, 1.0) var mouse_bend_scale: float = 0.3
 
 var using_controller: bool = false
+## Reticle ray is on a hitbox / aim_target collider this tick (both devices). HUD turns red.
+var reticle_on_target: bool = false
 
 var _player: Player
 var _camera: Camera3D
@@ -79,6 +82,8 @@ func bend_scale() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	var active := _active_data()
+	reticle_on_target = active != null and _camera != null and _reticle_on_target(active)
 	if not using_controller:
 		_mouse_process()
 		return
@@ -89,7 +94,7 @@ func _physics_process(delta: float) -> void:
 		_tracked = null
 		return
 	var forward := -_camera.global_transform.basis.z
-	var best := _best_point(forward, data.aim_assist_cone, data.aim_assist_range, false)
+	var best := _best_point(forward, data.aim_assist_cone, data.aim_assist_range)
 	if best.is_empty():
 		_player.aim_slowdown_scale = 1.0
 		_tracked = null
@@ -110,7 +115,7 @@ func _physics_process(delta: float) -> void:
 func _mouse_process() -> void:
 	_tracked = null
 	var data := _active_data()
-	if not mouse_enabled or data == null or _camera == null or not _reticle_on_target(data):
+	if not mouse_enabled or data == null or not reticle_on_target:
 		_player.aim_slowdown_scale = 1.0
 		return
 	_player.aim_slowdown_scale = mouse_slowdown_scale
@@ -142,22 +147,21 @@ func _reticle_on_target(data: WeaponData) -> bool:
 
 
 ## Bullet bend. Returns direction unchanged when nothing valid is inside the bend cone.
-func bend(direction: Vector3, data: WeaponData) -> Vector3:
-	var s := bend_scale()
+## extra_scale: caller's per-mode multiplier (Weapon passes aim_bend_auto_scale in AUTO).
+func bend(direction: Vector3, data: WeaponData, extra_scale: float = 1.0) -> Vector3:
+	var s := bend_scale() * extra_scale
 	if data == null or s <= 0.0 or data.aim_bend_angle <= 0.0 or _camera == null:
 		return direction
 	var cone := data.aim_bend_angle * s
-	var best := _best_point(direction, cone, data.aim_assist_range, true)
+	var best := _best_point(direction, cone, data.aim_assist_range)
 	if best.is_empty():
 		return direction
 	return (best.point - _camera.global_position).normalized()
 
 
-## Nearest aim point (by angle from direction) inside cone_deg and range with line of sight.
-## prefer_head: a head point inside the cone beats that target's body point.
-func _best_point(
-	direction: Vector3, cone_deg: float, max_range: float, prefer_head: bool
-) -> Dictionary:
+## Nearest BODY aim point (by angle from direction) inside cone_deg and range with line of
+## sight. Heads are deliberately never candidates (no assisted headshots).
+func _best_point(direction: Vector3, cone_deg: float, max_range: float) -> Dictionary:
 	var origin := _camera.global_position
 	var cone := deg_to_rad(cone_deg)
 	var best := {}
@@ -169,22 +173,16 @@ func _best_point(
 		var points := _aim_points(target)
 		if points.is_empty():
 			continue
-		var candidates: Array[Vector3] = []
-		if prefer_head and points.has("head"):
-			candidates.append(points.head)
-		candidates.append(points.body)
-		for point in candidates:
-			var offset := point - origin
-			var distance := offset.length()
-			if distance <= 0.01 or (max_range > 0.0 and distance > max_range):
-				continue
-			var angle := direction.angle_to(offset / distance)
-			if angle > cone or angle >= best_angle or not _has_los(origin, point):
-				continue
-			best_angle = angle
-			best = {"target": target, "point": point, "angle": angle}
-			# Head inside the cone wins for this target; don't fall back to its body.
-			break
+		var point: Vector3 = points.body
+		var offset := point - origin
+		var distance := offset.length()
+		if distance <= 0.01 or (max_range > 0.0 and distance > max_range):
+			continue
+		var angle := direction.angle_to(offset / distance)
+		if angle > cone or angle >= best_angle or not _has_los(origin, point):
+			continue
+		best_angle = angle
+		best = {"target": target, "point": point, "angle": angle}
 	return best
 
 

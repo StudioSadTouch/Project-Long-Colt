@@ -105,8 +105,11 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 @export_range(0.0, 1.0) var aim_slowdown: float = 1.0
 ## Cone half-angle (degrees) for magnetism and slowdown.
 @export var aim_assist_cone: float = 0.0
-## Cone half-angle (degrees) within which a missing ray bends onto a target.
+## Cone half-angle (degrees) within which a missing ray bends onto a target's BODY aim point.
+## Bent shots always score as BODY (never a headshot).
 @export var aim_bend_angle: float = 0.0
+## aim_bend_angle multiplier while firing in AUTO, so bend doesn't cancel full-auto bloom.
+@export_range(0.0, 1.0) var aim_bend_auto_scale: float = 0.5
 ## Max distance for all assists. 0 = unlimited.
 @export var aim_assist_range: float = 0.0
 
