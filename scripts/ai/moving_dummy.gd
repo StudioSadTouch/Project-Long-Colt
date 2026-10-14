@@ -11,6 +11,11 @@ extends CharacterBody3D
 ## All movement is clamped to bounds_min / bounds_max (world X/Z) when bounds are set; hitting
 ## a bound flips the strafe direction. Deterministic for a given seed (0 = random each run).
 
+## amount is shield plus health actually removed, not the incoming base damage.
+signal damaged(amount: float, info: Dictionary)
+signal died
+signal respawned
+
 enum Pattern { PATROL, STRAFE, SPARTAN, PATH }
 
 ## Player defaults (player.gd): stand_speed 7.5, ground_accel 70, air_accel 18, jump 2.2 m.
@@ -76,6 +81,9 @@ func _ready() -> void:
 	if _path_node != null:
 		_curve = _path_node.curve
 	core.respawned.connect(_reset)
+	core.damaged.connect(damaged.emit)
+	core.died.connect(died.emit)
+	core.respawned.connect(respawned.emit)
 	_reset()
 
 
@@ -97,6 +105,11 @@ func _reset() -> void:
 	_point_index = 0
 	_path_offset = 0.0
 	_path_sign = 1.0
+	if _curve != null and _path_node != null:
+		# Start from the curve point nearest the spawn, not the curve's first point, so the
+		# dummy doesn't cut across (or out of its bounds) to reach offset 0.
+		var local_start := _path_node.global_transform.affine_inverse() * _start.origin
+		_path_offset = _curve.get_closest_offset(local_start)
 
 
 func _physics_process(delta: float) -> void:
@@ -200,7 +213,12 @@ func _has_bounds() -> bool:
 func _keep_in_bounds(wish: Vector3, delta: float) -> Vector3:
 	if not _has_bounds():
 		return wish
-	var next := global_position + Vector3(velocity.x, 0.0, velocity.z) * delta * 4.0
+	# Look ahead by the stopping distance (v^2 / 2a) plus one tick, so reversals start early
+	# enough to stop inside the bounds instead of overshooting into the hard clamp.
+	var accel := ground_accel if is_on_floor() else air_accel
+	var stop := Vector3(velocity.x, 0.0, velocity.z)
+	stop = stop * (stop.length() / (2.0 * maxf(accel, 0.001)) + delta)
+	var next := global_position + stop
 	var out_x := (
 		(next.x < bounds_min.x and wish.x < 0.0) or (next.x > bounds_max.x and wish.x > 0.0)
 	)
