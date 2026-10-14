@@ -1,17 +1,23 @@
 class_name AimAssist
 extends Node
-## Bungie-era aim assist for the player. Child of Player. Three parts, all scaled by strength():
+## Bungie-era aim assist for the player. Child of Player.
+## Controller (scaled by controller_strength):
 ##   Magnetism  while a target sits inside the assist cone, the view follows a fraction of the
 ##              target's angular motion (as seen from the camera). Not a lock: if you stop
 ##              tracking, it stops helping once the target leaves the cone.
 ##   Slowdown   look sensitivity is scaled down while a target is inside the assist cone.
 ##   Bend       hitscan rays that would miss are bent onto the nearest valid aim point within
 ##              data.aim_bend_angle, with line of sight; heads win only when inside the cone.
+## Mouse (modern-PC "very slight", on by default; mouse_enabled is the master toggle):
+##   No magnetism and nothing ever moves the camera.
+##   Slowdown   sensitivity x mouse_slowdown_scale, only while the reticle ray is actually on a
+##              hitbox or aim_target collider (not merely inside a cone).
+##   Bend       cone = data.aim_bend_angle x mouse_bend_scale.
+## Set mouse_slowdown_scale = 1 or mouse_bend_scale = 0 to turn either part off.
 ## Per-weapon values live in WeaponData (aim_*). Targets are nodes in group "aim_target"; they
 ## may implement get_aim_points() -> {"body": Vector3, "head": Vector3} (empty when dead).
 ## Device: full strength on controller (last input was InputEventJoypad*), off on mouse unless
-## mouse_enabled. Note Phase 0 has no stick look yet, so on controller only bend and magnetism
-## act until stick look lands; slowdown scales whatever look path uses Player._apply_look.
+## mouse_enabled. Slowdown scales both Player._apply_look (mouse) and _apply_stick_look (pad).
 
 const TARGET_GROUP := &"aim_target"
 ## World only: hitboxes and bodies don't block line of sight to their own aim points.
@@ -23,10 +29,12 @@ const MAX_MAGNETISM_RATE := 3.0
 
 ## Multiplier on every assist when the last input came from a controller.
 @export var controller_strength: float = 1.0
-## Mouse players get no assist unless this is on.
-@export var mouse_enabled: bool = false
-## Multiplier when mouse_enabled and the last input came from mouse/keyboard.
-@export var mouse_strength: float = 0.5
+## Master toggle for all mouse assist.
+@export var mouse_enabled: bool = true
+## Sensitivity multiplier while the reticle is on a target (1 = off).
+@export_range(0.0, 1.0) var mouse_slowdown_scale: float = 0.85
+## Fraction of the weapon's aim_bend_angle used on mouse (0 = off).
+@export_range(0.0, 1.0) var mouse_bend_scale: float = 0.3
 
 var using_controller: bool = false
 
@@ -58,14 +66,22 @@ func _input(event: InputEvent) -> void:
 		using_controller = false
 
 
-## 0..n multiplier for the current input device.
+## 0..n multiplier for controller assist; 0 on mouse (mouse uses its own scales).
 func strength() -> float:
+	return controller_strength if using_controller else 0.0
+
+
+## Bend cone multiplier for the current device (applied to data.aim_bend_angle).
+func bend_scale() -> float:
 	if using_controller:
-		return controller_strength
-	return mouse_strength if mouse_enabled else 0.0
+		return clampf(controller_strength, 0.0, 1.0)
+	return mouse_bend_scale if mouse_enabled else 0.0
 
 
 func _physics_process(delta: float) -> void:
+	if not using_controller:
+		_mouse_process()
+		return
 	var data := _active_data()
 	var s := strength()
 	if data == null or s <= 0.0 or data.aim_assist_cone <= 0.0 or _camera == null:
@@ -90,12 +106,47 @@ func _physics_process(delta: float) -> void:
 	_last_dir = dir
 
 
+## Mouse: slowdown only while the reticle ray is on a target; never touches the camera.
+func _mouse_process() -> void:
+	_tracked = null
+	var data := _active_data()
+	if not mouse_enabled or data == null or _camera == null or not _reticle_on_target(data):
+		_player.aim_slowdown_scale = 1.0
+		return
+	_player.aim_slowdown_scale = mouse_slowdown_scale
+
+
+## True when the centre ray hits a Hitbox-layer collider or a node in an aim_target subtree.
+func _reticle_on_target(data: WeaponData) -> bool:
+	var weapon := _holder.get_active()
+	var from := _camera.global_position
+	var reach := data.aim_assist_range if data.aim_assist_range > 0.0 else data.max_range
+	var to := from - _camera.global_transform.basis.z * reach
+	var mask := weapon.get_hit_mask() if weapon != null else Weapon.HIT_MASK
+	var query := PhysicsRayQueryParameters3D.create(from, to, mask, [_player.get_rid()])
+	query.collide_with_areas = true
+	var hit := _player.get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return false
+	var collider := hit.collider as CollisionObject3D
+	if collider == null:
+		return false
+	if collider.collision_layer & Weapon.LAYER_HITBOX:
+		return true
+	var node: Node = collider
+	while node != null:
+		if node.is_in_group(TARGET_GROUP):
+			return true
+		node = node.get_parent()
+	return false
+
+
 ## Bullet bend. Returns direction unchanged when nothing valid is inside the bend cone.
 func bend(direction: Vector3, data: WeaponData) -> Vector3:
-	var s := strength()
+	var s := bend_scale()
 	if data == null or s <= 0.0 or data.aim_bend_angle <= 0.0 or _camera == null:
 		return direction
-	var cone := data.aim_bend_angle * clampf(s, 0.0, 1.0)
+	var cone := data.aim_bend_angle * s
 	var best := _best_point(direction, cone, data.aim_assist_range, true)
 	if best.is_empty():
 		return direction
