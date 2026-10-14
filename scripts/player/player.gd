@@ -108,6 +108,8 @@ func _physics_process(delta: float) -> void:
 		_lunge_left -= delta
 		sliding = false
 		horizontal = _lunge_dir * _lunge_speed
+		if _lunge_left <= 0.0:
+			horizontal = horizontal.limit_length(stand_speed)
 	elif sliding:
 		slide_velocity = _tick_slide(delta)
 		horizontal = Vector3(slide_velocity.x, 0.0, slide_velocity.z)
@@ -173,8 +175,15 @@ func start_lunge(direction: Vector3, speed: float, duration: float) -> void:
 	_lunge_left = duration
 
 
+## Ends a lunge and clamps horizontal speed to run speed so jump + melee can't boost.
+## No-op when not lunging.
 func cancel_lunge() -> void:
+	if _lunge_left <= 0.0:
+		return
 	_lunge_left = 0.0
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z).limit_length(stand_speed)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
 
 
 func is_lunging() -> bool:

@@ -95,6 +95,8 @@ func holster() -> void:
 	reloading = false
 	_trigger_buffer_left = 0.0
 	_melee_target = null
+	if player != null:
+		player.cancel_lunge()
 	release_trigger()
 	set_zoom(false)
 	_clear_recoil()
