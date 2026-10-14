@@ -40,6 +40,9 @@ var _slide_time_left: float = 0.0
 var _slide_speed: float = 0.0
 var _slide_dir: Vector3 = Vector3.ZERO
 var _stand_probe: CapsuleShape3D
+var _lunge_dir: Vector3 = Vector3.ZERO
+var _lunge_speed: float = 0.0
+var _lunge_left: float = 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -96,7 +99,12 @@ func _physics_process(delta: float) -> void:
 	var wish := _wish_direction()
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var slide_velocity := Vector3.ZERO
-	if sliding:
+	if _lunge_left > 0.0:
+		# A melee lunge owns horizontal motion until it times out or is cancelled on contact.
+		_lunge_left -= delta
+		sliding = false
+		horizontal = _lunge_dir * _lunge_speed
+	elif sliding:
 		slide_velocity = _tick_slide(delta)
 		horizontal = Vector3(slide_velocity.x, 0.0, slide_velocity.z)
 	elif on_floor_before:
@@ -149,6 +157,24 @@ func _physics_process(delta: float) -> void:
 	_update_head(delta)
 	_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
 	_crouch_edge = false
+
+
+## Melee lunge: drive horizontal velocity along direction for up to duration seconds.
+func start_lunge(direction: Vector3, speed: float, duration: float) -> void:
+	var flat := Vector3(direction.x, 0.0, direction.z)
+	if flat.length_squared() < 0.0001 or duration <= 0.0:
+		return
+	_lunge_dir = flat.normalized()
+	_lunge_speed = speed
+	_lunge_left = duration
+
+
+func cancel_lunge() -> void:
+	_lunge_left = 0.0
+
+
+func is_lunging() -> bool:
+	return _lunge_left > 0.0
 
 
 func _apply_look(relative: Vector2) -> void:

@@ -14,6 +14,7 @@ var active_index: int = 0
 
 var _base_sensitivity: float = 0.0
 var _player: Player
+var _melee_left: float = 0.0
 var _camera: Camera3D
 
 
@@ -86,11 +87,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		weapon.secondary_pressed()
 	elif event.is_action_pressed("action_reload"):
 		weapon.reload()
-	elif event.is_action_pressed("action_melee"):
+	elif event.is_action_pressed("action_melee") and _melee_left <= 0.0 and weapon.data != null:
+		_melee_left = weapon.data.melee_cooldown
 		weapon.melee()
 
 
 func _physics_process(delta: float) -> void:
+	_melee_left = maxf(_melee_left - delta, 0.0)
 	var weapon := get_active()
 	if weapon != null and Input.is_action_pressed("action_fire"):
 		weapon.trigger(false, true)

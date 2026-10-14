@@ -31,6 +31,7 @@ const ZONE_COLORS := [Color(1.0, 0.3, 0.25), Color(1.0, 0.72, 0.15), Color(1.0, 
 
 ## Max shots one physics tick may fire, so a long hitch can't dump a magazine.
 const MAX_SHOTS_PER_TICK := 4
+const MELEE_RADIUS := 0.3
 
 @export var data: WeaponData
 
@@ -40,12 +41,13 @@ var zoomed: bool = false
 var reloading: bool = false
 ## Set by WeaponHolder.
 var camera: Camera3D
-var player: CharacterBody3D
+var player: Player
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
 var _reload_left: float = 0.0
-var _melee_left: float = 0.0
+var _melee_target: Object = null
+var _melee_cast: ShapeCast3D
 var _trigger_buffer_left: float = 0.0
 var _trigger_held: bool = false
 var _bloom: float = 0.0
@@ -58,6 +60,15 @@ func _ready() -> void:
 		set_physics_process(false)
 		return
 	magazine = data.magazine_size
+	_melee_cast = ShapeCast3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = MELEE_RADIUS
+	_melee_cast.shape = sphere
+	_melee_cast.enabled = false
+	_melee_cast.top_level = true
+	_melee_cast.collision_mask = HIT_MASK
+	_melee_cast.collide_with_areas = true
+	add_child(_melee_cast)
 	reserve = mini(data.reserve_start, data.reserve_max)
 
 
@@ -75,6 +86,7 @@ func holster() -> void:
 	visible = false
 	reloading = false
 	_trigger_buffer_left = 0.0
+	_melee_target = null
 	release_trigger()
 	set_zoom(false)
 	_clear_recoil()
@@ -136,10 +148,10 @@ func reload() -> void:
 	reload_started.emit()
 
 
+## Cooldown is owned by WeaponHolder so switching weapons can't skip it.
 func melee() -> void:
-	if _melee_left > 0.0 or camera == null:
+	if data == null or camera == null:
 		return
-	_melee_left = data.melee_cooldown
 	# Melee cancels a reload, Halo style.
 	reloading = false
 	set_zoom(false)
@@ -178,7 +190,7 @@ func _physics_process(delta: float) -> void:
 	# banking shots while idle.
 	_cooldown = maxf(_cooldown - delta, -delta)
 	_equip_left = maxf(_equip_left - delta, 0.0)
-	_melee_left = maxf(_melee_left - delta, 0.0)
+	_tick_melee()
 	_bloom = maxf(_bloom - data.bloom_recovery * delta, 0.0)
 	if reloading:
 		_reload_left -= delta
@@ -237,24 +249,72 @@ func _alt_fire() -> void:
 	pass
 
 
-## Override for weapon-specific melee. Default: short ray with a lunge toward a target in reach.
+## Override for weapon-specific melee. Default: sphere sweep out to melee_lunge_range. A target
+## in melee_range is hit now; a farther one starts a player lunge and is hit on arrival.
 func _melee() -> void:
-	var forward := -camera.global_transform.basis.z
-	var hit := _raycast(forward, data.melee_lunge_range)
+	_melee_target = null
+	var hit := _melee_sweep(data.melee_lunge_range)
 	if hit.is_empty():
 		return
-	var target := _damage_receiver(hit.collider)
-	if target == null:
-		return
 	var distance: float = camera.global_position.distance_to(hit.position)
-	if distance > data.melee_range and player != null:
-		var flat := Vector3(forward.x, 0.0, forward.z).normalized()
-		player.velocity.x = flat.x * data.melee_lunge_speed
-		player.velocity.z = flat.z * data.melee_lunge_speed
+	if distance <= data.melee_range:
+		_apply_melee(hit)
+	elif player != null:
+		var forward := -camera.global_transform.basis.z
+		var duration := (distance - data.melee_range) / data.melee_lunge_speed + 0.1
+		player.start_lunge(forward, data.melee_lunge_speed, duration)
+		_melee_target = hit.target
+
+
+func _tick_melee() -> void:
+	if _melee_target == null:
+		return
+	if not is_instance_valid(_melee_target) or player == null:
+		_melee_target = null
+		return
+	var hit := _melee_sweep(data.melee_range)
+	if not hit.is_empty() and hit.target == _melee_target:
+		player.cancel_lunge()
+		_melee_target = null
+		_apply_melee(hit)
+	elif not player.is_lunging():
+		_melee_target = null
+
+
+## Nearest damageable hit along the camera's forward within distance, or {}.
+func _melee_sweep(distance: float) -> Dictionary:
+	_melee_cast.global_transform = camera.global_transform
+	_melee_cast.target_position = Vector3(0.0, 0.0, -distance)
+	_melee_cast.clear_exceptions()
+	if player != null:
+		_melee_cast.add_exception(player)
+	_melee_cast.force_shapecast_update()
+	var best := {}
+	var best_distance := INF
+	for i in _melee_cast.get_collision_count():
+		var collider := _melee_cast.get_collider(i)
+		var target := _damage_receiver(collider)
+		if target == null:
+			continue
+		var point := _melee_cast.get_collision_point(i)
+		var d := camera.global_position.distance_to(point)
+		if d < best_distance:
+			best_distance = d
+			best = {
+				"target": target,
+				"collider": collider,
+				"position": point,
+				"normal": _melee_cast.get_collision_normal(i),
+			}
+	return best
+
+
+func _apply_melee(hit: Dictionary) -> void:
+	var forward := -camera.global_transform.basis.z
 	var info := _hit_info(hit, forward, HitZone.BODY)
 	info["melee"] = true
-	target.take_damage(data.melee_damage, info)
-	hit_confirmed.emit(target, info)
+	hit.target.take_damage(data.melee_damage, info)
+	hit_confirmed.emit(hit.target, info)
 
 
 func _fire_ray(direction: Vector3) -> void:
