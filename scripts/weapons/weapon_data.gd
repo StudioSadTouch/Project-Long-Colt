@@ -4,8 +4,9 @@ extends Resource
 ## Damage targets HealthShield (Halo-style shield over health). Zone multipliers hit health
 ## only; shield_damage_multiplier hits shields only.
 
-enum FireMode { SEMI, AUTO }
-enum Secondary { NONE, ZOOM, ALT }
+## Values are stored as ints in .tres files: append, never reorder.
+enum FireMode { SEMI, AUTO, BURST }
+enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 
 @export var display_name: String = "Weapon"
 
@@ -31,8 +32,14 @@ enum Secondary { NONE, ZOOM, ALT }
 @export var fire_mode: FireMode = FireMode.SEMI
 ## Rounds per second. Also caps semi-auto spam.
 @export var fire_rate: float = 5.0
-## A semi-auto press this early before the gun is ready still fires.
+## A semi-auto or burst press this early before the gun is ready still fires.
 @export var trigger_buffer: float = 0.1
+## BURST: rounds per trigger press. A started burst always finishes (or runs dry).
+@export var burst_count: int = 3
+## BURST: seconds between rounds inside a burst.
+@export var burst_interval: float = 0.06
+## BURST: seconds from a burst's last round to the next burst's first round.
+@export var burst_cooldown: float = 0.35
 
 @export_group("Ammo")
 @export var magazine_size: int = 12
@@ -66,6 +73,13 @@ enum Secondary { NONE, ZOOM, ALT }
 ## Spread multiplier while zoomed.
 @export var zoom_spread_multiplier: float = 0.5
 @export var zoom_time: float = 0.1
+## TOGGLE_MODE: the mode secondary switches to. The alt_* fields apply only in that mode.
+@export var alt_fire_mode: FireMode = FireMode.BURST
+@export var alt_spread_multiplier: float = 1.0
+@export var alt_bloom_multiplier: float = 1.0
+## Alt-mode falloff. Negative means use the primary falloff_start / falloff_end.
+@export var alt_falloff_start: float = -1.0
+@export var alt_falloff_end: float = -1.0
 
 @export_group("Melee")
 @export var melee_damage: float = 70.0

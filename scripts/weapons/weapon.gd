@@ -23,6 +23,7 @@ signal dry_fired
 signal reload_started
 signal reload_finished
 signal zoom_changed(zoomed: bool)
+signal fire_mode_changed(mode: int)
 signal melee_swung
 signal hit_confirmed(target: Object, info: Dictionary)
 
@@ -51,6 +52,9 @@ var magazine: int = 0
 var reserve: int = 0
 var zoomed: bool = false
 var reloading: bool = false
+## Current fire mode; differs from data.fire_mode while a TOGGLE_MODE alt mode is active.
+var fire_mode: int = WeaponData.FireMode.SEMI
+var alt_mode: bool = false
 ## Set by WeaponHolder.
 var camera: Camera3D
 var player: Player
@@ -62,6 +66,7 @@ var _melee_target: Object = null
 var _melee_cast: ShapeCast3D
 var _trigger_buffer_left: float = 0.0
 var _trigger_held: bool = false
+var _burst_left: int = 0
 var _bloom: float = 0.0
 var _recoil: Vector2 = Vector2.ZERO
 
@@ -82,6 +87,7 @@ func _ready() -> void:
 	_melee_cast.collide_with_areas = true
 	add_child(_melee_cast)
 	reserve = mini(data.reserve_start, data.reserve_max)
+	fire_mode = data.fire_mode
 
 
 func equip() -> void:
@@ -92,12 +98,14 @@ func equip() -> void:
 	reloading = false
 	set_zoom(false)
 	ammo_changed.emit(magazine, reserve)
+	fire_mode_changed.emit(fire_mode)
 
 
 func holster() -> void:
 	visible = false
 	reloading = false
 	_trigger_buffer_left = 0.0
+	_burst_left = 0
 	_melee_target = null
 	if player != null:
 		player.cancel_lunge()
@@ -111,14 +119,14 @@ func trigger(pressed: bool, held: bool) -> void:
 	if data == null:
 		return
 	_trigger_held = held
-	if data.fire_mode == WeaponData.FireMode.AUTO:
+	if fire_mode == WeaponData.FireMode.AUTO:
 		var shots := 0
 		while held and shots < MAX_SHOTS_PER_TICK and _try_fire():
 			shots += 1
 		return
 	if pressed:
 		_trigger_buffer_left = data.trigger_buffer
-		_try_fire()
+		_fire_press()
 
 
 ## Trigger came up. Burst and charge weapons hook _on_trigger_released.
@@ -151,10 +159,33 @@ func secondary_pressed() -> void:
 				set_zoom(not zoomed)
 		WeaponData.Secondary.ALT:
 			_alt_fire()
+		WeaponData.Secondary.TOGGLE_MODE:
+			toggle_fire_mode()
+
+
+## Switch between data.fire_mode and data.alt_fire_mode. Not mid-burst.
+func toggle_fire_mode() -> void:
+	if data == null or _burst_left > 0:
+		return
+	alt_mode = not alt_mode
+	fire_mode = data.alt_fire_mode if alt_mode else data.fire_mode
+	_trigger_buffer_left = 0.0
+	release_trigger()
+	fire_mode_changed.emit(fire_mode)
+
+
+func get_fire_mode_name() -> String:
+	return WeaponData.FireMode.keys()[fire_mode]
 
 
 func reload() -> void:
-	if data == null or reloading or magazine >= data.magazine_size or reserve <= 0:
+	if (
+		data == null
+		or reloading
+		or _burst_left > 0
+		or magazine >= data.magazine_size
+		or reserve <= 0
+	):
 		return
 	reloading = true
 	_reload_left = data.reload_time
@@ -190,6 +221,8 @@ func get_spread() -> float:
 		spread += data.spread_air_add
 	if zoomed:
 		spread *= data.zoom_spread_multiplier
+	if alt_mode:
+		spread *= data.alt_spread_multiplier
 	return spread
 
 
@@ -210,25 +243,56 @@ func _physics_process(delta: float) -> void:
 		_reload_left -= delta
 		if _reload_left <= 0.0:
 			_finish_reload()
-	if _trigger_buffer_left > 0.0:
+	if _burst_left > 0:
+		_continue_burst()
+	elif _trigger_buffer_left > 0.0:
 		_trigger_buffer_left -= delta
-		_try_fire()
+		_fire_press()
 	_update_recoil(delta)
 
 
-## Returns true if a shot went out.
-func _try_fire() -> bool:
+## One press: a single semi shot, or the start of a burst.
+func _fire_press() -> void:
+	if fire_mode != WeaponData.FireMode.BURST:
+		_try_fire()
+		return
+	if _burst_left > 0 or not _can_fire():
+		return
+	_trigger_buffer_left = 0.0
+	_burst_left = maxi(data.burst_count, 1)
+	_continue_burst()
+
+
+## Fires due burst rounds. Spacing rides the same cooldown accumulator as other modes, so it
+## holds at any tick rate. An empty magazine ends the burst early.
+func _continue_burst() -> void:
+	var shots := 0
+	while _burst_left > 0 and shots < MAX_SHOTS_PER_TICK and _can_fire():
+		var last := _burst_left == 1
+		var interval := data.burst_cooldown if last else data.burst_interval
+		shots += 1
+		if not _try_fire(interval):
+			_burst_left = 0
+			return
+		_burst_left -= 1
+
+
+## Returns true if a shot went out. interval < 0 means 1 / fire_rate.
+func _try_fire(interval: float = -1.0) -> bool:
 	if not _can_fire():
 		return false
+	if interval < 0.0:
+		interval = 1.0 / data.fire_rate
 	_trigger_buffer_left = 0.0
-	_cooldown += 1.0 / data.fire_rate
+	_cooldown += interval
 	if not _consume_ammo():
-		_cooldown = maxf(_cooldown, 1.0 / data.fire_rate)
+		_cooldown = maxf(_cooldown, interval)
 		dry_fired.emit()
 		reload()
 		return false
 	_emit_shots()
-	_bloom = minf(_bloom + data.bloom_per_shot, data.spread_max - data.spread_base)
+	var bloom_add := data.bloom_per_shot * (data.alt_bloom_multiplier if alt_mode else 1.0)
+	_bloom = minf(_bloom + bloom_add, data.spread_max - data.spread_base)
 	_kick()
 	fired.emit()
 	ammo_changed.emit(magazine, reserve)
@@ -459,9 +523,14 @@ func _hit_info(hit: Dictionary, direction: Vector3, zone: HitZone) -> Dictionary
 
 
 func _falloff(distance: float) -> float:
-	if distance <= data.falloff_start:
+	var start := data.falloff_start
+	var end := data.falloff_end
+	if alt_mode and data.alt_falloff_start >= 0.0 and data.alt_falloff_end > data.alt_falloff_start:
+		start = data.alt_falloff_start
+		end = data.alt_falloff_end
+	if distance <= start:
 		return 1.0
-	var t := clampf(inverse_lerp(data.falloff_start, data.falloff_end, distance), 0.0, 1.0)
+	var t := clampf(inverse_lerp(start, end, distance), 0.0, 1.0)
 	return lerpf(1.0, data.min_damage_multiplier, t)
 
 
