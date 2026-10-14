@@ -6,9 +6,13 @@ extends Node
 ##              target's angular motion (as seen from the camera). Not a lock: if you stop
 ##              tracking, it stops helping once the target leaves the cone.
 ##   Slowdown   look sensitivity is scaled down while a target is inside the assist cone.
-##   Bend       hitscan rays that would miss are bent onto the nearest BODY aim point within
-##              data.aim_bend_angle (x aim_bend_auto_scale in AUTO), with line of sight. Never
-##              toward a head, and Weapon scores every bent ray as BODY.
+##   Bend       hitscan rays that would miss are bent within data.aim_bend_angle
+##              (x aim_bend_auto_scale in AUTO) onto the aim point nearest the reticle, with
+##              line of sight. HALO 2-STYLE BY MORGON'S CHOICE: candidates are body, helmet
+##              ("head") and face/visor ("face") points, and the bent ray scores the zone it
+##              actually hits, visor probe included, so a bend can land a face one-shot.
+##              data.aim_bend_allow_head = false restores body-only bend scored as BODY.
+##   Magnetism and slowdown use body points only.
 ## Mouse (modern-PC "very slight", on by default; mouse_enabled is the master toggle):
 ##   No magnetism and nothing ever moves the camera.
 ##   Slowdown   sensitivity x mouse_slowdown_scale, only while the reticle ray is actually on a
@@ -16,7 +20,8 @@ extends Node
 ##   Bend       cone = data.aim_bend_angle x mouse_bend_scale.
 ## Set mouse_slowdown_scale = 1 or mouse_bend_scale = 0 to turn either part off.
 ## Per-weapon values live in WeaponData (aim_*). Targets are nodes in group "aim_target"; they
-## may implement get_aim_points() -> {"body": Vector3, "head": Vector3} (empty when dead).
+## may implement get_aim_points() -> {"body", "head", "face": Vector3} (empty when dead;
+## only body is required).
 ## Device: full strength on controller (last input was InputEventJoypad*), off on mouse unless
 ## mouse_enabled. Slowdown scales both Player._apply_look (mouse) and _apply_stick_look (pad).
 
@@ -153,15 +158,17 @@ func bend(direction: Vector3, data: WeaponData, extra_scale: float = 1.0) -> Vec
 	if data == null or s <= 0.0 or data.aim_bend_angle <= 0.0 or _camera == null:
 		return direction
 	var cone := data.aim_bend_angle * s
-	var best := _best_point(direction, cone, data.aim_assist_range)
+	var best := _best_point(direction, cone, data.aim_assist_range, data.aim_bend_allow_head)
 	if best.is_empty():
 		return direction
 	return (best.point - _camera.global_position).normalized()
 
 
-## Nearest BODY aim point (by angle from direction) inside cone_deg and range with line of
-## sight. Heads are deliberately never candidates (no assisted headshots).
-func _best_point(direction: Vector3, cone_deg: float, max_range: float) -> Dictionary:
+## Aim point nearest direction (by angle) inside cone_deg and range with line of sight.
+## allow_head adds each target's "head" and "face" points as candidates beside "body".
+func _best_point(
+	direction: Vector3, cone_deg: float, max_range: float, allow_head: bool = false
+) -> Dictionary:
 	var origin := _camera.global_position
 	var cone := deg_to_rad(cone_deg)
 	var best := {}
@@ -173,16 +180,21 @@ func _best_point(direction: Vector3, cone_deg: float, max_range: float) -> Dicti
 		var points := _aim_points(target)
 		if points.is_empty():
 			continue
-		var point: Vector3 = points.body
-		var offset := point - origin
-		var distance := offset.length()
-		if distance <= 0.01 or (max_range > 0.0 and distance > max_range):
-			continue
-		var angle := direction.angle_to(offset / distance)
-		if angle > cone or angle >= best_angle or not _has_los(origin, point):
-			continue
-		best_angle = angle
-		best = {"target": target, "point": point, "angle": angle}
+		var candidates: Array[Vector3] = [points.body]
+		if allow_head:
+			for key in ["head", "face"]:
+				if points.has(key):
+					candidates.append(points[key])
+		for point in candidates:
+			var offset := point - origin
+			var distance := offset.length()
+			if distance <= 0.01 or (max_range > 0.0 and distance > max_range):
+				continue
+			var angle := direction.angle_to(offset / distance)
+			if angle > cone or angle >= best_angle or not _has_los(origin, point):
+				continue
+			best_angle = angle
+			best = {"target": target, "point": point, "angle": angle}
 	return best
 
 

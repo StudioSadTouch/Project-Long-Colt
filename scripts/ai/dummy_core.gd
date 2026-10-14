@@ -55,6 +55,10 @@ func get_aim_points() -> Dictionary:
 	var head := _root.get_node_or_null("Rig/HeadArmored") as Node3D
 	if head != null:
 		points["head"] = head.global_position
+	# Face/visor point for Halo 2-style bend (centre of the visor box on HeadUnarmored).
+	var visor := _root.get_node_or_null("Rig/HeadUnarmored/VisorShape") as Node3D
+	if visor != null:
+		points["face"] = visor.global_position
 	return points
 
 

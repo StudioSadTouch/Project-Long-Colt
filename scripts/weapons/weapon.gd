@@ -433,9 +433,10 @@ func _emit_shots() -> void:
 	_fire_ray(_assisted_direction(_spread_direction(get_spread())))
 
 
-## Bullet bend: only rays that wouldn't already hit something damageable get bent, and only
-## toward a body aim point. Sets _bent so _fire_ray caps the zone to BODY (Halo 3 rule: bend
-## lands the hit, it never upgrades a miss into a headshot). aim_assist may be null (bots).
+## Bullet bend: only rays that wouldn't already hit something damageable get bent. With
+## data.aim_bend_allow_head (default, Halo 2-style) the bent ray scores the zone it actually
+## hits, visor probe included. With it off, bend targets the body only and _bent caps the zone
+## to BODY. aim_assist may be null (bots).
 func _assisted_direction(direction: Vector3) -> Vector3:
 	_bent = false
 	if aim_assist == null or not is_instance_valid(aim_assist):
@@ -445,7 +446,7 @@ func _assisted_direction(direction: Vector3) -> Vector3:
 		return direction
 	var scale_bend := data.aim_bend_auto_scale if fire_mode == WeaponData.FireMode.AUTO else 1.0
 	var bent := aim_assist.bend(direction, data, scale_bend)
-	_bent = not bent.is_equal_approx(direction)
+	_bent = not data.aim_bend_allow_head and not bent.is_equal_approx(direction)
 	return bent
 
 
@@ -604,7 +605,7 @@ func _fire_ray(direction: Vector3) -> void:
 	var target := _damage_receiver(hit.collider)
 	if target == null:
 		return
-	# Bent rays never score a head zone, including via the visor probe in _resolve_zone.
+	# Body-only bend mode: bent rays never score a head zone (visor probe skipped too).
 	var zone := HitZone.BODY if _bent else _resolve_zone(hit, direction, target)
 	_bent = false
 	var distance: float = _aim().global_position.distance_to(hit.position)

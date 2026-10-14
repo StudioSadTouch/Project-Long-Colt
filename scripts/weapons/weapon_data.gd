@@ -105,9 +105,12 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 @export_range(0.0, 1.0) var aim_slowdown: float = 1.0
 ## Cone half-angle (degrees) for magnetism and slowdown.
 @export var aim_assist_cone: float = 0.0
-## Cone half-angle (degrees) within which a missing ray bends onto a target's BODY aim point.
-## Bent shots always score as BODY (never a headshot).
+## Cone half-angle (degrees) within which a missing ray bends onto a target's aim point.
 @export var aim_bend_angle: float = 0.0
+## Halo 2-style (Morgon's choice, default): bend goes to the body, helmet or face point nearest
+## the reticle and the bent ray scores whatever it hits, face one-shots included.
+## false = body point only, and a bent ray always scores BODY.
+@export var aim_bend_allow_head: bool = true
 ## aim_bend_angle multiplier while firing in AUTO, so bend doesn't cancel full-auto bloom.
 @export_range(0.0, 1.0) var aim_bend_auto_scale: float = 0.5
 ## Max distance for all assists. 0 = unlimited.
