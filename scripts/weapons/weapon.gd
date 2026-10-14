@@ -2,6 +2,8 @@ class_name Weapon
 extends Node3D
 ## Shared hitscan weapon. Driven by WeaponHolder; tuning lives in a WeaponData resource.
 ## Targets take damage through a duck-typed take_damage(amount: float, info: Dictionary).
+## amount is base damage after falloff. Zone and shield multipliers ride in info
+## (zone_multiplier, shield_multiplier, bleedthrough) for HealthShield to apply.
 ## Hit zones come from collider groups: "hitbox_head_unarmored" (face, neck),
 ## "hitbox_head_armored" (helmet), and legacy "hitbox_head", treated as armored. Anything
 ## else is body. Shots, the zone probe and the melee sweep hit PhysicsBody3Ds on World (1),
@@ -336,6 +338,9 @@ func _apply_melee(hit: Dictionary) -> void:
 	var forward := -camera.global_transform.basis.z
 	var info := _hit_info(hit, forward, HitZone.BODY)
 	info["melee"] = true
+	info["zone_multiplier"] = 1.0
+	info["shield_multiplier"] = data.melee_shield_damage_multiplier
+	info["bleedthrough"] = data.melee_bleedthrough
 	hit.target.take_damage(data.melee_damage, info)
 	hit_confirmed.emit(hit.target, info)
 
@@ -350,12 +355,16 @@ func _fire_ray(direction: Vector3) -> void:
 	var zone := _resolve_zone(hit, direction, target)
 	var distance: float = camera.global_position.distance_to(hit.position)
 	var amount := data.damage * _falloff(distance)
+	var zone_multiplier := 1.0
 	match zone:
 		HitZone.HEAD_ARMORED:
-			amount *= data.headshot_armored_multiplier
+			zone_multiplier = data.headshot_armored_multiplier
 		HitZone.HEAD_UNARMORED:
-			amount *= data.headshot_unarmored_multiplier
+			zone_multiplier = data.headshot_unarmored_multiplier
 	var info := _hit_info(hit, direction, zone)
+	info["zone_multiplier"] = zone_multiplier
+	info["shield_multiplier"] = data.shield_damage_multiplier
+	info["bleedthrough"] = data.bleedthrough
 	target.take_damage(amount, info)
 	hit_confirmed.emit(target, info)
 

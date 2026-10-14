@@ -1,7 +1,8 @@
 class_name WeaponData
 extends Resource
 ## Tuning for one weapon. Angles in degrees, distances in meters, times in seconds.
-## Damage numbers assume a 100 HP target until a health/shield model exists.
+## Damage targets HealthShield (Halo-style shield over health). Zone multipliers hit health
+## only; shield_damage_multiplier hits shields only.
 
 enum FireMode { SEMI, AUTO }
 enum Secondary { NONE, ZOOM, ALT }
@@ -10,12 +11,15 @@ enum Secondary { NONE, ZOOM, ALT }
 
 @export_group("Damage")
 @export var damage: float = 25.0
-## Helmet hits (group hitbox_head_armored, or legacy hitbox_head).
+## Helmet hits (group hitbox_head_armored, or legacy hitbox_head). Health damage only.
 @export var headshot_armored_multiplier: float = 2.0
-## Face/visor and neck hits (group hitbox_head_unarmored). Defaults to the armored value so
-## new weapons get no surprise one-shots. Weapons opt in per resource; the Service Pistol uses
-## 5.0 so it one-shots 100 HP even at the falloff floor: 34 * 0.6 * 5.0 = 102 >= 100.
+## Face/visor and neck hits (group hitbox_head_unarmored). Health damage only. Defaults to the
+## armored value so new weapons get no surprise one-shots; weapons opt in per resource.
 @export var headshot_unarmored_multiplier: float = 2.0
+## Multiplier on damage dealt to shields (e.g. energy weapons > 1.0).
+@export var shield_damage_multiplier: float = 1.0
+## If true, the overflow of a shot that breaks a shield spills into health.
+@export var bleedthrough: bool = false
 @export var max_range: float = 150.0
 ## Full damage up to this distance.
 @export var falloff_start: float = 30.0
@@ -70,3 +74,5 @@ enum Secondary { NONE, ZOOM, ALT }
 @export var melee_lunge_range: float = 3.5
 @export var melee_lunge_speed: float = 10.0
 @export var melee_cooldown: float = 0.8
+@export var melee_shield_damage_multiplier: float = 1.0
+@export var melee_bleedthrough: bool = false
