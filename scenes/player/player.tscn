@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+resource_local_to_scene = true
 radius = 0.35
 height = 1.8
 

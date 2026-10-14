@@ -26,6 +26,7 @@ const STAND_EYE := 1.62
 const CROUCH_EYE := 0.95
 const PITCH_LIMIT := 89.0
 
+## Refreshed every physics tick from get_gravity() so Area3D overrides apply.
 var gravity: float = 22.0
 var crouched: bool = false
 var sliding: bool = false
@@ -46,7 +47,7 @@ var _stand_probe: CapsuleShape3D
 
 
 func _ready() -> void:
-	gravity = float(ProjectSettings.get_setting("physics/3d/default_gravity"))
+	gravity = get_gravity().length()
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50.0)
 	collision_layer = 2
@@ -60,7 +61,8 @@ func _ready() -> void:
 	camera.fov = fov
 	camera.current = true
 	add_to_group("player")
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if DisplayServer.get_name() != "headless":
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -84,6 +86,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	gravity = get_gravity().length()
 	var on_floor_before := is_on_floor()
 	if on_floor_before:
 		_coyote_left = coyote_time
@@ -92,8 +95,10 @@ func _physics_process(delta: float) -> void:
 
 	var wish := _wish_direction()
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var slide_velocity := Vector3.ZERO
 	if sliding:
-		horizontal = _tick_slide(delta)
+		slide_velocity = _tick_slide(delta)
+		horizontal = Vector3(slide_velocity.x, 0.0, slide_velocity.z)
 	elif on_floor_before:
 		horizontal = _apply_ground(horizontal, wish, delta)
 	else:
@@ -103,15 +108,26 @@ func _physics_process(delta: float) -> void:
 
 	var vertical_before := velocity.y
 	var jumped := _consume_jump()
+	# Airborne gravity is split into two half steps around the move (trapezoid rule),
+	# so the jump apex matches jump_height at any physics tick rate.
+	var airborne := jumped or not on_floor_before
 	if jumped:
 		velocity.y = sqrt(2.0 * gravity * jump_height)
 		sliding = false
-	elif not on_floor_before:
-		velocity.y -= gravity * delta
+	elif airborne:
+		pass
+	elif sliding:
+		# Follow the floor so slides run down and up ramps instead of launching off them.
+		velocity.y = slide_velocity.y
 	elif velocity.y < 0.0:
 		velocity.y = 0.0
+	if airborne:
+		velocity.y -= gravity * delta * 0.5
 
 	move_and_slide()
+
+	if airborne and not is_on_floor():
+		velocity.y -= gravity * delta * 0.5
 
 	if jumped:
 		_coyote_left = 0.0
@@ -181,7 +197,11 @@ func _tick_slide(delta: float) -> Vector3:
 	_slide_speed = maxf(_slide_speed - slide_decel * delta, 0.0)
 	if _slide_time_left <= 0.0 or _slide_speed <= crouch_speed:
 		sliding = false
-	return _slide_dir * _slide_speed
+	# _slide_dir stays flat to lock heading; project it onto the floor each tick.
+	var dir := _slide_dir
+	if is_on_floor():
+		dir = _slide_dir.slide(get_floor_normal()).normalized()
+	return dir * _slide_speed
 
 
 func _update_stance() -> void:
