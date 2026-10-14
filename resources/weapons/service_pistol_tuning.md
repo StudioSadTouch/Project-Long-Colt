@@ -1,17 +1,28 @@
 # Service Pistol tuning (vs. HealthShield 70 shield / 45 health)
 
-Zone multipliers apply to health only. A shot that breaks the shield does not spill (no bleedthrough).
-Damage 23, armored helmet x2.0, unarmored face/neck x5.0, falloff 35 -> 70 m down to 0.6x.
+Damage 22. Helmet (armored) x2.0, face/neck (unarmored) x5.0. Zone multipliers apply to
+health only. A shot that breaks the shield does not spill into health (no bleedthrough).
+Falloff: full damage to 35 m, linear to 0.6x at 70 m, flat beyond.
 
-| Range | Per shot | Shield (70) | Then health (45) | Total |
+| Range | Per shot | Shield (70) | Health (45) | Total |
 |---|---|---|---|---|
-| <= 35 m | 23 | 4 body (23*4 = 92, overflow lost) | 1 helmet (46) or 1 face (115) | **4 body + 1 head = 5** |
-| <= 35 m, body only | 23 | 4 | 2 body (46) | 6 |
-| 70 m floor | 13.8 | 6 body (82.8) | 2 helmet (27.6*2 = 55.2) or 1 face (13.8*5 = 69) | 6 + 2 helmet = 8, or 6 + 1 face = 7 |
-| 70 m floor, body only | 13.8 | 6 | 4 body (55.2) | 10 |
+| <= 35 m, body only | 22 | 4 (88, overflow lost) | 3 body (66; 2 = 44 < 45) | **7** |
+| <= 35 m, helmet finish | 22 | 4 | 2 helmet (88; 1 = 44 < 45) | **6** |
+| <= 35 m, face finish | 22 | 4 | 1 face (110) | **5** |
+| 70 m floor, body only | 13.2 | 6 (79.2; 5 = 66 < 70) | 4 body (52.8; 3 = 39.6) | **10** |
+| 70 m floor, helmet finish | 13.2 | 6 | 2 helmet (52.8; 1 = 26.4) | **8** |
+| 70 m floor, face finish | 13.2 | 6 | 1 face (66) | **7** |
 
-- Headshots while shields are up do base damage (23) to the shield; the bonus only lands on bare health.
-- Helmet one-shot needs 2.0 * damage >= 45, so damage >= 22.5 at full range; 23 is the smallest round number.
-- Face one-shot at the floor needs 13.8 * m >= 45, so m >= 3.27; 5.0 keeps a wide margin.
-- Close-range optimal TTK: 5 shots at 4.5/s = 4 intervals = ~0.89 s.
-- Melee (70) breaks a full shield exactly with no spill; melee + 1 headshot kills.
+Notes
+- Headshots while the shield is up do base damage (22) to the shield.
+- A single helmet hit on bare health does 44, one short of 45: the helmet is no longer a
+  one-shot finisher; it takes two (or helmet + body: 44 + 22).
+- Face one-shots bare health at any range: 13.2 * 5.0 = 66 >= 45 (needs m >= 3.41).
+- Close-range TTK at 4.5 shots/s (interval 0.222 s): 5 shots = 0.89 s, 6 = 1.11 s, 7 = 1.33 s.
+
+Melee (70, shield multiplier 1.0, no bleedthrough, cooldown 0.8 s)
+- On a full shield: breaks it exactly (70), no health damage.
+- On bare health: kills (70 >= 45).
+- Melee then face shot: kills (2 hits). Melee then helmet: 44, needs a second shot.
+- Melee then melee: kills, gated by the 0.8 s cooldown.
+- Shield broken by shots, then melee: kills.

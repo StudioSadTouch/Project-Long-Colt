@@ -5,6 +5,7 @@ extends StaticBody3D
 ## script-less child StaticBody3Ds, so Weapon walks up from them to take_damage here.
 ## Front faces local -Z.
 
+## amount is shield plus health actually removed, not the incoming base damage.
 signal damaged(amount: float, info: Dictionary)
 signal died
 signal respawned
@@ -45,7 +46,10 @@ func take_damage(amount: float, info: Dictionary) -> void:
 		var zone: int = info.get("hit_zone", Weapon.HitZone.BODY)
 		var size := 56 if zone == Weapon.HitZone.HEAD_UNARMORED else (46 if zone != 0 else 36)
 		_spawn_number(result.health, info, Weapon.zone_color(zone), size)
-	damaged.emit(amount, info)
+	# Report what was actually removed; fully absorbed or zero hits emit nothing.
+	var applied: float = result.shield + result.health
+	if applied > 0.0:
+		damaged.emit(applied, info)
 
 
 func _die() -> void:

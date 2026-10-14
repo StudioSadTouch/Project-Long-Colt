@@ -4,6 +4,8 @@ extends Node3D
 ## Targets take damage through a duck-typed take_damage(amount: float, info: Dictionary).
 ## amount is base damage after falloff. Zone and shield multipliers ride in info
 ## (zone_multiplier, shield_multiplier, bleedthrough) for HealthShield to apply.
+## Damageables WITHOUT a HealthShield must apply info.zone_multiplier themselves, or they lose
+## the headshot bonus (and should honor shield_multiplier/bleedthrough if they model shields).
 ## Hit zones come from collider groups: "hitbox_head_unarmored" (face, neck),
 ## "hitbox_head_armored" (helmet), and legacy "hitbox_head", treated as armored. Anything
 ## else is body. Shots, the zone probe and the melee sweep hit PhysicsBody3Ds on World (1),
