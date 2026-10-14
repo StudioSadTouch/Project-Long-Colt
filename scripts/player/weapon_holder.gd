@@ -13,6 +13,8 @@ const DROP_WALL_MARGIN := 0.4
 const DROP_MIN_DISTANCE := 0.3
 ## How far below chest height to look for floor (covers short ledges, not cliffs).
 const DROP_FLOOR_SEARCH := 2.5
+## Xbox face-button names for pad prompts (JoyButton index -> label).
+const PAD_BUTTON_NAMES := {0: "A", 1: "B", 2: "X", 3: "Y", 4: "Back", 6: "Start"}
 
 @export var starting_weapons: Array[PackedScene] = []
 ## Seconds interact must be held to take a weapon pickup.
@@ -33,6 +35,9 @@ var _hold: float = 0.0
 var _hold_target: WeaponPickup
 ## Set after a swap until interact is released, so the dropped weapon isn't grabbed right back.
 var _hold_lock: bool = false
+## Pad X is both reload (tap) and interact (hold). While a pickup is in range, a shared press
+## defers reload to the release, and only reloads if the hold didn't take a pickup.
+var _reload_on_release: bool = false
 
 
 func _ready() -> void:
@@ -124,7 +129,15 @@ func get_pickup_prompt() -> String:
 
 ## Readable name of the first binding on action_interact, e.g. "E" or "Mouse 4".
 func get_interact_label() -> String:
+	var aim := _player.get_node_or_null("AimAssist") as AimAssist if _player else null
+	if aim != null and aim.using_controller:
+		for event in InputMap.action_get_events("action_interact"):
+			var pad := event as InputEventJoypadButton
+			if pad != null:
+				return PAD_BUTTON_NAMES.get(pad.button_index, "Button %d" % pad.button_index)
 	for event in InputMap.action_get_events("action_interact"):
+		if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+			continue
 		var key := event as InputEventKey
 		if key != null:
 			var code := key.keycode
@@ -174,7 +187,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("action_fire_select"):
 		weapon.fire_select()
 	elif event.is_action_pressed("action_reload"):
-		weapon.reload()
+		if event.is_action("action_interact") and get_pickup_candidate() != null:
+			_reload_on_release = true
+		else:
+			weapon.reload()
+	elif event.is_action_released("action_reload") and _reload_on_release:
+		_reload_on_release = false
+		# _hold_lock is still set (cleared next physics tick) if this hold took a pickup.
+		if not _hold_lock:
+			weapon.reload()
 	elif event.is_action_pressed("action_melee") and _melee_left <= 0.0 and weapon.data != null:
 		_melee_left = weapon.data.melee_cooldown
 		weapon.melee()

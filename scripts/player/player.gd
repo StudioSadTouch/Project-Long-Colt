@@ -18,6 +18,16 @@ extends CharacterBody3D
 @export var mouse_sensitivity: float = 0.0022
 @export var eye_blend_speed: float = 12.0
 @export var fov: float = 75.0
+@export_group("Controller")
+## Right-stick look speed at full deflection, degrees per second.
+@export var stick_yaw_speed: float = 200.0
+@export var stick_pitch_speed: float = 120.0
+@export var stick_invert_y: bool = false
+## Response curve: deflection^exponent after the deadzone (1 = linear, 2 = Halo-like ease-in).
+@export var stick_curve_exponent: float = 2.0
+## Radial stick deadzone, shared by look here and AimAssist's device detection.
+@export_range(0.0, 0.9) var stick_deadzone: float = 0.2
+@export_group("")
 
 const STAND_HEIGHT := 1.8
 const CROUCH_HEIGHT := 1.15
@@ -100,6 +110,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_apply_stick_look(delta)
 	gravity = get_gravity().length()
 	var on_floor_before := is_on_floor()
 	if on_floor_before:
@@ -220,6 +231,28 @@ func _apply_look(relative: Vector2) -> void:
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-PITCH_LIMIT), deg_to_rad(PITCH_LIMIT))
 
 
+## Right-stick look, frame-rate independent (deg/s * delta). Shares look_sensitivity_scale
+## (zoom) and aim_slowdown_scale (AimAssist) with the mouse; AimAssist magnetism adds its own
+## add_aim_offset nudge on the same physics tick.
+func _apply_stick_look(delta: float) -> void:
+	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and DisplayServer.get_name() != "headless":
+		return
+	# get_vector applies the deadzone radially and rescales the rest to 0..1.
+	var stick := Input.get_vector(
+		"action_look_left", "action_look_right", "action_look_up", "action_look_down", stick_deadzone
+	)
+	var magnitude := stick.length()
+	if magnitude <= 0.0:
+		return
+	stick = stick / magnitude * pow(minf(magnitude, 1.0), stick_curve_exponent)
+	var look_scale := look_sensitivity_scale * aim_slowdown_scale
+	var y_sign := -1.0 if stick_invert_y else 1.0
+	add_aim_offset(
+		-deg_to_rad(stick.x * stick_yaw_speed) * look_scale * delta,
+		-deg_to_rad(stick.y * stick_pitch_speed) * look_scale * delta * y_sign
+	)
+
+
 ## Aim nudge in radians (AimAssist magnetism): yaw on the body, pitch on Head, clamped.
 func add_aim_offset(yaw: float, pitch: float) -> void:
 	rotate_y(yaw)
@@ -241,7 +274,8 @@ func _wish_direction() -> Vector3:
 	var wish := fwd * input_forward + right * input_right
 	if wish.length_squared() < 0.0001:
 		return Vector3.ZERO
-	return wish.normalized()
+	# Keep analog stick magnitude; only clamp diagonals (keyboard W+D) to 1.
+	return wish.limit_length(1.0)
 
 
 func _apply_ground(horizontal: Vector3, wish: Vector3, delta: float) -> Vector3:

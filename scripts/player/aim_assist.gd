@@ -18,8 +18,6 @@ const TARGET_GROUP := &"aim_target"
 const LOS_MASK := 1
 ## Fallback aim point height above a target's origin when it has no get_aim_points().
 const BODY_FALLBACK_HEIGHT := 1.0
-## Stick deflection that counts as "using the controller".
-const JOY_DEADZONE := 0.2
 ## Cap on magnetism correction per second (radians), so teleports or respawns can't snap aim.
 const MAX_MAGNETISM_RATE := 3.0
 
@@ -53,7 +51,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventJoypadButton:
 		using_controller = true
 	elif event is InputEventJoypadMotion:
-		if absf((event as InputEventJoypadMotion).axis_value) > JOY_DEADZONE:
+		# Same deadzone as stick look (Player.stick_deadzone); triggers count too.
+		if absf((event as InputEventJoypadMotion).axis_value) > _player.stick_deadzone:
 			using_controller = true
 	elif event is InputEventMouseMotion or event is InputEventMouseButton or event is InputEventKey:
 		using_controller = false
