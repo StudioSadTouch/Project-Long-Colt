@@ -4,8 +4,10 @@ extends Node3D
 ## Targets take damage through a duck-typed take_damage(amount: float, info: Dictionary).
 ## Hit zones come from collider groups: "hitbox_head_unarmored" (face, neck),
 ## "hitbox_head_armored" (helmet), and legacy "hitbox_head", treated as armored. Anything
-## else is body. Hitboxes may be PhysicsBody3D or Area3D on the World (1) or Enemy (3) layers;
-## rays collide with both. Zone colliders forward to the nearest ancestor that has take_damage.
+## else is body. Shots, the zone probe and the melee sweep hit PhysicsBody3Ds on World (1),
+## Enemy (3) or Hitbox (6), and Area3Ds only on Hitbox (6), so triggers, pickups and water
+## don't absorb bullets. Put hitbox Areas on layer 6 only.
+## Zone colliders forward to the nearest ancestor that has take_damage.
 ## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
 ## Audio and VFX: connect to fired, dry_fired, reload_started, melee_swung, hit_confirmed.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
@@ -22,7 +24,10 @@ signal hit_confirmed(target: Object, info: Dictionary)
 
 enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
 
-const HIT_MASK := 1 | 4
+const LAYER_HITBOX := 1 << 5
+const HIT_MASK := 1 | 4 | LAYER_HITBOX
+## Non-hitbox Areas a single ray may skip before giving up.
+const MAX_AREA_SKIPS := 8
 ## How far past a non-unarmored hit to probe for an overlapping unarmored collider.
 const ZONE_PROBE := 0.05
 const ZONE_NAMES := ["body", "head_armored", "head_unarmored"]
@@ -281,7 +286,8 @@ func _tick_melee() -> void:
 		_melee_target = null
 
 
-## Nearest damageable hit along the camera's forward within distance, or {}.
+## Nearest damageable hit along the camera's forward within distance, or {}. Also used on
+## lunge arrival, so a wall that appears mid-lunge still blocks.
 func _melee_sweep(distance: float) -> Dictionary:
 	_melee_cast.global_transform = camera.global_transform
 	_melee_cast.target_position = Vector3(0.0, 0.0, -distance)
@@ -291,14 +297,26 @@ func _melee_sweep(distance: float) -> Dictionary:
 	_melee_cast.force_shapecast_update()
 	var best := {}
 	var best_distance := INF
+	# The nearest non-damageable solid blocks, so melee can't reach through walls.
+	var block_distance := INF
 	for i in _melee_cast.get_collision_count():
 		var collider := _melee_cast.get_collider(i)
+		if _is_ignored_area(collider):
+			continue
+		var point := _melee_cast.get_collision_point(i)
+		var d := camera.global_position.distance_to(point)
+		if _damage_receiver(collider) == null:
+			block_distance = minf(block_distance, d)
+	for i in _melee_cast.get_collision_count():
+		var collider := _melee_cast.get_collider(i)
+		if _is_ignored_area(collider):
+			continue
 		var target := _damage_receiver(collider)
 		if target == null:
 			continue
 		var point := _melee_cast.get_collision_point(i)
 		var d := camera.global_position.distance_to(point)
-		if d < best_distance:
+		if d < best_distance and d <= block_distance:
 			best_distance = d
 			best = {
 				"target": target,
@@ -359,16 +377,8 @@ func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZo
 	if zone == HitZone.HEAD_UNARMORED:
 		return zone
 	var origin: Vector3 = hit.position
-	var query := PhysicsRayQueryParameters3D.create(
-		origin, origin + direction * ZONE_PROBE, HIT_MASK
-	)
-	query.hit_from_inside = true
-	query.collide_with_areas = true
 	var exclude: Array[RID] = [(hit.collider as CollisionObject3D).get_rid()]
-	if player != null:
-		exclude.append(player.get_rid())
-	query.exclude = exclude
-	var probe := get_world_3d().direct_space_state.intersect_ray(query)
+	var probe := _cast_ray(origin, origin + direction * ZONE_PROBE, exclude, true)
 	if probe.is_empty() or zone_of(probe.collider) != HitZone.HEAD_UNARMORED:
 		return zone
 	if _damage_receiver(probe.collider) != target:
@@ -379,11 +389,30 @@ func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZo
 
 func _raycast(direction: Vector3, distance: float) -> Dictionary:
 	var origin := camera.global_position
-	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance, HIT_MASK)
+	return _cast_ray(origin, origin + direction * distance, [], false)
+
+
+## Ray against HIT_MASK that passes through Areas not on the Hitbox layer.
+func _cast_ray(from: Vector3, to: Vector3, exclude: Array[RID], from_inside: bool) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(from, to, HIT_MASK)
 	query.collide_with_areas = true
+	query.hit_from_inside = from_inside
+	var skip: Array[RID] = exclude.duplicate()
 	if player != null:
-		query.exclude = [player.get_rid()]
-	return get_world_3d().direct_space_state.intersect_ray(query)
+		skip.append(player.get_rid())
+	var space := get_world_3d().direct_space_state
+	for _i in MAX_AREA_SKIPS:
+		query.exclude = skip
+		var hit := space.intersect_ray(query)
+		if hit.is_empty() or not _is_ignored_area(hit.collider):
+			return hit
+		skip.append(hit.rid)
+	return {}
+
+
+static func _is_ignored_area(collider: Object) -> bool:
+	var area := collider as Area3D
+	return area != null and (area.collision_layer & LAYER_HITBOX) == 0
 
 
 func _damage_receiver(collider: Object) -> Object:
