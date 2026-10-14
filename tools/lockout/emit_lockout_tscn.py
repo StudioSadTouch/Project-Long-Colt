@@ -24,9 +24,11 @@ lists = {}
 for node in tree.body:
     if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
         name = node.targets[0].id
-        if name in ("P", "W", "S"):
+        if name in ("P", "W", "S", "RAMPS"):
             lists[name] = ast.literal_eval(node.value)
-P, W, S = lists["P"], lists["W"], lists["S"]
+P, W, S, RAMPS = lists["P"], lists["W"], lists["S"], lists["RAMPS"]
+import sys
+WRITE_LAUNCHER = "--launcher" in sys.argv  # main_lockout.tscn is hand-edited on main; regenerate only on request
 SLOPES = {}
 for line in text.splitlines():
     m = re.search(r'\("(\w+)".*#\s*sloped\s*([\d.]+)\s*->\s*([\d.]+)', line)
@@ -42,7 +44,7 @@ def floor_top_at(x, z, prefer=None):
     """Highest flat floor whose footprint contains (x, z), or a named one."""
     if prefer:
         return BOX[prefer][5]
-    tops = [p[5] for p in P if p[0] not in SLOPES
+    tops = [p[5] for p in P if p[0] not in SLOPES and p[7] not in ("Wall", "Parapet")
             and abs(x - p[1]) <= p[3] / 2 and abs(z - p[2]) <= p[4] / 2]
     return max(tops) if tops else 0.0
 
@@ -126,9 +128,32 @@ for name, cx, cz, sx, sz, top, t, group in P:
     nodes.append(f'[node name="Mesh" type="MeshInstance3D" parent="Geometry/{name}"]\nmesh = SubResource("Mesh_{sid}")\n')
     nodes.append(f'[node name="Shape" type="CollisionShape3D" parent="Geometry/{name}"]\nshape = SubResource("Shape_{sid}")\n')
 
-# Grav lift: pad footprint, from the pad up to Top Blue + 0.5 (spec section 7).
+# Ramps from explicit endpoints (low -> high top-surface centres). Basis columns: X across, Y normal, Z along.
+for name, (x0, z0, y0), (x1, z1, y1), w, t, group in RAMPS:
+    d = (x1 - x0, y1 - y0, z1 - z0)
+    ln = math.sqrt(sum(c * c for c in d))
+    f = tuple(c / ln for c in d)
+    xa = (f[2], 0.0, -f[0])  # up x f
+    xl = math.hypot(xa[0], xa[2])
+    xa = (xa[0] / xl, 0.0, xa[2] / xl)
+    ya = (f[1] * xa[2] - f[2] * xa[1], f[2] * xa[0] - f[0] * xa[2], f[0] * xa[1] - f[1] * xa[0])
+    mid = ((x0 + x1) / 2 - ya[0] * t / 2, (y0 + y1) / 2 - ya[1] * t / 2, (z0 + z1) / 2 - ya[2] * t / 2)
+    mat = LEVEL_NAMES[level_of(max(y0, y1))]
+    sid = f"Box_{name}"
+    for kind in ("BoxMesh", "BoxShape3D"):
+        extra = f'material = SubResource("Mat_{mat}")\n' if kind == "BoxMesh" else ""
+        subs.append(f'[sub_resource type="{kind}" id="{"Mesh" if kind == "BoxMesh" else "Shape"}_{sid}"]\n{extra}'
+                    f'size = Vector3({fmt(w)}, {fmt(t)}, {fmt(ln)})\n')
+    nodes.append(f'[node name="{name}" type="StaticBody3D" parent="Geometry"]\n'
+                 f'transform = Transform3D({", ".join(fmt(v) for v in (*xa, *ya, *f, *mid))})\ncollision_layer = 1\ncollision_mask = 0\n'
+                 f'metadata/group = "{group}"\nmetadata/slope_deg = {fmt(round(math.degrees(math.asin(f[1])), 2))}\n')
+    nodes.append(f'[node name="Mesh" type="MeshInstance3D" parent="Geometry/{name}"]\nmesh = SubResource("Mesh_{sid}")\n')
+    nodes.append(f'[node name="Shape" type="CollisionShape3D" parent="Geometry/{name}"]\nshape = SubResource("Shape_{sid}")\n')
+
+# Grav lift: pad footprint, from the pad up to Top Blue + 1.0. With lift_speed 12 the player leaves the
+# volume at 12 m/s and coasts 12^2/(2*22) = 3.27 m higher; see audit_jumps.py for the arc onto Top Blue.
 pad = BOX["BlueLift_Pad"]
-lift_h = BOX["TopBlue_Deck"][5] + 0.5 - pad[5]
+lift_h = BOX["TopBlue_Deck"][5] + 1.0 - pad[5]
 subs.append(f'[sub_resource type="BoxShape3D" id="Shape_Lift"]\nsize = Vector3({pad[3]}, {fmt(lift_h)}, {pad[4]})\n')
 nodes.append(f'[node name="GravLift" type="Area3D" parent="."]\n'
              f'transform = {xform(IDENT, (pad[1], pad[5] + lift_h / 2, pad[2]))}\n'
@@ -258,7 +283,10 @@ for name, basis, pos, props in DUMMIES:
     nodes.append("\n".join(lines) + "\n")
 launcher = (f"[gd_scene load_steps={len(ext) + len(subs) + 1} format=3]\n\n" + "\n".join(ext) + "\n\n"
             + "\n".join(subs) + "\n" + "\n".join(nodes))
-(ROOT / "scenes/main/main_lockout.tscn").write_text(launcher)
+if WRITE_LAUNCHER:
+    (ROOT / "scenes/main/main_lockout.tscn").write_text(launcher)
+else:
+    print("main_lockout.tscn NOT written (pass --launcher to regenerate it; it is hand-edited on main)")
 print(f"wrote {len(P)} boxes, {len(SPAWNS)} spawns, {len(PICKUPS)} pickups, {len(DUMMIES)} dummies")
 for i, s in enumerate(SPAWNS):
     print("spawn", i, s)
