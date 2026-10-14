@@ -25,10 +25,10 @@ var _layers: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("enemy")
-	for body: CollisionObject3D in [
-		self, $HeadArmored as CollisionObject3D, $HeadUnarmored as CollisionObject3D
-	]:
-		_layers[body] = body.collision_layer
+	for path: String in [".", "HeadArmored", "HeadUnarmored"]:
+		var body := get_node_or_null(path) as CollisionObject3D
+		if body != null:
+			_layers[body] = body.collision_layer
 	health = max_health
 	_update_label()
 
