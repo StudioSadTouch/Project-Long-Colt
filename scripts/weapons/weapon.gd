@@ -591,6 +591,11 @@ func _cancel_reload() -> void:
 	reload_cancelled.emit()
 
 
+## Additive view kick in degrees (pitch up), recovered like recoil. Used by reload animations.
+func add_view_kick(pitch_deg: float) -> void:
+	_recoil.x += deg_to_rad(pitch_deg)
+
+
 func _kick() -> void:
 	_recoil.x += deg_to_rad(data.recoil_pitch)
 	_recoil.y += deg_to_rad(randf_range(-data.recoil_yaw, data.recoil_yaw))
