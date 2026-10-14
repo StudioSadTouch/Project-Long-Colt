@@ -15,6 +15,7 @@ var _hit_flash: float = 0.0
 var _hit_color: Color = Weapon.zone_color(Weapon.HitZone.BODY)
 
 @onready var ammo_label: Label = $Ammo
+@onready var mode_label: Label = $FireMode
 @onready var crosshair: Control = $Crosshair
 @onready var shield_bar: ProgressBar = $ShieldBar
 @onready var health_bar: ProgressBar = $HealthBar
@@ -50,18 +51,30 @@ func _on_weapon_changed(weapon: Weapon) -> void:
 			_weapon.ammo_changed.disconnect(_on_ammo_changed)
 		if _weapon.hit_confirmed.is_connected(_on_hit):
 			_weapon.hit_confirmed.disconnect(_on_hit)
+		if _weapon.fire_mode_changed.is_connected(_on_fire_mode_changed):
+			_weapon.fire_mode_changed.disconnect(_on_fire_mode_changed)
 	_weapon = weapon
 	if _weapon == null:
 		ammo_label.text = ""
+		mode_label.text = ""
 		return
 	_weapon.ammo_changed.connect(_on_ammo_changed)
 	_weapon.hit_confirmed.connect(_on_hit)
+	_weapon.fire_mode_changed.connect(_on_fire_mode_changed)
+	_on_fire_mode_changed(_weapon.fire_mode)
 	_on_ammo_changed(_weapon.magazine, _weapon.reserve)
 
 
 func _on_health_changed(shield: float, health: float) -> void:
 	shield_bar.value = shield
 	health_bar.value = health
+
+
+func _on_fire_mode_changed(_mode: int) -> void:
+	if not is_instance_valid(_weapon) or _weapon.data == null:
+		mode_label.text = ""
+		return
+	mode_label.text = _weapon.get_fire_mode_name()
 
 
 func _on_ammo_changed(magazine: int, reserve: int) -> void:
