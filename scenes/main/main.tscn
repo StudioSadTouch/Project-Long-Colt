@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -60,6 +60,12 @@ size = Vector3(60, 1, 8)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_range"]
 size = Vector3(60, 1, 8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_moving_lane"]
+size = Vector3(60, 1, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_moving_lane"]
+size = Vector3(60, 1, 6)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -146,6 +152,16 @@ surface_material_override/0 = SubResource("StandardMaterial3D_ground")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RangeLane"]
 shape = SubResource("BoxShape3D_range")
 
+[node name="MovingLane" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, -0.5, 12)
+
+[node name="Mesh" type="MeshInstance3D" parent="MovingLane"]
+mesh = SubResource("BoxMesh_moving_lane")
+surface_material_override/0 = SubResource("StandardMaterial3D_ground")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MovingLane"]
+shape = SubResource("BoxShape3D_moving_lane")
+
 [node name="Dummy10m" parent="." instance=ExtResource("3_dummy")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10, 0, 5)
 
@@ -170,38 +186,38 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -12)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 8)
 
 [node name="MovingStrafe15m" parent="." instance=ExtResource("8_moving")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 15, 0, 5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 15, 0, 12)
 pattern = 1
 move_seed = 1015
-bounds_min = Vector2(14.5, 2)
-bounds_max = Vector2(15.5, 8)
+bounds_min = Vector2(14.5, 10)
+bounds_max = Vector2(15.5, 14)
 strafe_speed = 3.0
 strafe_duration = 1.0
 strafe_jitter = 0.3
 
 [node name="MovingADAD30m" parent="." instance=ExtResource("8_moving")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 30, 0, 5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 30, 0, 12)
 pattern = 1
 move_seed = 1030
-bounds_min = Vector2(29.5, 2)
-bounds_max = Vector2(30.5, 8)
+bounds_min = Vector2(29.5, 10)
+bounds_max = Vector2(30.5, 14)
 strafe_speed = 7.5
 strafe_duration = 0.55
 strafe_jitter = 0.35
 
 [node name="MovingSpartan50m" parent="." instance=ExtResource("8_moving")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 50, 0, 5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 50, 0, 12)
 pattern = 2
 move_seed = 1050
-bounds_min = Vector2(49.5, 2)
-bounds_max = Vector2(50.5, 8)
+bounds_min = Vector2(49.5, 10)
+bounds_max = Vector2(50.5, 14)
 
 [node name="MovingPatrol70m" parent="." instance=ExtResource("8_moving")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 62, 0, 7.5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 62, 0, 13)
 pattern = 0
 move_seed = 1070
-bounds_min = Vector2(61.5, 6.5)
-bounds_max = Vector2(78.5, 8.5)
+bounds_min = Vector2(61.5, 12.5)
+bounds_max = Vector2(78.5, 13.5)
 patrol_points = PackedVector3Array(0, 0, 0, 16, 0, 0)
 patrol_speed = 3.5
 patrol_pause = 0.6
