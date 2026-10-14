@@ -1,8 +1,12 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/ai/target_dummy.tscn" id="3_dummy"]
+[ext_resource type="PackedScene" path="res://scenes/pickups/weapon_pickup.tscn" id="4_pickup"]
+[ext_resource type="PackedScene" path="res://scenes/pickups/ammo_crate.tscn" id="5_crate"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="6_rifle"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="7_pistol"]
 
 [sub_resource type="Environment" id="Environment_boot"]
 background_mode = 1
@@ -149,3 +153,17 @@ transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 35, 0, 5)
 
 [node name="Dummy70m" parent="." instance=ExtResource("3_dummy")]
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 70, 0, 5)
+
+[node name="RiflePickup" parent="." instance=ExtResource("4_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 0)
+weapon_scene = ExtResource("6_rifle")
+
+[node name="PistolPickup" parent="." instance=ExtResource("4_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -10)
+weapon_scene = ExtResource("7_pistol")
+
+[node name="AmmoCrateEast" parent="." instance=ExtResource("5_crate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -12)
+
+[node name="AmmoCrateWest" parent="." instance=ExtResource("5_crate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 8)
