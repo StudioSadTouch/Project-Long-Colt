@@ -22,6 +22,11 @@ signal trigger_released
 signal dry_fired
 signal reload_started
 signal reload_finished
+## Ammo transferred at the mag-insert beat (data.reload_insert_fraction of reload_time).
+signal reload_inserted
+## A reload in progress was interrupted (melee, holster, re-equip). No ammo moved if it fired
+## before reload_inserted.
+signal reload_cancelled
 signal zoom_changed(zoomed: bool)
 signal fire_mode_changed(mode: int)
 signal melee_swung
@@ -52,6 +57,8 @@ var magazine: int = 0
 var reserve: int = 0
 var zoomed: bool = false
 var reloading: bool = false
+## True when the current reload started from an empty magazine (empty vs tactical reload).
+var reload_empty: bool = false
 ## Current fire mode; differs from data.fire_mode while a TOGGLE_MODE alt mode is active.
 var fire_mode: int = WeaponData.FireMode.SEMI
 var alt_mode: bool = false
@@ -62,6 +69,8 @@ var player: Player
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
 var _reload_left: float = 0.0
+## Set once the current reload has transferred ammo, so it can never refill twice.
+var _reload_refilled: bool = false
 var _melee_target: Object = null
 var _melee_cast: ShapeCast3D
 var _trigger_buffer_left: float = 0.0
@@ -95,7 +104,7 @@ func equip() -> void:
 	if data == null:
 		return
 	_equip_left = data.equip_time
-	reloading = false
+	_cancel_reload()
 	set_zoom(false)
 	ammo_changed.emit(magazine, reserve)
 	fire_mode_changed.emit(fire_mode)
@@ -103,7 +112,7 @@ func equip() -> void:
 
 func holster() -> void:
 	visible = false
-	reloading = false
+	_cancel_reload()
 	_trigger_buffer_left = 0.0
 	_burst_left = 0
 	_melee_target = null
@@ -188,6 +197,8 @@ func reload() -> void:
 	):
 		return
 	reloading = true
+	reload_empty = magazine <= 0
+	_reload_refilled = false
 	_reload_left = data.reload_time
 	set_zoom(false)
 	reload_started.emit()
@@ -198,7 +209,7 @@ func melee() -> void:
 	if data == null or camera == null:
 		return
 	# Melee cancels a reload and any burst in progress, Halo style.
-	reloading = false
+	_cancel_reload()
 	_burst_left = 0
 	set_zoom(false)
 	_cooldown = maxf(_cooldown, 0.25)
@@ -242,6 +253,9 @@ func _physics_process(delta: float) -> void:
 	_bloom = maxf(_bloom - data.bloom_recovery * delta, 0.0)
 	if reloading:
 		_reload_left -= delta
+		var insert_left := data.reload_time * (1.0 - data.reload_insert_fraction)
+		if not _reload_refilled and _reload_left <= insert_left:
+			_insert_magazine()
 		if _reload_left <= 0.0:
 			_finish_reload()
 	if _burst_left > 0:
@@ -550,12 +564,31 @@ func _spread_direction(spread_degrees: float) -> Vector3:
 
 
 func _finish_reload() -> void:
+	if not _reload_refilled:
+		_insert_magazine()
 	reloading = false
+	reload_finished.emit()
+
+
+## The mag-insert beat: moves ammo from reserve once per reload.
+func _insert_magazine() -> void:
+	if _reload_refilled:
+		return
+	_reload_refilled = true
 	var taken := mini(data.magazine_size - magazine, reserve)
 	magazine += taken
 	reserve -= taken
-	reload_finished.emit()
+	reload_inserted.emit()
 	ammo_changed.emit(magazine, reserve)
+
+
+## Stops a reload in progress. Ammo already inserted stays; otherwise nothing moves.
+func _cancel_reload() -> void:
+	if not reloading:
+		return
+	reloading = false
+	_reload_refilled = false
+	reload_cancelled.emit()
 
 
 func _kick() -> void:

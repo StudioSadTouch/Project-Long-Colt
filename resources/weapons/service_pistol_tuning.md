@@ -26,3 +26,7 @@ Melee (70, shield multiplier 1.0, no bleedthrough, cooldown 0.8 s)
 - Melee then face shot: kills (2 hits). Melee then helmet: 44, needs a second shot.
 - Melee then melee: kills, gated by the 0.8 s cooldown.
 - Shield broken by shots, then melee: kills.
+
+## Reload animation
+
+`reload_insert_fraction` is the mag-insert beat as a fraction of `reload_time`; ammo moves there (once). The viewmodel `reload_empty` / `reload_tactical` animations key the mag seat at the same fraction of their authored length and play at `length / reload_time`, so changing `reload_time` retimes them. If you retime the insert key in an animation, update this value to match.

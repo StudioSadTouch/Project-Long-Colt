@@ -194,6 +194,11 @@ func _build_visual() -> void:
 		return
 	var copy := (load(path) as PackedScene).instantiate() as Node3D
 	copy.set_script(null)
+	# Placeholder hands and the reload rig are first-person only.
+	for node in copy.find_children("*", "", true, false):
+		if node.is_in_group(&"viewmodel_only"):
+			node.get_parent().remove_child(node)
+			node.free()
 	copy.transform = Transform3D(Basis().scaled(Vector3.ONE * 2.0), Vector3.ZERO)
 	pivot.add_child(copy)
 	_visual = copy
