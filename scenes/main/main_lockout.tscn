@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn" id="1_level"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="4_rifle"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="5_pistol"]
 [ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="6_moving"]
+[ext_resource type="PackedScene" path="res://scenes/ai/target_dummy.tscn" id="7_dummy"]
 
 [sub_resource type="Environment" id="Environment_lockout"]
 background_mode = 1
@@ -144,3 +145,12 @@ path = NodePath("../Path_BotMid")
 path_speed = 4.0
 bounds_min = Vector2(-7, -7)
 bounds_max = Vector2(7, 7)
+
+[node name="Dummy_S1" parent="." instance=ExtResource("7_dummy")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 19, 4.5, 2)
+
+[node name="Dummy_Library" parent="." instance=ExtResource("7_dummy")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2, 7.5, -15)
+
+[node name="Dummy_GreenHall" parent="." instance=ExtResource("7_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 11)
