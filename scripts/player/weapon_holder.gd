@@ -80,6 +80,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	elif event.is_action_pressed("action_fire"):
 		weapon.trigger(true, true)
+	elif event.is_action_released("action_fire"):
+		weapon.release_trigger()
 	elif event.is_action_pressed("action_alt_fire"):
 		weapon.secondary_pressed()
 	elif event.is_action_pressed("action_reload"):

@@ -4,12 +4,15 @@ extends Node3D
 ## Targets take damage through a duck-typed take_damage(amount: float, info: Dictionary).
 ## Hit zones come from collider groups: "hitbox_head_unarmored" (face, neck),
 ## "hitbox_head_armored" (helmet), and legacy "hitbox_head", treated as armored. Anything
-## else is body. Zone colliders forward to the nearest ancestor that has take_damage.
+## else is body. Hitboxes may be PhysicsBody3D or Area3D on the World (1) or Enemy (3) layers;
+## rays collide with both. Zone colliders forward to the nearest ancestor that has take_damage.
 ## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
 ## Audio and VFX: connect to fired, dry_fired, reload_started, melee_swung, hit_confirmed.
+## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
 
 signal ammo_changed(magazine: int, reserve: int)
 signal fired
+signal trigger_released
 signal dry_fired
 signal reload_started
 signal reload_finished
@@ -26,6 +29,9 @@ const ZONE_NAMES := ["body", "head_armored", "head_unarmored"]
 ## Shared hit-marker palette for HUD and damage numbers.
 const ZONE_COLORS := [Color(1.0, 0.3, 0.25), Color(1.0, 0.72, 0.15), Color(1.0, 0.3, 1.0)]
 
+## Max shots one physics tick may fire, so a long hitch can't dump a magazine.
+const MAX_SHOTS_PER_TICK := 4
+
 @export var data: WeaponData
 
 var magazine: int = 0
@@ -41,6 +47,7 @@ var _equip_left: float = 0.0
 var _reload_left: float = 0.0
 var _melee_left: float = 0.0
 var _trigger_buffer_left: float = 0.0
+var _trigger_held: bool = false
 var _bloom: float = 0.0
 var _recoil: Vector2 = Vector2.ZERO
 
@@ -51,11 +58,13 @@ func _ready() -> void:
 		set_physics_process(false)
 		return
 	magazine = data.magazine_size
-	reserve = data.reserve_start
+	reserve = mini(data.reserve_start, data.reserve_max)
 
 
 func equip() -> void:
 	visible = true
+	if data == null:
+		return
 	_equip_left = data.equip_time
 	reloading = false
 	set_zoom(false)
@@ -66,22 +75,50 @@ func holster() -> void:
 	visible = false
 	reloading = false
 	_trigger_buffer_left = 0.0
+	release_trigger()
 	set_zoom(false)
 	_clear_recoil()
 
 
 ## pressed: trigger went down this frame. held: trigger is down.
 func trigger(pressed: bool, held: bool) -> void:
+	if data == null:
+		return
+	_trigger_held = held
 	if data.fire_mode == WeaponData.FireMode.AUTO:
-		if held:
-			_try_fire()
+		var shots := 0
+		while held and shots < MAX_SHOTS_PER_TICK and _try_fire():
+			shots += 1
 		return
 	if pressed:
 		_trigger_buffer_left = data.trigger_buffer
 		_try_fire()
 
 
+## Trigger came up. Burst and charge weapons hook _on_trigger_released.
+func release_trigger() -> void:
+	if not _trigger_held:
+		return
+	_trigger_held = false
+	trigger_released.emit()
+	_on_trigger_released()
+
+
+## Adds to reserve, capped at reserve_max. Returns how much was taken.
+func add_ammo(amount: int) -> int:
+	if data == null or amount <= 0:
+		return 0
+	var taken := mini(amount, data.reserve_max - reserve)
+	if taken <= 0:
+		return 0
+	reserve += taken
+	ammo_changed.emit(magazine, reserve)
+	return taken
+
+
 func secondary_pressed() -> void:
+	if data == null:
+		return
 	match data.secondary:
 		WeaponData.Secondary.ZOOM:
 			if not reloading:
@@ -91,7 +128,7 @@ func secondary_pressed() -> void:
 
 
 func reload() -> void:
-	if reloading or magazine >= data.magazine_size or reserve <= 0:
+	if data == null or reloading or magazine >= data.magazine_size or reserve <= 0:
 		return
 	reloading = true
 	_reload_left = data.reload_time
@@ -120,6 +157,8 @@ func set_zoom(on: bool) -> void:
 
 ## Current cone half-angle in degrees, for the crosshair.
 func get_spread() -> float:
+	if data == null:
+		return 0.0
 	var spread := data.spread_base + _bloom
 	if player != null and not player.is_on_floor():
 		spread += data.spread_air_add
@@ -129,13 +168,15 @@ func get_spread() -> float:
 
 
 func is_ready_to_fire() -> bool:
-	return _cooldown <= 0.0 and _equip_left <= 0.0 and not reloading
+	return data != null and _cooldown <= 0.0 and _equip_left <= 0.0 and not reloading
 
 
 func _physics_process(delta: float) -> void:
-	if not visible:
+	if not visible or data == null:
 		return
-	_cooldown = maxf(_cooldown - delta, 0.0)
+	# Carry at most one tick of remainder so fire rate holds at any tick rate without
+	# banking shots while idle.
+	_cooldown = maxf(_cooldown - delta, -delta)
 	_equip_left = maxf(_equip_left - delta, 0.0)
 	_melee_left = maxf(_melee_left - delta, 0.0)
 	_bloom = maxf(_bloom - data.bloom_recovery * delta, 0.0)
@@ -149,22 +190,46 @@ func _physics_process(delta: float) -> void:
 	_update_recoil(delta)
 
 
-func _try_fire() -> void:
-	if not is_ready_to_fire() or camera == null:
-		return
+## Returns true if a shot went out.
+func _try_fire() -> bool:
+	if not _can_fire():
+		return false
 	_trigger_buffer_left = 0.0
-	if magazine <= 0:
-		_cooldown = 1.0 / data.fire_rate
+	_cooldown += 1.0 / data.fire_rate
+	if not _consume_ammo():
+		_cooldown = maxf(_cooldown, 1.0 / data.fire_rate)
 		dry_fired.emit()
 		reload()
-		return
-	magazine -= 1
-	_cooldown = 1.0 / data.fire_rate
-	_fire_ray(_spread_direction(get_spread()))
+		return false
+	_emit_shots()
 	_bloom = minf(_bloom + data.bloom_per_shot, data.spread_max - data.spread_base)
 	_kick()
 	fired.emit()
 	ammo_changed.emit(magazine, reserve)
+	return true
+
+
+## Override to add charge, heat, or battery gates.
+func _can_fire() -> bool:
+	return is_ready_to_fire() and camera != null
+
+
+## Override for batteries or multi-round shots. Return false when empty.
+func _consume_ammo() -> bool:
+	if magazine <= 0:
+		return false
+	magazine -= 1
+	return true
+
+
+## Override for pellets or bursts. Default: one hitscan ray through the spread cone.
+func _emit_shots() -> void:
+	_fire_ray(_spread_direction(get_spread()))
+
+
+## Override for burst and charge weapons.
+func _on_trigger_released() -> void:
+	pass
 
 
 ## Override for weapons with an alternate fire mode.
@@ -238,6 +303,7 @@ func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZo
 		origin, origin + direction * ZONE_PROBE, HIT_MASK
 	)
 	query.hit_from_inside = true
+	query.collide_with_areas = true
 	var exclude: Array[RID] = [(hit.collider as CollisionObject3D).get_rid()]
 	if player != null:
 		exclude.append(player.get_rid())
@@ -254,6 +320,7 @@ func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZo
 func _raycast(direction: Vector3, distance: float) -> Dictionary:
 	var origin := camera.global_position
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * distance, HIT_MASK)
+	query.collide_with_areas = true
 	if player != null:
 		query.exclude = [player.get_rid()]
 	return get_world_3d().direct_space_state.intersect_ray(query)
