@@ -282,6 +282,7 @@ func _install(weapon: Weapon, slot: int) -> Weapon:
 		remove_child(old)
 	weapon.camera = _camera
 	weapon.player = _player
+	weapon.aim_assist = _player.get_node_or_null("AimAssist") as AimAssist if _player else null
 	add_child(weapon)
 	weapon.zoom_changed.connect(_on_zoom_changed)
 	slots[slot] = weapon

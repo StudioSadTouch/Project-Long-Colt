@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/weapon_holder.gd" id="2_holder"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="4_hud"]
 [ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="5_health"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="6_rifle"]
+[ext_resource type="Script" path="res://scripts/player/aim_assist.gd" id="7_aim"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 resource_local_to_scene = true
@@ -41,3 +42,6 @@ script = ExtResource("5_health")
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 holder_path = NodePath("../Head/Camera3D/WeaponHolder")
 health_path = NodePath("../HealthShield")
+
+[node name="AimAssist" type="Node" parent="."]
+script = ExtResource("7_aim")

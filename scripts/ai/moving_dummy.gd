@@ -87,6 +87,11 @@ func _ready() -> void:
 	_reset()
 
 
+## AimAssist target (group "aim_target", added by DummyCore).
+func get_aim_points() -> Dictionary:
+	return core.get_aim_points()
+
+
 ## Weapon contract. Shield/zone rules live in HealthShield via DummyCore.
 func take_damage(amount: float, info: Dictionary) -> void:
 	core.take_damage(amount, info)

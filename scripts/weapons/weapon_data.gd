@@ -97,6 +97,19 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 ## Alt-mode damage floor. Negative means use min_damage_multiplier.
 @export var alt_min_damage_multiplier: float = -1.0
 
+@export_group("Aim Assist")
+## See AimAssist. All off by default; strength also depends on input device.
+## Fraction of a target's angular motion the view follows while it is inside aim_assist_cone.
+@export_range(0.0, 1.0) var aim_magnetism: float = 0.0
+## Look sensitivity multiplier while a target is inside aim_assist_cone (1.0 = none).
+@export_range(0.0, 1.0) var aim_slowdown: float = 1.0
+## Cone half-angle (degrees) for magnetism and slowdown.
+@export var aim_assist_cone: float = 0.0
+## Cone half-angle (degrees) within which a missing ray bends onto a target.
+@export var aim_bend_angle: float = 0.0
+## Max distance for all assists. 0 = unlimited.
+@export var aim_assist_range: float = 0.0
+
 @export_group("Melee")
 @export var melee_damage: float = 70.0
 @export var melee_range: float = 2.0

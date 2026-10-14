@@ -77,6 +77,8 @@ var alt_mode: bool = false
 ## Set by WeaponHolder.
 var camera: Camera3D
 var player: Player
+## Set by WeaponHolder; null = no bullet bend.
+var aim_assist: AimAssist
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
@@ -395,7 +397,17 @@ func _consume_ammo() -> bool:
 
 ## Override for pellets or bursts. Default: one hitscan ray through the spread cone.
 func _emit_shots() -> void:
-	_fire_ray(_spread_direction(get_spread()))
+	_fire_ray(_assisted_direction(_spread_direction(get_spread())))
+
+
+## Bullet bend: only rays that wouldn't already hit something damageable get bent.
+func _assisted_direction(direction: Vector3) -> Vector3:
+	if aim_assist == null:
+		return direction
+	var hit := _raycast(direction, data.max_range)
+	if not hit.is_empty() and _damage_receiver(hit.collider) != null:
+		return direction
+	return aim_assist.bend(direction, data)
 
 
 ## Override for burst and charge weapons.

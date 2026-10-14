@@ -34,6 +34,7 @@ func _ready() -> void:
 	_health = _root.get_node_or_null("HealthShield") as HealthShield
 	_label = _root.get_node_or_null("Rig/HPLabel") as Label3D
 	_root.add_to_group("enemy")
+	_root.add_to_group("aim_target")
 	for path in hitbox_paths:
 		var body := _root.get_node_or_null(path) as CollisionObject3D
 		if body != null:
@@ -44,6 +45,17 @@ func _ready() -> void:
 	_health.changed.connect(_on_health_changed)
 	_health.died.connect(_die)
 	_on_health_changed(_health.shield, _health.health)
+
+
+## AimAssist aim points: body centre and helmet centre; empty while dead.
+func get_aim_points() -> Dictionary:
+	if dead:
+		return {}
+	var points := {"body": _root.global_position + Vector3.UP * 0.7}
+	var head := _root.get_node_or_null("Rig/HeadArmored") as Node3D
+	if head != null:
+		points["head"] = head.global_position
+	return points
 
 
 func take_damage(amount: float, info: Dictionary) -> void:
