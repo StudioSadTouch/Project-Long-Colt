@@ -1,7 +1,8 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/ai/target_dummy.tscn" id="3_dummy"]
 
 [sub_resource type="Environment" id="Environment_boot"]
 background_mode = 1
@@ -48,6 +49,12 @@ size = Vector3(0.8, 3, 0.8)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_pillar"]
 size = Vector3(0.8, 3, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_range"]
+size = Vector3(62, 1, 8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_range"]
+size = Vector3(62, 1, 8)
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -123,3 +130,22 @@ shape = SubResource("BoxShape3D_pillar")
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 5)
+
+[node name="RangeLane" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, -0.5, 5)
+
+[node name="Mesh" type="MeshInstance3D" parent="RangeLane"]
+mesh = SubResource("BoxMesh_range")
+surface_material_override/0 = SubResource("StandardMaterial3D_ground")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RangeLane"]
+shape = SubResource("BoxShape3D_range")
+
+[node name="Dummy10m" parent="." instance=ExtResource("3_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 5)
+
+[node name="Dummy35m" parent="." instance=ExtResource("3_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, 5)
+
+[node name="Dummy70m" parent="." instance=ExtResource("3_dummy")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, 0, 5)
