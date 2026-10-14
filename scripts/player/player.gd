@@ -28,6 +28,10 @@ const PITCH_LIMIT := 89.0
 
 ## Refreshed every physics tick from get_gravity() so Area3D overrides apply.
 var gravity: float = 22.0
+## Runtime multiplier on mouse_sensitivity, set by zoom. Settings change mouse_sensitivity.
+var look_sensitivity_scale: float = 1.0
+## Camera pitch/yaw offset in radians (weapon recoil). Applied on top of aim, never baked in.
+var view_kick: Vector2 = Vector2.ZERO
 var crouched: bool = false
 var sliding: bool = false
 
@@ -180,8 +184,9 @@ func is_lunging() -> bool:
 func _apply_look(relative: Vector2) -> void:
 	# Probe: rotate_y(+) turns -Z toward world -X, and rotate_x(+) looks up.
 	# Mouse right is +x and mouse down is +y, so both axes are negated.
-	rotate_y(-relative.x * mouse_sensitivity)
-	head.rotate_x(-relative.y * mouse_sensitivity)
+	var sensitivity := mouse_sensitivity * look_sensitivity_scale
+	rotate_y(-relative.x * sensitivity)
+	head.rotate_x(-relative.y * sensitivity)
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-PITCH_LIMIT), deg_to_rad(PITCH_LIMIT))
 
 
@@ -283,3 +288,4 @@ func _update_head(delta: float) -> void:
 	_eye_height = move_toward(_eye_height, target, eye_blend_speed * delta)
 	_landing_dip = move_toward(_landing_dip, 0.0, 0.45 * delta)
 	head.position.y = _eye_height - _landing_dip
+	camera.rotation = Vector3(view_kick.x, view_kick.y, 0.0)

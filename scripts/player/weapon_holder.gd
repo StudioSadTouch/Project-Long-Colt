@@ -12,7 +12,6 @@ const SLOT_COUNT := 2
 var slots: Array[Weapon] = []
 var active_index: int = 0
 
-var _base_sensitivity: float = 0.0
 var _player: Player
 var _melee_left: float = 0.0
 var _camera: Camera3D
@@ -21,12 +20,11 @@ var _camera: Camera3D
 func _ready() -> void:
 	_camera = get_parent() as Camera3D
 	_player = owner as Player
-	if _player != null:
-		_base_sensitivity = _player.mouse_sensitivity
 	slots.resize(SLOT_COUNT)
 	for i in mini(starting_weapons.size(), SLOT_COUNT):
 		if starting_weapons[i] != null:
-			give_weapon(starting_weapons[i].instantiate() as Weapon, i)
+			_install(starting_weapons[i].instantiate() as Weapon, i)
+	# Equip exactly once at startup.
 	_equip(_first_filled(0))
 
 
@@ -42,16 +40,7 @@ func give_weapon(weapon: Weapon, slot: int = -1) -> Weapon:
 		return null
 	if slot < 0:
 		slot = active_index if slots[active_index] != null else _first_empty()
-	var old := slots[slot]
-	if old != null:
-		old.holster()
-		remove_child(old)
-	weapon.camera = _camera
-	weapon.player = _player
-	add_child(weapon)
-	weapon.zoom_changed.connect(_on_zoom_changed)
-	slots[slot] = weapon
-	weapon.holster()
+	var old := _install(weapon, slot)
 	if slot == active_index:
 		_equip(slot)
 	return old
@@ -64,7 +53,7 @@ func switch_weapon() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and DisplayServer.get_name() != "headless":
+	if not _input_enabled():
 		return
 	var weapon := get_active()
 	if (
@@ -95,9 +84,35 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_melee_left = maxf(_melee_left - delta, 0.0)
 	var weapon := get_active()
-	if weapon != null and Input.is_action_pressed("action_fire"):
-		weapon.trigger(false, true)
+	if weapon != null:
+		if _input_enabled() and Input.is_action_pressed("action_fire"):
+			weapon.trigger(false, true)
+		else:
+			weapon.release_trigger()
+	if _player != null:
+		_player.view_kick = weapon.get_recoil() if weapon != null else Vector2.ZERO
 	_update_zoom_fov(delta)
+
+
+func _input_enabled() -> bool:
+	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"
+
+
+## Swaps weapon into slot without equipping. Returns the detached previous weapon.
+func _install(weapon: Weapon, slot: int) -> Weapon:
+	var old := slots[slot]
+	if old != null:
+		old.holster()
+		if old.zoom_changed.is_connected(_on_zoom_changed):
+			old.zoom_changed.disconnect(_on_zoom_changed)
+		remove_child(old)
+	weapon.camera = _camera
+	weapon.player = _player
+	add_child(weapon)
+	weapon.zoom_changed.connect(_on_zoom_changed)
+	slots[slot] = weapon
+	weapon.holster()
+	return old
 
 
 func _equip(index: int) -> void:
@@ -112,12 +127,12 @@ func _equip(index: int) -> void:
 
 
 func _on_zoom_changed(_zoomed: bool) -> void:
-	if _player != null:
-		var weapon := get_active()
-		var zoomed := weapon != null and weapon.zoomed
-		_player.mouse_sensitivity = (
-			_base_sensitivity * (weapon.data.zoom_sensitivity if zoomed else 1.0)
-		)
+	if _player == null:
+		return
+	var weapon := get_active()
+	var zoomed := weapon != null and weapon.data != null and weapon.zoomed
+	# A scale, not a write to mouse_sensitivity, so runtime settings changes survive zoom.
+	_player.look_sensitivity_scale = weapon.data.zoom_sensitivity if zoomed else 1.0
 
 
 func _update_zoom_fov(delta: float) -> void:
@@ -126,6 +141,8 @@ func _update_zoom_fov(delta: float) -> void:
 	var weapon := get_active()
 	var target := _player.fov
 	var blend_time := 0.1
+	if weapon != null and weapon.data == null:
+		weapon = null
 	if weapon != null:
 		blend_time = maxf(weapon.data.zoom_time, 0.001)
 		if weapon.zoomed:

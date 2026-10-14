@@ -33,9 +33,11 @@ func _process(delta: float) -> void:
 
 
 func _on_weapon_changed(weapon: Weapon) -> void:
-	if _weapon != null:
-		_weapon.ammo_changed.disconnect(_on_ammo_changed)
-		_weapon.hit_confirmed.disconnect(_on_hit)
+	if is_instance_valid(_weapon):
+		if _weapon.ammo_changed.is_connected(_on_ammo_changed):
+			_weapon.ammo_changed.disconnect(_on_ammo_changed)
+		if _weapon.hit_confirmed.is_connected(_on_hit):
+			_weapon.hit_confirmed.disconnect(_on_hit)
 	_weapon = weapon
 	if _weapon == null:
 		ammo_label.text = ""
@@ -57,7 +59,7 @@ func _on_hit(_target: Object, info: Dictionary) -> void:
 func _draw_crosshair() -> void:
 	var center := crosshair.size * 0.5
 	var gap := MIN_GAP
-	if _weapon != null and _weapon.camera != null:
+	if is_instance_valid(_weapon) and _weapon.camera != null:
 		# Spread cone edge projected to screen pixels at the current FOV.
 		var half_fov := deg_to_rad(_weapon.camera.fov * 0.5)
 		var spread := deg_to_rad(_weapon.get_spread())

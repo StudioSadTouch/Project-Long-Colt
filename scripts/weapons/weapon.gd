@@ -439,14 +439,13 @@ func _kick() -> void:
 
 
 func _update_recoil(delta: float) -> void:
-	if camera == null:
-		return
 	_recoil = _recoil.lerp(Vector2.ZERO, 1.0 - exp(-data.recoil_recovery * delta))
-	camera.rotation.x = _recoil.x
-	camera.rotation.y = _recoil.y
+
+
+## Current recoil as a (pitch, yaw) view offset in radians. The player applies it.
+func get_recoil() -> Vector2:
+	return _recoil
 
 
 func _clear_recoil() -> void:
 	_recoil = Vector2.ZERO
-	if camera != null:
-		camera.rotation = Vector3.ZERO
