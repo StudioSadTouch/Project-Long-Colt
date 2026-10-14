@@ -1,8 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/player/weapon_holder.gd" id="2_holder"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="3_pistol"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="5_health"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="6_rifle"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+resource_local_to_scene = true
 radius = 0.35
 height = 1.8
 
@@ -25,19 +31,13 @@ fov = 75.0
 near = 0.05
 far = 400.0
 
-[node name="Crosshair" type="CanvasLayer" parent="."]
+[node name="WeaponHolder" type="Node3D" parent="Head/Camera3D"]
+script = ExtResource("2_holder")
+starting_weapons = Array[PackedScene]([ExtResource("6_rifle"), ExtResource("3_pistol")])
 
-[node name="Dot" type="ColorRect" parent="Crosshair"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -2.0
-offset_top = -2.0
-offset_right = 2.0
-offset_bottom = 2.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.92, 0.93, 0.9, 0.9)
+[node name="HealthShield" type="Node" parent="."]
+script = ExtResource("5_health")
+
+[node name="HUD" parent="." instance=ExtResource("4_hud")]
+holder_path = NodePath("../Head/Camera3D/WeaponHolder")
+health_path = NodePath("../HealthShield")

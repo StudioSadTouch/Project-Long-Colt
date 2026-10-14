@@ -26,7 +26,12 @@ const STAND_EYE := 1.62
 const CROUCH_EYE := 0.95
 const PITCH_LIMIT := 89.0
 
+## Refreshed every physics tick from get_gravity() so Area3D overrides apply.
 var gravity: float = 22.0
+## Runtime multiplier on mouse_sensitivity, set by zoom. Settings change mouse_sensitivity.
+var look_sensitivity_scale: float = 1.0
+## Camera pitch/yaw offset in radians (weapon recoil). Applied on top of aim, never baked in.
+var view_kick: Vector2 = Vector2.ZERO
 var crouched: bool = false
 var sliding: bool = false
 
@@ -39,14 +44,22 @@ var _slide_time_left: float = 0.0
 var _slide_speed: float = 0.0
 var _slide_dir: Vector3 = Vector3.ZERO
 var _stand_probe: CapsuleShape3D
+var _lunge_dir: Vector3 = Vector3.ZERO
+var _lunge_speed: float = 0.0
+var _lunge_left: float = 0.0
+var _spawn_transform: Transform3D
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
+@onready var health_shield: HealthShield = get_node_or_null("HealthShield")
 
 
 func _ready() -> void:
-	gravity = float(ProjectSettings.get_setting("physics/3d/default_gravity"))
+	gravity = get_gravity().length()
+	_spawn_transform = global_transform
+	if health_shield != null:
+		health_shield.died.connect(_on_died)
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50.0)
 	collision_layer = 2
@@ -60,7 +73,8 @@ func _ready() -> void:
 	camera.fov = fov
 	camera.current = true
 	add_to_group("player")
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if DisplayServer.get_name() != "headless":
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -84,6 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	gravity = get_gravity().length()
 	var on_floor_before := is_on_floor()
 	if on_floor_before:
 		_coyote_left = coyote_time
@@ -92,8 +107,17 @@ func _physics_process(delta: float) -> void:
 
 	var wish := _wish_direction()
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	if sliding:
-		horizontal = _tick_slide(delta)
+	var slide_velocity := Vector3.ZERO
+	if _lunge_left > 0.0:
+		# A melee lunge owns horizontal motion until it times out or is cancelled on contact.
+		_lunge_left -= delta
+		sliding = false
+		horizontal = _lunge_dir * _lunge_speed
+		if _lunge_left <= 0.0:
+			horizontal = horizontal.limit_length(stand_speed)
+	elif sliding:
+		slide_velocity = _tick_slide(delta)
+		horizontal = Vector3(slide_velocity.x, 0.0, slide_velocity.z)
 	elif on_floor_before:
 		horizontal = _apply_ground(horizontal, wish, delta)
 	else:
@@ -103,15 +127,26 @@ func _physics_process(delta: float) -> void:
 
 	var vertical_before := velocity.y
 	var jumped := _consume_jump()
+	# Airborne gravity is split into two half steps around the move (trapezoid rule),
+	# so the jump apex matches jump_height at any physics tick rate.
+	var airborne := jumped or not on_floor_before
 	if jumped:
 		velocity.y = sqrt(2.0 * gravity * jump_height)
 		sliding = false
-	elif not on_floor_before:
-		velocity.y -= gravity * delta
+	elif airborne:
+		pass
+	elif sliding:
+		# Follow the floor so slides run down and up ramps instead of launching off them.
+		velocity.y = slide_velocity.y
 	elif velocity.y < 0.0:
 		velocity.y = 0.0
+	if airborne:
+		velocity.y -= gravity * delta * 0.5
 
 	move_and_slide()
+
+	if airborne and not is_on_floor():
+		velocity.y -= gravity * delta * 0.5
 
 	if jumped:
 		_coyote_left = 0.0
@@ -135,11 +170,51 @@ func _physics_process(delta: float) -> void:
 	_crouch_edge = false
 
 
+## Damage contract shared with enemies; HealthShield applies the shield and zone rules.
+func take_damage(amount: float, info: Dictionary) -> void:
+	if health_shield != null:
+		health_shield.apply_damage(amount, info)
+
+
+## Phase 0 placeholder death: instant respawn at the spawn point with full shield and health.
+func _on_died() -> void:
+	cancel_lunge()
+	velocity = Vector3.ZERO
+	global_transform = _spawn_transform
+	health_shield.reset()
+
+
+## Melee lunge: drive horizontal velocity along direction for up to duration seconds.
+func start_lunge(direction: Vector3, speed: float, duration: float) -> void:
+	var flat := Vector3(direction.x, 0.0, direction.z)
+	if flat.length_squared() < 0.0001 or duration <= 0.0:
+		return
+	_lunge_dir = flat.normalized()
+	_lunge_speed = speed
+	_lunge_left = duration
+
+
+## Ends a lunge and clamps horizontal speed to run speed so jump + melee can't boost.
+## No-op when not lunging.
+func cancel_lunge() -> void:
+	if _lunge_left <= 0.0:
+		return
+	_lunge_left = 0.0
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z).limit_length(stand_speed)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
+
+
+func is_lunging() -> bool:
+	return _lunge_left > 0.0
+
+
 func _apply_look(relative: Vector2) -> void:
 	# Probe: rotate_y(+) turns -Z toward world -X, and rotate_x(+) looks up.
 	# Mouse right is +x and mouse down is +y, so both axes are negated.
-	rotate_y(-relative.x * mouse_sensitivity)
-	head.rotate_x(-relative.y * mouse_sensitivity)
+	var sensitivity := mouse_sensitivity * look_sensitivity_scale
+	rotate_y(-relative.x * sensitivity)
+	head.rotate_x(-relative.y * sensitivity)
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-PITCH_LIMIT), deg_to_rad(PITCH_LIMIT))
 
 
@@ -181,7 +256,11 @@ func _tick_slide(delta: float) -> Vector3:
 	_slide_speed = maxf(_slide_speed - slide_decel * delta, 0.0)
 	if _slide_time_left <= 0.0 or _slide_speed <= crouch_speed:
 		sliding = false
-	return _slide_dir * _slide_speed
+	# _slide_dir stays flat to lock heading; project it onto the floor each tick.
+	var dir := _slide_dir
+	if is_on_floor():
+		dir = _slide_dir.slide(get_floor_normal()).normalized()
+	return dir * _slide_speed
 
 
 func _update_stance() -> void:
@@ -237,3 +316,4 @@ func _update_head(delta: float) -> void:
 	_eye_height = move_toward(_eye_height, target, eye_blend_speed * delta)
 	_landing_dip = move_toward(_landing_dip, 0.0, 0.45 * delta)
 	head.position.y = _eye_height - _landing_dip
+	camera.rotation = Vector3(view_kick.x, view_kick.y, 0.0)

@@ -1,0 +1,103 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/target_dummy.gd" id="1_dummy"]
+[ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="2_health"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dummy"]
+albedo_color = Color(0.55, 0.42, 0.25, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+material = SubResource("StandardMaterial3D_dummy")
+size = Vector3(0.7, 1.4, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.7, 1.4, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_visor"]
+albedo_color = Color(0.1, 0.85, 0.95, 1)
+emission_enabled = true
+emission = Color(0.1, 0.85, 0.95, 1)
+emission_energy_multiplier = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_neck"]
+albedo_color = Color(0.12, 0.12, 0.13, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_helmet"]
+material = SubResource("StandardMaterial3D_dummy")
+size = Vector3(0.36, 0.34, 0.36)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_helmet"]
+size = Vector3(0.36, 0.34, 0.36)
+
+[sub_resource type="BoxMesh" id="BoxMesh_visor"]
+material = SubResource("StandardMaterial3D_visor")
+size = Vector3(0.24, 0.14, 0.04)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_visor"]
+size = Vector3(0.24, 0.14, 0.04)
+
+[sub_resource type="BoxMesh" id="BoxMesh_neck"]
+material = SubResource("StandardMaterial3D_neck")
+size = Vector3(0.16, 0.07, 0.16)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_neck"]
+size = Vector3(0.16, 0.07, 0.16)
+
+[node name="TargetDummy" type="StaticBody3D"]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1_dummy")
+
+[node name="BodyMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+mesh = SubResource("BoxMesh_body")
+
+[node name="BodyShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="HeadArmored" type="StaticBody3D" parent="." groups=["hitbox_head_armored"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.64, 0)
+collision_layer = 32
+collision_mask = 0
+
+[node name="HelmetMesh" type="MeshInstance3D" parent="HeadArmored"]
+mesh = SubResource("BoxMesh_helmet")
+
+[node name="HelmetShape" type="CollisionShape3D" parent="HeadArmored"]
+shape = SubResource("BoxShape3D_helmet")
+
+[node name="HeadUnarmored" type="StaticBody3D" parent="." groups=["hitbox_head_unarmored"]]
+collision_layer = 32
+collision_mask = 0
+
+[node name="VisorMesh" type="MeshInstance3D" parent="HeadUnarmored"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -0.2)
+mesh = SubResource("BoxMesh_visor")
+
+[node name="VisorShape" type="CollisionShape3D" parent="HeadUnarmored"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -0.2)
+shape = SubResource("BoxShape3D_visor")
+
+[node name="NeckMesh" type="MeshInstance3D" parent="HeadUnarmored"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.435, 0)
+mesh = SubResource("BoxMesh_neck")
+
+[node name="NeckShape" type="CollisionShape3D" parent="HeadUnarmored"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.435, 0)
+shape = SubResource("BoxShape3D_neck")
+
+[node name="HPLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+billboard = 1
+no_depth_test = true
+fixed_size = true
+pixel_size = 0.001
+font_size = 32
+outline_size = 8
+text = "S 70 / 70\nH 45 / 45"
+
+[node name="HealthShield" type="Node" parent="."]
+script = ExtResource("2_health")
