@@ -16,6 +16,8 @@ var _hit_color: Color = Weapon.zone_color(Weapon.HitZone.BODY)
 
 @onready var ammo_label: Label = $Ammo
 @onready var mode_label: Label = $FireMode
+@onready var prompt_label: Label = $Prompt
+@onready var prompt_bar: ProgressBar = $Prompt/Hold
 @onready var crosshair: Control = $Crosshair
 @onready var shield_bar: ProgressBar = $ShieldBar
 @onready var health_bar: ProgressBar = $HealthBar
@@ -43,6 +45,16 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_hit_flash = maxf(_hit_flash - delta, 0.0)
 	crosshair.queue_redraw()
+	_update_prompt()
+
+
+func _update_prompt() -> void:
+	var text := _holder.get_pickup_prompt() if _holder != null else ""
+	prompt_label.visible = text != ""
+	if text == "":
+		return
+	prompt_label.text = text
+	prompt_bar.value = _holder.get_pickup_progress()
 
 
 func _on_weapon_changed(weapon: Weapon) -> void:

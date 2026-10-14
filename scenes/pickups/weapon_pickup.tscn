@@ -1,0 +1,37 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/pickups/weapon_pickup.gd" id="1_pickup"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pad"]
+albedo_color = Color(0.2, 0.22, 0.24, 1)
+emission_enabled = true
+emission = Color(0.25, 0.55, 0.9, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pad"]
+material = SubResource("StandardMaterial3D_pad")
+top_radius = 0.5
+bottom_radius = 0.55
+height = 0.08
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_trigger"]
+radius = 1.0
+
+[node name="WeaponPickup" type="Node3D"]
+script = ExtResource("1_pickup")
+
+[node name="Pad" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+mesh = SubResource("CylinderMesh_pad")
+
+[node name="Pivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+
+[node name="Area" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+collision_layer = 64
+collision_mask = 2
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="Area"]
+shape = SubResource("SphereShape3D_trigger")

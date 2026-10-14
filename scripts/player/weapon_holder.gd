@@ -8,6 +8,10 @@ signal active_weapon_changed(weapon: Weapon)
 const SLOT_COUNT := 2
 
 @export var starting_weapons: Array[PackedScene] = []
+## Seconds interact must be held to take a weapon pickup.
+@export var pickup_hold_time: float = 0.4
+## Dropped weapons land this far in front of the player.
+@export var drop_distance: float = 1.2
 
 var slots: Array[Weapon] = []
 var active_index: int = 0
@@ -15,6 +19,11 @@ var active_index: int = 0
 var _player: Player
 var _melee_left: float = 0.0
 var _camera: Camera3D
+var _pickups: Array[WeaponPickup] = []
+var _hold: float = 0.0
+var _hold_target: WeaponPickup
+## Set after a swap until interact is released, so the dropped weapon isn't grabbed right back.
+var _hold_lock: bool = false
 
 
 func _ready() -> void:
@@ -44,6 +53,54 @@ func give_weapon(weapon: Weapon, slot: int = -1) -> Weapon:
 	if slot == active_index:
 		_equip(slot)
 	return old
+
+
+## Carried weapon with this id (WeaponPickup.weapon_id_of), or null.
+func find_weapon(weapon_id: String) -> Weapon:
+	if weapon_id == "":
+		return null
+	for w in slots:
+		if w != null and WeaponPickup.weapon_id_of(w) == weapon_id:
+			return w
+	return null
+
+
+func register_pickup(pickup: WeaponPickup) -> void:
+	if not _pickups.has(pickup):
+		_pickups.append(pickup)
+
+
+func unregister_pickup(pickup: WeaponPickup) -> void:
+	_pickups.erase(pickup)
+
+
+## Nearest available pickup of a weapon type not already carried, or null.
+func get_pickup_candidate() -> WeaponPickup:
+	var best: WeaponPickup = null
+	var best_distance := INF
+	for pickup in _pickups:
+		if not is_instance_valid(pickup) or not pickup.available:
+			continue
+		if find_weapon(pickup.get_weapon_id()) != null:
+			continue
+		var d := global_position.distance_squared_to(pickup.global_position)
+		if d < best_distance:
+			best_distance = d
+			best = pickup
+	return best
+
+
+## HUD prompt text, empty when nothing can be picked up.
+func get_pickup_prompt() -> String:
+	var pickup := get_pickup_candidate()
+	if pickup == null:
+		return ""
+	return "Hold E to pick up %s" % pickup.get_display_name()
+
+
+## 0..1 hold progress toward taking the current candidate.
+func get_pickup_progress() -> float:
+	return clampf(_hold / maxf(pickup_hold_time, 0.001), 0.0, 1.0)
 
 
 func switch_weapon() -> void:
@@ -92,6 +149,49 @@ func _physics_process(delta: float) -> void:
 	if _player != null:
 		_player.view_kick = weapon.get_recoil() if weapon != null else Vector2.ZERO
 	_update_zoom_fov(delta)
+	_update_pickup_hold(delta)
+
+
+func _update_pickup_hold(delta: float) -> void:
+	_pickups = _pickups.filter(func(p: WeaponPickup) -> bool: return is_instance_valid(p))
+	var held := _input_enabled() and Input.is_action_pressed("action_interact")
+	if not held:
+		_hold = 0.0
+		_hold_lock = false
+		return
+	var candidate := get_pickup_candidate()
+	if _hold_lock or candidate == null:
+		_hold = 0.0
+		return
+	if candidate != _hold_target:
+		_hold_target = candidate
+		_hold = 0.0
+	_hold += delta
+	if _hold >= pickup_hold_time:
+		_hold = 0.0
+		_hold_lock = true
+		_take_pickup(candidate)
+
+
+## Empty slot: fill it and switch to it. Otherwise swap with the active weapon and drop it.
+func _take_pickup(pickup: WeaponPickup) -> void:
+	var weapon := pickup.take()
+	if weapon == null:
+		return
+	var empty := slots.find(null)
+	if empty >= 0:
+		_install(weapon, empty)
+		_equip(empty)
+		return
+	var old := give_weapon(weapon, active_index)
+	if old != null and _player != null:
+		var forward := -_player.global_transform.basis.z
+		forward.y = 0.0
+		var at := _player.global_position + forward.normalized() * drop_distance
+		var parent: Node = get_tree().current_scene
+		if parent == null:
+			parent = get_tree().root
+		WeaponPickup.drop(old, parent, at)
 
 
 func _input_enabled() -> bool:

@@ -137,6 +137,7 @@ action_pause={
 3d_physics/layer_4="Projectile"
 3d_physics/layer_5="Interactable"
 3d_physics/layer_6="Hitbox"
+3d_physics/layer_7="Pickup"
 
 [physics]
 
