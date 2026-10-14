@@ -180,11 +180,19 @@ func secondary_pressed() -> void:
 	match data.secondary:
 		WeaponData.Secondary.ZOOM:
 			if not reloading:
-				set_zoom(not zoomed)
+				set_zoom(not zoomed)  # set_zoom refuses zoom in a disallowed mode
 		WeaponData.Secondary.ALT:
 			_alt_fire()
 		WeaponData.Secondary.TOGGLE_MODE:
 			toggle_fire_mode()
+
+
+## action_fire_select. Only weapons with data.fire_select (or a TOGGLE_MODE secondary).
+func fire_select() -> void:
+	if data == null:
+		return
+	if data.fire_select or data.secondary == WeaponData.Secondary.TOGGLE_MODE:
+		toggle_fire_mode()
 
 
 ## Switch between data.fire_mode and data.alt_fire_mode. Not mid-burst.
@@ -195,7 +203,26 @@ func toggle_fire_mode() -> void:
 	fire_mode = data.alt_fire_mode if alt_mode else data.fire_mode
 	_trigger_buffer_left = 0.0
 	release_trigger()
+	if zoomed and not can_zoom():
+		set_zoom(false)
 	fire_mode_changed.emit(fire_mode)
+
+
+## Zoom is allowed in the current fire mode.
+func can_zoom() -> bool:
+	if data == null or data.secondary != WeaponData.Secondary.ZOOM:
+		return false
+	return data.zoom_only_in_mode < 0 or fire_mode == data.zoom_only_in_mode
+
+
+## FOV while zoomed, given the unzoomed base FOV in degrees.
+func get_zoom_fov(base_fov: float) -> float:
+	if data == null:
+		return base_fov
+	if data.zoom_magnification > 0.0:
+		var half := deg_to_rad(base_fov * 0.5)
+		return rad_to_deg(2.0 * atan(tan(half) / data.zoom_magnification))
+	return data.zoom_fov
 
 
 func get_fire_mode_name() -> String:
@@ -255,7 +282,7 @@ func _melee_time_for(hit: Dictionary) -> float:
 
 
 func set_zoom(on: bool) -> void:
-	if on == zoomed:
+	if on == zoomed or (on and not can_zoom()):
 		return
 	zoomed = on
 	zoom_changed.emit(zoomed)

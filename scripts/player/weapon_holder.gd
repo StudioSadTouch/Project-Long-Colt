@@ -44,6 +44,12 @@ func _ready() -> void:
 			_install(starting_weapons[i].instantiate() as Weapon, i)
 	# Equip exactly once at startup.
 	_equip(_first_filled(0))
+	# Halo: taking damage knocks you out of zoom. HealthShield is a sibling under the player,
+	# whose @onready vars aren't set yet, so look it up directly.
+	var health := _player.get_node_or_null("HealthShield") as HealthShield if _player else null
+	if health != null:
+		health.shield_damaged.connect(_on_owner_damaged)
+		health.health_damaged.connect(_on_owner_damaged)
 
 
 func get_active() -> Weapon:
@@ -165,6 +171,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		weapon.release_trigger()
 	elif event.is_action_pressed("action_alt_fire"):
 		weapon.secondary_pressed()
+	elif event.is_action_pressed("action_fire_select"):
+		weapon.fire_select()
 	elif event.is_action_pressed("action_reload"):
 		weapon.reload()
 	elif event.is_action_pressed("action_melee") and _melee_left <= 0.0 and weapon.data != null:
@@ -292,6 +300,12 @@ func _equip(index: int) -> void:
 	active_weapon_changed.emit(slots[index])
 
 
+func _on_owner_damaged(_amount: float) -> void:
+	var weapon := get_active()
+	if weapon != null:
+		weapon.set_zoom(false)
+
+
 func _on_zoom_changed(_zoomed: bool) -> void:
 	if _player == null:
 		return
@@ -312,8 +326,9 @@ func _update_zoom_fov(delta: float) -> void:
 	if weapon != null:
 		blend_time = maxf(weapon.data.zoom_time, 0.001)
 		if weapon.zoomed:
-			target = weapon.data.zoom_fov
-	var step := absf(_player.fov - (weapon.data.zoom_fov if weapon != null else _player.fov))
+			target = weapon.get_zoom_fov(_player.fov)
+	var zoom_fov := weapon.get_zoom_fov(_player.fov) if weapon != null else _player.fov
+	var step := absf(_player.fov - zoom_fov)
 	_camera.fov = move_toward(_camera.fov, target, maxf(step, 1.0) / blend_time * delta)
 
 

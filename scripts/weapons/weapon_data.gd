@@ -77,7 +77,17 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 ## Spread multiplier while zoomed.
 @export var zoom_spread_multiplier: float = 0.5
 @export var zoom_time: float = 0.1
-## TOGGLE_MODE: the mode secondary switches to. The alt_* fields apply only in that mode.
+## True optical magnification (e.g. 2.0). > 0 derives the zoom FOV from the player's base FOV
+## (2 * atan(tan(base / 2) / magnification)) and overrides zoom_fov; 0 uses zoom_fov as-is.
+@export var zoom_magnification: float = 0.0
+## Zoom only allowed in this FireMode (e.g. BURST); -1 = any mode. Leaving it de-zooms.
+@export var zoom_only_in_mode: int = -1
+## Draw the HUD scope overlay (vignette + reticle) while zoomed.
+@export var zoom_overlay: bool = false
+## action_fire_select toggles between fire_mode and alt_fire_mode (the alt_* fields apply).
+## Independent of secondary, so a weapon can fire-select on F and zoom on right-click.
+@export var fire_select: bool = false
+## TOGGLE_MODE / fire_select: the alternate mode. The alt_* fields apply only in that mode.
 @export var alt_fire_mode: FireMode = FireMode.BURST
 @export var alt_spread_multiplier: float = 1.0
 @export var alt_bloom_multiplier: float = 1.0
