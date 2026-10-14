@@ -11,6 +11,7 @@ const HIT_FLASH_TIME := 0.12
 var _holder: WeaponHolder
 var _weapon: Weapon
 var _hit_flash: float = 0.0
+var _hit_color: Color = Weapon.zone_color(Weapon.HitZone.BODY)
 
 @onready var ammo_label: Label = $Ammo
 @onready var crosshair: Control = $Crosshair
@@ -48,8 +49,9 @@ func _on_ammo_changed(magazine: int, reserve: int) -> void:
 	ammo_label.text = "%d / %d" % [magazine, reserve]
 
 
-func _on_hit(_target: Object, _info: Dictionary) -> void:
+func _on_hit(_target: Object, info: Dictionary) -> void:
 	_hit_flash = HIT_FLASH_TIME
+	_hit_color = Weapon.zone_color(info.get("hit_zone", Weapon.HitZone.BODY))
 
 
 func _draw_crosshair() -> void:
@@ -60,7 +62,7 @@ func _draw_crosshair() -> void:
 		var half_fov := deg_to_rad(_weapon.camera.fov * 0.5)
 		var spread := deg_to_rad(_weapon.get_spread())
 		gap = maxf(MIN_GAP, tan(spread) / tan(half_fov) * crosshair.size.y * 0.5)
-	var color := Color(1.0, 0.35, 0.3, 0.95) if _hit_flash > 0.0 else Color(0.92, 0.93, 0.9, 0.9)
+	var color := _hit_color if _hit_flash > 0.0 else Color(0.92, 0.93, 0.9, 0.9)
 	crosshair.draw_rect(Rect2(center - Vector2.ONE, Vector2(2, 2)), color)
 	for dir in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
 		var a: Vector2 = center + dir * gap

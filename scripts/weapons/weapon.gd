@@ -2,8 +2,10 @@ class_name Weapon
 extends Node3D
 ## Shared hitscan weapon. Driven by WeaponHolder; tuning lives in a WeaponData resource.
 ## Targets take damage through a duck-typed take_damage(amount: float, info: Dictionary).
-## Colliders in group "hitbox_head" count as headshots and forward to the nearest ancestor
-## that has take_damage.
+## Hit zones come from collider groups: "hitbox_head_unarmored" (face, neck),
+## "hitbox_head_armored" (helmet), and legacy "hitbox_head", treated as armored. Anything
+## else is body. Zone colliders forward to the nearest ancestor that has take_damage.
+## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
 ## Audio and VFX: connect to fired, dry_fired, reload_started, melee_swung, hit_confirmed.
 
 signal ammo_changed(magazine: int, reserve: int)
@@ -15,7 +17,14 @@ signal zoom_changed(zoomed: bool)
 signal melee_swung
 signal hit_confirmed(target: Object, info: Dictionary)
 
+enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
+
 const HIT_MASK := 1 | 4
+## How far past a non-unarmored hit to probe for an overlapping unarmored collider.
+const ZONE_PROBE := 0.05
+const ZONE_NAMES := ["body", "head_armored", "head_unarmored"]
+## Shared hit-marker palette for HUD and damage numbers.
+const ZONE_COLORS := [Color(1.0, 0.3, 0.25), Color(1.0, 0.72, 0.15), Color(1.0, 0.3, 1.0)]
 
 @export var data: WeaponData
 
@@ -177,7 +186,7 @@ func _melee() -> void:
 		var flat := Vector3(forward.x, 0.0, forward.z).normalized()
 		player.velocity.x = flat.x * data.melee_lunge_speed
 		player.velocity.z = flat.z * data.melee_lunge_speed
-	var info := _hit_info(hit, forward, false)
+	var info := _hit_info(hit, forward, HitZone.BODY)
 	info["melee"] = true
 	target.take_damage(data.melee_damage, info)
 	hit_confirmed.emit(target, info)
@@ -187,18 +196,59 @@ func _fire_ray(direction: Vector3) -> void:
 	var hit := _raycast(direction, data.max_range)
 	if hit.is_empty():
 		return
-	var collider: Object = hit.collider
-	var headshot := collider is Node and (collider as Node).is_in_group("hitbox_head")
-	var target := _damage_receiver(collider)
+	var target := _damage_receiver(hit.collider)
 	if target == null:
 		return
+	var zone := _resolve_zone(hit, direction, target)
 	var distance: float = camera.global_position.distance_to(hit.position)
 	var amount := data.damage * _falloff(distance)
-	if headshot:
-		amount *= data.headshot_multiplier
-	var info := _hit_info(hit, direction, headshot)
+	match zone:
+		HitZone.HEAD_ARMORED:
+			amount *= data.headshot_armored_multiplier
+		HitZone.HEAD_UNARMORED:
+			amount *= data.headshot_unarmored_multiplier
+	var info := _hit_info(hit, direction, zone)
 	target.take_damage(amount, info)
 	hit_confirmed.emit(target, info)
+
+
+static func zone_of(collider: Object) -> HitZone:
+	var node := collider as Node
+	if node == null:
+		return HitZone.BODY
+	if node.is_in_group("hitbox_head_unarmored"):
+		return HitZone.HEAD_UNARMORED
+	if node.is_in_group("hitbox_head_armored") or node.is_in_group("hitbox_head"):
+		return HitZone.HEAD_ARMORED
+	return HitZone.BODY
+
+
+static func zone_color(zone: int) -> Color:
+	return ZONE_COLORS[clampi(zone, 0, ZONE_COLORS.size() - 1)]
+
+
+## Unarmored wins over overlap: if the first hit isn't unarmored, probe a few cm further
+## (from inside shapes too) for an unarmored collider on the same target.
+func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZone:
+	var zone := zone_of(hit.collider)
+	if zone == HitZone.HEAD_UNARMORED:
+		return zone
+	var origin: Vector3 = hit.position
+	var query := PhysicsRayQueryParameters3D.create(
+		origin, origin + direction * ZONE_PROBE, HIT_MASK
+	)
+	query.hit_from_inside = true
+	var exclude: Array[RID] = [(hit.collider as CollisionObject3D).get_rid()]
+	if player != null:
+		exclude.append(player.get_rid())
+	query.exclude = exclude
+	var probe := get_world_3d().direct_space_state.intersect_ray(query)
+	if probe.is_empty() or zone_of(probe.collider) != HitZone.HEAD_UNARMORED:
+		return zone
+	if _damage_receiver(probe.collider) != target:
+		return zone
+	hit.collider = probe.collider
+	return HitZone.HEAD_UNARMORED
 
 
 func _raycast(direction: Vector3, distance: float) -> Dictionary:
@@ -218,12 +268,14 @@ func _damage_receiver(collider: Object) -> Object:
 	return null
 
 
-func _hit_info(hit: Dictionary, direction: Vector3, headshot: bool) -> Dictionary:
+func _hit_info(hit: Dictionary, direction: Vector3, zone: HitZone) -> Dictionary:
 	return {
 		"position": hit.position,
 		"normal": hit.normal,
 		"direction": direction,
-		"headshot": headshot,
+		"hit_zone": zone,
+		"hit_zone_name": ZONE_NAMES[zone],
+		"headshot": zone != HitZone.BODY,
 		"weapon": data.display_name,
 		"source": player,
 	}

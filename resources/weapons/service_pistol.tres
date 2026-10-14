@@ -6,7 +6,8 @@
 script = ExtResource("1_data")
 display_name = "Service Pistol"
 damage = 34.0
-headshot_multiplier = 2.0
+headshot_armored_multiplier = 2.0
+headshot_unarmored_multiplier = 5.0
 max_range = 150.0
 falloff_start = 35.0
 falloff_end = 70.0

@@ -142,10 +142,10 @@ surface_material_override/0 = SubResource("StandardMaterial3D_ground")
 shape = SubResource("BoxShape3D_range")
 
 [node name="Dummy10m" parent="." instance=ExtResource("3_dummy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10, 0, 5)
 
 [node name="Dummy35m" parent="." instance=ExtResource("3_dummy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 0, 5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 35, 0, 5)
 
 [node name="Dummy70m" parent="." instance=ExtResource("3_dummy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 70, 0, 5)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 70, 0, 5)

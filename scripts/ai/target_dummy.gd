@@ -1,7 +1,9 @@
 class_name TargetDummy
 extends StaticBody3D
-## Greybox shooting target. The body collider is this node; the head is a child StaticBody3D in
-## group "hitbox_head" with no script, so Weapon walks up from it to take_damage here.
+## Greybox shooting target. The body collider is this node. HeadArmored (helmet, group
+## hitbox_head_armored) and HeadUnarmored (visor + neck, group hitbox_head_unarmored) are
+## script-less child StaticBody3Ds, so Weapon walks up from them to take_damage here.
+## Front faces local -Z.
 
 signal damaged(amount: float, info: Dictionary)
 signal died
@@ -23,7 +25,9 @@ var _layers: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("enemy")
-	for body: CollisionObject3D in [self, $Head as CollisionObject3D]:
+	for body: CollisionObject3D in [
+		self, $HeadArmored as CollisionObject3D, $HeadUnarmored as CollisionObject3D
+	]:
 		_layers[body] = body.collision_layer
 	health = max_health
 	_update_label()
@@ -64,15 +68,16 @@ func _update_label() -> void:
 
 
 func _spawn_number(amount: float, info: Dictionary) -> void:
-	var headshot: bool = info.get("headshot", false)
+	var zone: int = info.get("hit_zone", Weapon.HitZone.BODY)
+	var headshot := zone != Weapon.HitZone.BODY
 	var label := Label3D.new()
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.fixed_size = true
 	label.pixel_size = 0.0015
-	label.font_size = 48 if headshot else 36
+	label.font_size = 56 if zone == Weapon.HitZone.HEAD_UNARMORED else (46 if headshot else 36)
 	label.outline_size = 8
-	label.modulate = Color(1.0, 0.85, 0.2) if headshot else Color(1.0, 1.0, 1.0)
+	label.modulate = Weapon.zone_color(zone)
 	label.text = "%d" % roundi(amount)
 	# Parent to the level so the number survives the dummy hiding on death.
 	var parent := get_parent() if get_parent() != null else self
