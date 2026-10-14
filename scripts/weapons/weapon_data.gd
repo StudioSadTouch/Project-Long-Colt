@@ -80,6 +80,8 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 ## Alt-mode falloff. Negative means use the primary falloff_start / falloff_end.
 @export var alt_falloff_start: float = -1.0
 @export var alt_falloff_end: float = -1.0
+## Alt-mode damage floor. Negative means use min_damage_multiplier.
+@export var alt_min_damage_multiplier: float = -1.0
 
 @export_group("Melee")
 @export var melee_damage: float = 70.0

@@ -197,8 +197,9 @@ func reload() -> void:
 func melee() -> void:
 	if data == null or camera == null:
 		return
-	# Melee cancels a reload, Halo style.
+	# Melee cancels a reload and any burst in progress, Halo style.
 	reloading = false
+	_burst_left = 0
 	set_zoom(false)
 	_cooldown = maxf(_cooldown, 0.25)
 	melee_swung.emit()
@@ -288,6 +289,8 @@ func _try_fire(interval: float = -1.0) -> bool:
 	if not _consume_ammo():
 		_cooldown = maxf(_cooldown, interval)
 		dry_fired.emit()
+		# End any burst first so the mid-burst reload guard doesn't block the auto-reload.
+		_burst_left = 0
 		reload()
 		return false
 	_emit_shots()
@@ -525,13 +528,16 @@ func _hit_info(hit: Dictionary, direction: Vector3, zone: HitZone) -> Dictionary
 func _falloff(distance: float) -> float:
 	var start := data.falloff_start
 	var end := data.falloff_end
+	var floor_mult := data.min_damage_multiplier
 	if alt_mode and data.alt_falloff_start >= 0.0 and data.alt_falloff_end > data.alt_falloff_start:
 		start = data.alt_falloff_start
 		end = data.alt_falloff_end
+	if alt_mode and data.alt_min_damage_multiplier >= 0.0:
+		floor_mult = data.alt_min_damage_multiplier
 	if distance <= start:
 		return 1.0
 	var t := clampf(inverse_lerp(start, end, distance), 0.0, 1.0)
-	return lerpf(1.0, data.min_damage_multiplier, t)
+	return lerpf(1.0, floor_mult, t)
 
 
 func _spread_direction(spread_degrees: float) -> Vector3:

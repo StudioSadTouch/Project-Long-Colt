@@ -39,6 +39,7 @@ alt_spread_multiplier = 0.4
 alt_bloom_multiplier = 0.5
 alt_falloff_start = 35.0
 alt_falloff_end = 70.0
+alt_min_damage_multiplier = 0.6
 melee_damage = 70.0
 melee_range = 2.0
 melee_lunge_range = 3.5
