@@ -14,6 +14,11 @@ extends Node
 ## melee_hit / melee_whiffed signals land on Weapon (falls back to melee_swung / hit_confirmed).
 
 signal melee_event(event: StringName)
+## A world-geometry impact (melee_hit_surface). surface is Weapon's hint ("" if none).
+signal melee_surface_impact(surface: String)
+
+## Lets the weapon's next physics tick deliver a lunge-arrival hit before calling a whiff.
+const WHIFF_GRACE := 0.05
 
 @export var animation_player: AnimationPlayer
 @export var clip: StringName = &"melee"
@@ -23,6 +28,8 @@ signal melee_event(event: StringName)
 @export var default_windup: float = 0.1
 @export var impact_kick_deg: float = 1.0
 @export var whiff_kick_deg: float = 0.0
+## Kick for a wall/floor impact (melee_hit_surface): lighter than a body hit.
+@export var surface_kick_deg: float = 0.5
 
 var _weapon: Weapon
 var _reload: Node
@@ -34,9 +41,6 @@ var _whiffed: bool = false
 var _recovery_speed: float = 1.0
 ## Seconds the impact pose has waited with no lunge and no hit; past WHIFF_GRACE it's a whiff.
 var _unresolved_for: float = 0.0
-
-## Lets the weapon's next physics tick deliver a lunge-arrival hit before calling a whiff.
-const WHIFF_GRACE := 0.05
 
 
 func _ready() -> void:
@@ -56,7 +60,7 @@ func _ready() -> void:
 		_weapon.connect(&"hit_confirmed", _on_hit_confirmed)
 	if _weapon.has_signal(&"melee_hit_surface"):
 		# LC Programmer: a wall/floor hit in reach plays the impact, not the whiff.
-		_weapon.connect(&"melee_hit_surface", func(_p, _n, _c, _i): _on_melee_hit())
+		_weapon.connect(&"melee_hit_surface", _on_melee_hit_surface)
 	if _weapon.has_signal(&"melee_whiffed"):
 		_weapon.connect(&"melee_whiffed", _on_melee_whiffed)
 	_weapon.visibility_changed.connect(_on_visibility_changed)
@@ -65,11 +69,15 @@ func _ready() -> void:
 
 
 ## Accepts melee_started(weapon, time_to_hit) and the old zero-argument melee_swung.
-func _on_melee_started(_w: Object = null, time_to_hit: float = -1.0) -> void:
+## time_to_hit: 0 = in reach (hit lands this frame), > 0 = lunge arrival, < 0 = whiff (nothing
+## in reach; play the default windup). NAN = not passed (melee_swung): ask the weapon if it can.
+func _on_melee_started(_w: Object = null, time_to_hit: float = NAN) -> void:
 	if _weapon.data == null or not animation_player.has_animation(clip):
 		return
-	if time_to_hit < 0.0 and _weapon.has_method(&"get_melee_time_to_hit"):
-		time_to_hit = _weapon.call(&"get_melee_time_to_hit")
+	if is_nan(time_to_hit):
+		time_to_hit = -1.0
+		if _weapon.has_method(&"get_melee_time_to_hit"):
+			time_to_hit = _weapon.call(&"get_melee_time_to_hit")
 	var length := animation_player.get_animation(clip).length
 	var cooldown := maxf(_weapon.data.melee_cooldown, hit_time + 0.05)
 	_active = true
@@ -130,14 +138,27 @@ func _on_hit_frame() -> void:
 
 
 func _on_melee_hit(_target: Object = null, _info: Dictionary = {}) -> void:
+	_land_hit(impact_kick_deg, "")
+
+
+## melee_hit_surface(position, normal, collider, info): a wall or floor in reach.
+func _on_melee_hit_surface(
+	_position: Vector3, _normal: Vector3, _collider: Object, info: Dictionary
+) -> void:
+	_land_hit(surface_kick_deg, str(info.get("surface", "")), true)
+
+
+## Shared by body and surface hits: snap to the impact frame if early, then impact once.
+func _land_hit(kick_deg: float, surface: String, is_surface: bool = false) -> void:
 	if not _active:
 		return
 	_hit_landed = true
 	if _impact_done:
 		return
-	if animation_player.current_animation == clip and animation_player.current_animation_position < hit_time:
+	var pos := animation_player.current_animation_position
+	if animation_player.current_animation == clip and pos < hit_time:
 		animation_player.seek(hit_time, true)
-	_impact(true)
+	_impact(true, kick_deg, surface, is_surface)
 
 
 func _on_hit_confirmed(target: Object, info: Dictionary) -> void:
@@ -145,7 +166,8 @@ func _on_hit_confirmed(target: Object, info: Dictionary) -> void:
 		_on_melee_hit(target, info)
 
 
-## melee_whiffed(weapon). Before the impact frame it just marks the swing; the frame plays the whiff.
+## melee_whiffed(weapon). Before the impact frame it only marks the swing; the frame
+## then plays the whiff.
 func _on_melee_whiffed(_w: Object = null) -> void:
 	if not _active or _impact_done:
 		return
@@ -154,13 +176,19 @@ func _on_melee_whiffed(_w: Object = null) -> void:
 		_impact(false)
 
 
-func _impact(landed: bool) -> void:
+func _impact(
+	landed: bool, kick_deg: float = -1.0, surface: String = "", is_surface: bool = false
+) -> void:
 	if _impact_done:
 		return
 	_impact_done = true
 	_waiting_for_hit = false
 	if landed:
-		_event(&"sfx_melee_impact", impact_kick_deg)
+		if kick_deg < 0.0:
+			kick_deg = impact_kick_deg
+		if is_surface:
+			melee_surface_impact.emit(surface)
+		_event(_impact_event(surface), kick_deg)
 	else:
 		_event(&"sfx_melee_whiff", whiff_kick_deg)
 	animation_player.speed_scale = _recovery_speed
@@ -190,7 +218,19 @@ func _end() -> void:
 
 
 func _is_lunging() -> bool:
-	return _weapon.player != null and _weapon.player.has_method(&"is_lunging") and _weapon.player.is_lunging()
+	var p := _weapon.player
+	return p != null and p.has_method(&"is_lunging") and p.is_lunging()
+
+
+## sfx_melee_impact_<surface> when ViewmodelReload.sounds has that key, else sfx_melee_impact.
+## melee_event reports whichever key was used; the raw hint also rides on melee_surface_impact.
+func _impact_event(surface: String) -> StringName:
+	if surface != "" and _reload != null:
+		var sounds = _reload.get(&"sounds")
+		var key := StringName("sfx_melee_impact_" + surface)
+		if sounds is Dictionary and sounds.has(key):
+			return key
+	return &"sfx_melee_impact"
 
 
 ## sfx/kick routing shared with the reload clips: ViewmodelReload._anim_event plays the stream
