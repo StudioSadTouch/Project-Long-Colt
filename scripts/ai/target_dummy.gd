@@ -11,16 +11,16 @@ signal respawned
 
 const DAMAGE_NUMBER_RISE := 0.8
 const DAMAGE_NUMBER_TIME := 0.7
+const SHIELD_COLOR := Color(0.35, 0.8, 1.0)
 
-@export var max_health: float = 100.0
 @export var respawn_delay: float = 3.0
 
-var health: float = 0.0
 var dead: bool = false
 
 var _layers: Dictionary = {}
 
 @onready var hp_label: Label3D = $HPLabel
+@onready var health_shield: HealthShield = $HealthShield
 
 
 func _ready() -> void:
@@ -29,19 +29,23 @@ func _ready() -> void:
 		var body := get_node_or_null(path) as CollisionObject3D
 		if body != null:
 			_layers[body] = body.collision_layer
-	health = max_health
-	_update_label()
+	health_shield.changed.connect(_on_health_changed)
+	health_shield.died.connect(_die)
+	_on_health_changed(health_shield.shield, health_shield.health)
 
 
+## Weapon contract. Shield/zone rules live in HealthShield.
 func take_damage(amount: float, info: Dictionary) -> void:
-	if dead or amount <= 0.0:
+	if dead:
 		return
-	health = maxf(health - amount, 0.0)
-	_spawn_number(amount, info)
-	_update_label()
+	var result := health_shield.apply_damage(amount, info)
+	if result.shield > 0.0:
+		_spawn_number(result.shield, info, SHIELD_COLOR, 36)
+	if result.health > 0.0:
+		var zone: int = info.get("hit_zone", Weapon.HitZone.BODY)
+		var size := 56 if zone == Weapon.HitZone.HEAD_UNARMORED else (46 if zone != 0 else 36)
+		_spawn_number(result.health, info, Weapon.zone_color(zone), size)
 	damaged.emit(amount, info)
-	if health <= 0.0:
-		_die()
 
 
 func _die() -> void:
@@ -55,29 +59,34 @@ func _die() -> void:
 
 func _respawn() -> void:
 	dead = false
-	health = max_health
+	health_shield.reset()
 	for body: CollisionObject3D in _layers:
 		body.collision_layer = _layers[body]
 	visible = true
-	_update_label()
 	respawned.emit()
 
 
-func _update_label() -> void:
-	hp_label.text = "%d / %d" % [ceili(health), ceili(max_health)]
+func _on_health_changed(shield: float, health: float) -> void:
+	hp_label.text = (
+		"S %d / %d\nH %d / %d"
+		% [
+			ceili(shield),
+			ceili(health_shield.max_shield),
+			ceili(health),
+			ceili(health_shield.max_health)
+		]
+	)
 
 
-func _spawn_number(amount: float, info: Dictionary) -> void:
-	var zone: int = info.get("hit_zone", Weapon.HitZone.BODY)
-	var headshot := zone != Weapon.HitZone.BODY
+func _spawn_number(amount: float, info: Dictionary, color: Color, size: int) -> void:
 	var label := Label3D.new()
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.fixed_size = true
 	label.pixel_size = 0.0015
-	label.font_size = 56 if zone == Weapon.HitZone.HEAD_UNARMORED else (46 if headshot else 36)
+	label.font_size = size
 	label.outline_size = 8
-	label.modulate = Weapon.zone_color(zone)
+	label.modulate = color
 	label.text = "%d" % roundi(amount)
 	# Parent to the level so the number survives the dummy hiding on death.
 	var parent := get_parent() if get_parent() != null else self

@@ -1,6 +1,7 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/ai/target_dummy.gd" id="1_dummy"]
+[ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="2_health"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dummy"]
 albedo_color = Color(0.55, 0.42, 0.25, 1)
@@ -96,4 +97,7 @@ fixed_size = true
 pixel_size = 0.001
 font_size = 32
 outline_size = 8
-text = "100 / 100"
+text = "S 70 / 70\nH 45 / 45"
+
+[node name="HealthShield" type="Node" parent="."]
+script = ExtResource("2_health")

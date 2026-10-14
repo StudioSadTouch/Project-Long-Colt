@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/weapon_holder.gd" id="2_holder"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="3_pistol"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="4_hud"]
+[ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="5_health"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 resource_local_to_scene = true
@@ -33,5 +34,9 @@ far = 400.0
 script = ExtResource("2_holder")
 starting_weapons = Array[PackedScene]([ExtResource("3_pistol")])
 
+[node name="HealthShield" type="Node" parent="."]
+script = ExtResource("5_health")
+
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 holder_path = NodePath("../Head/Camera3D/WeaponHolder")
+health_path = NodePath("../HealthShield")

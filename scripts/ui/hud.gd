@@ -7,6 +7,7 @@ const MIN_GAP := 3.0
 const HIT_FLASH_TIME := 0.12
 
 @export var holder_path: NodePath
+@export var health_path: NodePath
 
 var _holder: WeaponHolder
 var _weapon: Weapon
@@ -15,10 +16,21 @@ var _hit_color: Color = Weapon.zone_color(Weapon.HitZone.BODY)
 
 @onready var ammo_label: Label = $Ammo
 @onready var crosshair: Control = $Crosshair
+@onready var shield_bar: ProgressBar = $ShieldBar
+@onready var health_bar: ProgressBar = $HealthBar
 
 
 func _ready() -> void:
 	crosshair.draw.connect(_draw_crosshair)
+	var health := get_node_or_null(health_path) as HealthShield
+	if health != null:
+		shield_bar.max_value = health.max_shield
+		health_bar.max_value = health.max_health
+		health.changed.connect(_on_health_changed)
+		_on_health_changed(health.shield, health.health)
+	else:
+		shield_bar.visible = false
+		health_bar.visible = false
 	_holder = get_node_or_null(holder_path) as WeaponHolder
 	if _holder == null:
 		push_warning("HUD has no WeaponHolder")
@@ -45,6 +57,11 @@ func _on_weapon_changed(weapon: Weapon) -> void:
 	_weapon.ammo_changed.connect(_on_ammo_changed)
 	_weapon.hit_confirmed.connect(_on_hit)
 	_on_ammo_changed(_weapon.magazine, _weapon.reserve)
+
+
+func _on_health_changed(shield: float, health: float) -> void:
+	shield_bar.value = shield
+	health_bar.value = health
 
 
 func _on_ammo_changed(magazine: int, reserve: int) -> void:

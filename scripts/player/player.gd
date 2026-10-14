@@ -47,14 +47,19 @@ var _stand_probe: CapsuleShape3D
 var _lunge_dir: Vector3 = Vector3.ZERO
 var _lunge_speed: float = 0.0
 var _lunge_left: float = 0.0
+var _spawn_transform: Transform3D
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
+@onready var health_shield: HealthShield = get_node_or_null("HealthShield")
 
 
 func _ready() -> void:
 	gravity = get_gravity().length()
+	_spawn_transform = global_transform
+	if health_shield != null:
+		health_shield.died.connect(_on_died)
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50.0)
 	collision_layer = 2
@@ -163,6 +168,20 @@ func _physics_process(delta: float) -> void:
 	_update_head(delta)
 	_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
 	_crouch_edge = false
+
+
+## Damage contract shared with enemies; HealthShield applies the shield and zone rules.
+func take_damage(amount: float, info: Dictionary) -> void:
+	if health_shield != null:
+		health_shield.apply_damage(amount, info)
+
+
+## Phase 0 placeholder death: instant respawn at the spawn point with full shield and health.
+func _on_died() -> void:
+	cancel_lunge()
+	velocity = Vector3.ZERO
+	global_transform = _spawn_transform
+	health_shield.reset()
 
 
 ## Melee lunge: drive horizontal velocity along direction for up to duration seconds.
