@@ -18,6 +18,19 @@ extends Node3D
 ## (before any reload is cancelled); melee_hit(target, info) fires on the damage tick, the same
 ## frame take_damage is called; melee_whiffed(weapon) fires on a miss or a lunge that times out
 ## (or is interrupted by holstering). melee_swung is a legacy alias emitted with melee_started.
+## AI / bot hooks (all optional; defaults keep player behaviour):
+##   hit_mask_override  int, -1 = HIT_MASK (World, Enemy, Hitbox). Bots shooting the player use
+##                      e.g. Weapon.HIT_MASK | Weapon.LAYER_PLAYER. Applies to shots, the zone
+##                      probe and the melee sweep.
+##   aim_source         Node3D whose global transform is the ray origin and -Z aim direction,
+##                      the spread basis and the melee sweep origin. null = the player camera.
+##   exclude_bodies     CollisionObject3Ds never hit (the shooter's own body and hitboxes).
+##                      The Player, when set, is always excluded.
+##   shooter            Node reported as info.source (defaults to player).
+##   aim_assist         set by WeaponHolder for the human player only; null is fine.
+## A Weapon works without a Player: lunge, recoil-to-view and zoom FOV are holder/player-side
+## and simply don't happen. The Player itself is damageable by these rays: it is on layer 2
+## (LAYER_PLAYER) with take_damage on the root, and has no zone groups, so hits count as BODY.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
 
 signal ammo_changed(magazine: int, reserve: int)
@@ -48,6 +61,7 @@ enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
 
 const LAYER_HITBOX := 1 << 5
 const HIT_MASK := 1 | 4 | LAYER_HITBOX
+const LAYER_PLAYER := 1 << 1
 ## Non-hitbox Areas a single ray may skip before giving up.
 const MAX_AREA_SKIPS := 8
 ## The visor probe only upgrades shots within ~45 degrees of straight into the face:
@@ -79,6 +93,11 @@ var camera: Camera3D
 var player: Player
 ## Set by WeaponHolder; null = no bullet bend.
 var aim_assist: AimAssist
+## AI hooks, see the header.
+var hit_mask_override: int = -1
+var aim_source: Node3D
+var exclude_bodies: Array[CollisionObject3D] = []
+var shooter: Node
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
@@ -253,7 +272,7 @@ func reload() -> void:
 ## on arrival, (distance - melee_range) / melee_lunge_speed, within a lunge window of that
 ## + 0.1 s; firing is blocked for 0.25 s; the holder's cooldown is data.melee_cooldown.
 func melee() -> void:
-	if data == null or camera == null:
+	if data == null or _aim() == null:
 		return
 	# Plan first (read-only sweep) so melee_started can report time_to_hit before any state
 	# changes, including the reload cancel.
@@ -277,7 +296,7 @@ func get_melee_time_to_hit() -> float:
 func _melee_time_for(hit: Dictionary) -> float:
 	if hit.is_empty() or player == null:
 		return 0.0
-	var distance: float = camera.global_position.distance_to(hit.position)
+	var distance: float = _aim().global_position.distance_to(hit.position)
 	if distance <= data.melee_range:
 		return 0.0
 	return (distance - data.melee_range) / data.melee_lunge_speed
@@ -384,7 +403,7 @@ func _try_fire(interval: float = -1.0) -> bool:
 
 ## Override to add charge, heat, or battery gates.
 func _can_fire() -> bool:
-	return is_ready_to_fire() and camera != null
+	return is_ready_to_fire() and _aim() != null
 
 
 ## Override for batteries or multi-round shots. Return false when empty.
@@ -428,11 +447,11 @@ func _melee(hit: Dictionary) -> void:
 	if hit.is_empty():
 		melee_whiffed.emit(self)
 		return
-	var distance: float = camera.global_position.distance_to(hit.position)
+	var distance: float = _aim().global_position.distance_to(hit.position)
 	if distance <= data.melee_range:
 		_apply_melee(hit)
 	elif player != null:
-		var forward := -camera.global_transform.basis.z
+		var forward := -_aim().global_transform.basis.z
 		var duration := (distance - data.melee_range) / data.melee_lunge_speed + 0.1
 		player.start_lunge(forward, data.melee_lunge_speed, duration)
 		_melee_target = hit.target
@@ -460,11 +479,12 @@ func _tick_melee() -> void:
 ## Nearest damageable hit along the camera's forward within distance, or {}. Also used on
 ## lunge arrival, so a wall that appears mid-lunge still blocks.
 func _melee_sweep(distance: float) -> Dictionary:
-	_melee_cast.global_transform = camera.global_transform
+	_melee_cast.global_transform = _aim().global_transform
 	_melee_cast.target_position = Vector3(0.0, 0.0, -distance)
+	_melee_cast.collision_mask = get_hit_mask()
 	_melee_cast.clear_exceptions()
-	if player != null:
-		_melee_cast.add_exception(player)
+	for rid in _excluded_rids():
+		_melee_cast.add_exception_rid(rid)
 	_melee_cast.force_shapecast_update()
 	var best := {}
 	var best_distance := INF
@@ -475,7 +495,7 @@ func _melee_sweep(distance: float) -> Dictionary:
 		if _is_ignored_area(collider):
 			continue
 		var point := _melee_cast.get_collision_point(i)
-		var d := camera.global_position.distance_to(point)
+		var d := _aim().global_position.distance_to(point)
 		if _damage_receiver(collider) == null:
 			block_distance = minf(block_distance, d)
 	for i in _melee_cast.get_collision_count():
@@ -486,7 +506,7 @@ func _melee_sweep(distance: float) -> Dictionary:
 		if target == null:
 			continue
 		var point := _melee_cast.get_collision_point(i)
-		var d := camera.global_position.distance_to(point)
+		var d := _aim().global_position.distance_to(point)
 		if d < best_distance and d <= block_distance:
 			best_distance = d
 			best = {
@@ -499,7 +519,7 @@ func _melee_sweep(distance: float) -> Dictionary:
 
 
 func _apply_melee(hit: Dictionary) -> void:
-	var forward := -camera.global_transform.basis.z
+	var forward := -_aim().global_transform.basis.z
 	var info := _hit_info(hit, forward, HitZone.BODY)
 	info["melee"] = true
 	info["zone_multiplier"] = 1.0
@@ -518,7 +538,7 @@ func _fire_ray(direction: Vector3) -> void:
 	if target == null:
 		return
 	var zone := _resolve_zone(hit, direction, target)
-	var distance: float = camera.global_position.distance_to(hit.position)
+	var distance: float = _aim().global_position.distance_to(hit.position)
 	var amount := data.damage * _falloff(distance)
 	var zone_multiplier := 1.0
 	match zone:
@@ -572,18 +592,17 @@ func _resolve_zone(hit: Dictionary, direction: Vector3, target: Object) -> HitZo
 
 
 func _raycast(direction: Vector3, distance: float) -> Dictionary:
-	var origin := camera.global_position
+	var origin := _aim().global_position
 	return _cast_ray(origin, origin + direction * distance, [], false)
 
 
 ## Ray against HIT_MASK that passes through Areas not on the Hitbox layer.
 func _cast_ray(from: Vector3, to: Vector3, exclude: Array[RID], from_inside: bool) -> Dictionary:
-	var query := PhysicsRayQueryParameters3D.create(from, to, HIT_MASK)
+	var query := PhysicsRayQueryParameters3D.create(from, to, get_hit_mask())
 	query.collide_with_areas = true
 	query.hit_from_inside = from_inside
 	var skip: Array[RID] = exclude.duplicate()
-	if player != null:
-		skip.append(player.get_rid())
+	skip.append_array(_excluded_rids())
 	var space := get_world_3d().direct_space_state
 	for _i in MAX_AREA_SKIPS:
 		query.exclude = skip
@@ -592,6 +611,27 @@ func _cast_ray(from: Vector3, to: Vector3, exclude: Array[RID], from_inside: boo
 			return hit
 		skip.append(hit.rid)
 	return {}
+
+
+func get_hit_mask() -> int:
+	return hit_mask_override if hit_mask_override >= 0 else HIT_MASK
+
+
+## Ray origin and aim basis: aim_source if set, else the player camera.
+func _aim() -> Node3D:
+	if is_instance_valid(aim_source):
+		return aim_source
+	return camera
+
+
+func _excluded_rids() -> Array[RID]:
+	var rids: Array[RID] = []
+	if player != null:
+		rids.append(player.get_rid())
+	for body in exclude_bodies:
+		if is_instance_valid(body):
+			rids.append(body.get_rid())
+	return rids
 
 
 static func _is_ignored_area(collider: Object) -> bool:
@@ -617,7 +657,7 @@ func _hit_info(hit: Dictionary, direction: Vector3, zone: HitZone) -> Dictionary
 		"hit_zone_name": ZONE_NAMES[zone],
 		"headshot": zone != HitZone.BODY,
 		"weapon": data.display_name,
-		"source": player,
+		"source": shooter if shooter != null else player,
 	}
 
 
@@ -637,7 +677,7 @@ func _falloff(distance: float) -> float:
 
 
 func _spread_direction(spread_degrees: float) -> Vector3:
-	var basis := camera.global_transform.basis
+	var basis := _aim().global_transform.basis
 	# sqrt keeps the distribution even across the cone's area.
 	var radius := tan(deg_to_rad(spread_degrees)) * sqrt(randf())
 	var angle := randf() * TAU
