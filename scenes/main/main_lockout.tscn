@@ -102,24 +102,24 @@ bounds_min = Vector2(-14.4, -10.75)
 bounds_max = Vector2(-5.6, -9.25)
 
 [node name="Strafer_S1Link" parent="." instance=ExtResource("6_moving")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 4.55, 0)
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 4.55, -2)
 pattern = 1
 move_seed = 2002
 strafe_speed = 5.0
 strafe_duration = 0.5
 strafe_jitter = 0.3
-bounds_min = Vector2(8.6, -1.5)
-bounds_max = Vector2(12.4, 1.5)
+bounds_min = Vector2(8.6, -3.5)
+bounds_max = Vector2(12.4, -0.5)
 
 [node name="Strafer_ElbowSouth" parent="." instance=ExtResource("6_moving")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.55, 19)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.05, 19)
 pattern = 1
 move_seed = 2003
 strafe_speed = 7.5
 strafe_duration = 0.9
 strafe_jitter = 0.4
 bounds_min = Vector2(7.6, 18.25)
-bounds_max = Vector2(16.4, 19.75)
+bounds_max = Vector2(16.4, 19.25)
 
 [node name="Spartan_TopMid" parent="." instance=ExtResource("6_moving")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2, 4.55, -3)
