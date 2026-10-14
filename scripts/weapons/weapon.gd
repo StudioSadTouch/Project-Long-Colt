@@ -13,7 +13,11 @@ extends Node3D
 ## don't absorb bullets. Put hitbox Areas on layer 6 only.
 ## Zone colliders forward to the nearest ancestor that has take_damage.
 ## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
-## Audio and VFX: connect to fired, dry_fired, reload_started, melee_swung, hit_confirmed.
+## Audio and VFX: connect to fired, dry_fired, reload_started, melee_started, hit_confirmed.
+## Melee animation contract: melee_started(weapon, time_to_hit) fires the frame the swing begins
+## (before any reload is cancelled); melee_hit(target, info) fires on the damage tick, the same
+## frame take_damage is called; melee_whiffed(weapon) fires on a miss or a lunge that times out
+## (or is interrupted by holstering). melee_swung is a legacy alias emitted with melee_started.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
 
 signal ammo_changed(magazine: int, reserve: int)
@@ -29,7 +33,15 @@ signal reload_inserted
 signal reload_cancelled
 signal zoom_changed(zoomed: bool)
 signal fire_mode_changed(mode: int)
+## Legacy alias, emitted right after melee_started.
 signal melee_swung
+## Swing began. time_to_hit: seconds until the expected damage tick (0 for an in-reach swing,
+## the expected lunge arrival for a lunge, 0 for a swing with no target).
+signal melee_started(weapon: Weapon, time_to_hit: float)
+## Melee damage landed this frame.
+signal melee_hit(target: Node, info: Dictionary)
+## Swing hit nothing, or a lunge ended without contact.
+signal melee_whiffed(weapon: Weapon)
 signal hit_confirmed(target: Object, info: Dictionary)
 
 enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
@@ -72,6 +84,7 @@ var _reload_left: float = 0.0
 ## Set once the current reload has transferred ammo, so it can never refill twice.
 var _reload_refilled: bool = false
 var _melee_target: Object = null
+var _melee_time_to_hit: float = 0.0
 var _melee_cast: ShapeCast3D
 var _trigger_buffer_left: float = 0.0
 var _trigger_held: bool = false
@@ -115,7 +128,9 @@ func holster() -> void:
 	_cancel_reload()
 	_trigger_buffer_left = 0.0
 	_burst_left = 0
-	_melee_target = null
+	if _melee_target != null:
+		_melee_target = null
+		melee_whiffed.emit(self)
 	if player != null:
 		player.cancel_lunge()
 	release_trigger()
@@ -205,16 +220,38 @@ func reload() -> void:
 
 
 ## Cooldown is owned by WeaponHolder so switching weapons can't skip it.
+## Timing (unchanged from a5e85f3): an in-reach hit lands the same frame (0 s); a lunge lands
+## on arrival, (distance - melee_range) / melee_lunge_speed, within a lunge window of that
+## + 0.1 s; firing is blocked for 0.25 s; the holder's cooldown is data.melee_cooldown.
 func melee() -> void:
 	if data == null or camera == null:
 		return
+	# Plan first (read-only sweep) so melee_started can report time_to_hit before any state
+	# changes, including the reload cancel.
+	var hit := _melee_sweep(data.melee_lunge_range)
+	_melee_time_to_hit = _melee_time_for(hit)
+	melee_started.emit(self, _melee_time_to_hit)
+	melee_swung.emit()
 	# Melee cancels a reload and any burst in progress, Halo style.
 	_cancel_reload()
 	_burst_left = 0
 	set_zoom(false)
 	_cooldown = maxf(_cooldown, 0.25)
-	melee_swung.emit()
-	_melee()
+	_melee(hit)
+
+
+## Seconds from the last melee_started to its expected damage tick.
+func get_melee_time_to_hit() -> float:
+	return _melee_time_to_hit
+
+
+func _melee_time_for(hit: Dictionary) -> float:
+	if hit.is_empty() or player == null:
+		return 0.0
+	var distance: float = camera.global_position.distance_to(hit.position)
+	if distance <= data.melee_range:
+		return 0.0
+	return (distance - data.melee_range) / data.melee_lunge_speed
 
 
 func set_zoom(on: bool) -> void:
@@ -344,12 +381,13 @@ func _alt_fire() -> void:
 	pass
 
 
-## Override for weapon-specific melee. Default: sphere sweep out to melee_lunge_range. A target
-## in melee_range is hit now; a farther one starts a player lunge and is hit on arrival.
-func _melee() -> void:
+## Override for weapon-specific melee. hit is the sweep out to melee_lunge_range ({} = none).
+## Default: a target in melee_range is hit now; a farther one starts a player lunge and is hit
+## on arrival. Overrides must emit melee_hit / melee_whiffed (see _apply_melee).
+func _melee(hit: Dictionary) -> void:
 	_melee_target = null
-	var hit := _melee_sweep(data.melee_lunge_range)
 	if hit.is_empty():
+		melee_whiffed.emit(self)
 		return
 	var distance: float = camera.global_position.distance_to(hit.position)
 	if distance <= data.melee_range:
@@ -359,6 +397,8 @@ func _melee() -> void:
 		var duration := (distance - data.melee_range) / data.melee_lunge_speed + 0.1
 		player.start_lunge(forward, data.melee_lunge_speed, duration)
 		_melee_target = hit.target
+	else:
+		melee_whiffed.emit(self)
 
 
 func _tick_melee() -> void:
@@ -366,6 +406,7 @@ func _tick_melee() -> void:
 		return
 	if not is_instance_valid(_melee_target) or player == null:
 		_melee_target = null
+		melee_whiffed.emit(self)
 		return
 	var hit := _melee_sweep(data.melee_range)
 	if not hit.is_empty() and hit.target == _melee_target:
@@ -374,6 +415,7 @@ func _tick_melee() -> void:
 		_apply_melee(hit)
 	elif not player.is_lunging():
 		_melee_target = null
+		melee_whiffed.emit(self)
 
 
 ## Nearest damageable hit along the camera's forward within distance, or {}. Also used on
@@ -425,6 +467,7 @@ func _apply_melee(hit: Dictionary) -> void:
 	info["shield_multiplier"] = data.melee_shield_damage_multiplier
 	info["bleedthrough"] = data.melee_bleedthrough
 	hit.target.take_damage(data.melee_damage, info)
+	melee_hit.emit(hit.target as Node, info)
 	hit_confirmed.emit(hit.target, info)
 
 
