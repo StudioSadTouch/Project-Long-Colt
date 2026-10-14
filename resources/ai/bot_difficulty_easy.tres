@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="BotDifficulty" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/bot_difficulty.gd" id="1_diff"]
+
+[resource]
+script = ExtResource("1_diff")
+preset_name = "Easy"
+fov_deg = 90.0
+sight_range = 40.0
+hearing_radius = 20.0
+reaction_time = 0.65
+aim_error_deg = 9.0
+min_error_deg = 2.5
+convergence = 0.8
+tracking_lag = 0.35
+max_turn_rate_deg = 180.0
+lead_skill = 0.0
+strafe_error_bump = 0.7
+fire_tolerance_deg = 2.5
+headshot_bias = 0.0
+uses_zoom = false
+semi_cadence = 0.45
+spray_time = 0.8
+burst_pause = 0.5
+burst_switch_range = 25.0
+weapon_switch_skill = 0.0
+strafe_frequency = 0.25
+strafe_min_time = 0.5
+strafe_max_time = 1.2
+crouch_chance = 0.05
+jump_chance = 0.02
+use_skill_jumps = false
+aggression = 0.2
+retreat_threshold = 0.25
+retreat_chance = 0.9
+reengage_shield_fraction = 1.0
+melee_eagerness = 0.2

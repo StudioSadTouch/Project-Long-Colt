@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="BotDifficulty" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/bot_difficulty.gd" id="1_diff"]
+
+[resource]
+script = ExtResource("1_diff")
+preset_name = "Heroic"
+fov_deg = 110.0
+sight_range = 60.0
+hearing_radius = 30.0
+reaction_time = 0.3
+aim_error_deg = 4.0
+min_error_deg = 0.8
+convergence = 1.8
+tracking_lag = 0.14
+max_turn_rate_deg = 360.0
+lead_skill = 0.6
+strafe_error_bump = 0.4
+fire_tolerance_deg = 1.0
+headshot_bias = 0.4
+uses_zoom = true
+semi_cadence = 0.75
+spray_time = 0.5
+burst_pause = 0.3
+burst_switch_range = 18.0
+weapon_switch_skill = 0.7
+strafe_frequency = 0.65
+strafe_min_time = 0.3
+strafe_max_time = 0.75
+crouch_chance = 0.15
+jump_chance = 0.08
+use_skill_jumps = true
+aggression = 0.6
+retreat_threshold = 0.0
+retreat_chance = 0.5
+reengage_shield_fraction = 0.8
+melee_eagerness = 0.6
