@@ -6,12 +6,21 @@ extends Node3D
 signal active_weapon_changed(weapon: Weapon)
 
 const SLOT_COUNT := 2
+## Drop placement probes World only.
+const DROP_WORLD_MASK := 1
+const DROP_CHEST_HEIGHT := 1.2
+const DROP_WALL_MARGIN := 0.4
+const DROP_MIN_DISTANCE := 0.3
+## How far below chest height to look for floor (covers short ledges, not cliffs).
+const DROP_FLOOR_SEARCH := 2.5
 
 @export var starting_weapons: Array[PackedScene] = []
 ## Seconds interact must be held to take a weapon pickup.
 @export var pickup_hold_time: float = 0.4
 ## Dropped weapons land this far in front of the player.
 @export var drop_distance: float = 1.2
+## Pickup choice score = view dot - distance * this. Higher favors the nearest over the aimed-at.
+@export var pickup_distance_weight: float = 0.25
 
 var slots: Array[Weapon] = []
 var active_index: int = 0
@@ -74,18 +83,27 @@ func unregister_pickup(pickup: WeaponPickup) -> void:
 	_pickups.erase(pickup)
 
 
-## Nearest available pickup of a weapon type not already carried, or null.
+## Best available pickup of a weapon type not already carried, or null. Halo style: favors
+## what the camera looks at, weighted against distance.
 func get_pickup_candidate() -> WeaponPickup:
 	var best: WeaponPickup = null
-	var best_distance := INF
+	var best_score := -INF
+	var origin := _camera.global_position if _camera != null else global_position
+	var forward := -_camera.global_transform.basis.z if _camera != null else Vector3.ZERO
 	for pickup in _pickups:
 		if not is_instance_valid(pickup) or not pickup.available:
 			continue
 		if find_weapon(pickup.get_weapon_id()) != null:
 			continue
-		var d := global_position.distance_squared_to(pickup.global_position)
-		if d < best_distance:
-			best_distance = d
+		var target := (
+			pickup.pivot.global_position if pickup.pivot != null else pickup.global_position
+		)
+		var offset := target - origin
+		var distance := offset.length()
+		var facing := forward.dot(offset / distance) if distance > 0.001 else 1.0
+		var score := facing - distance * pickup_distance_weight
+		if score > best_score:
+			best_score = score
 			best = pickup
 	return best
 
@@ -95,7 +113,23 @@ func get_pickup_prompt() -> String:
 	var pickup := get_pickup_candidate()
 	if pickup == null:
 		return ""
-	return "Hold E to pick up %s" % pickup.get_display_name()
+	return "Hold %s to pick up %s" % [get_interact_label(), pickup.get_display_name()]
+
+
+## Readable name of the first binding on action_interact, e.g. "E" or "Mouse 4".
+func get_interact_label() -> String:
+	for event in InputMap.action_get_events("action_interact"):
+		var key := event as InputEventKey
+		if key != null:
+			var code := key.keycode
+			if code == KEY_NONE:
+				code = DisplayServer.keyboard_get_keycode_from_physical(key.physical_keycode)
+			if code != KEY_NONE:
+				return OS.get_keycode_string(code)
+		var text := event.as_text().replace(" (Physical)", "")
+		if text != "":
+			return text
+	return "Interact"
 
 
 ## 0..1 hold progress toward taking the current candidate.
@@ -184,14 +218,46 @@ func _take_pickup(pickup: WeaponPickup) -> void:
 		_equip(empty)
 		return
 	var old := give_weapon(weapon, active_index)
-	if old != null and _player != null:
-		var forward := -_player.global_transform.basis.z
-		forward.y = 0.0
-		var at := _player.global_position + forward.normalized() * drop_distance
-		var parent: Node = get_tree().current_scene
-		if parent == null:
-			parent = get_tree().root
-		WeaponPickup.drop(old, parent, at)
+	if old == null:
+		return
+	var parent: Node = get_tree().current_scene if is_inside_tree() else null
+	if parent == null and is_inside_tree():
+		parent = get_tree().root
+	if _player == null or parent == null:
+		# Nowhere to drop it: free it rather than leak an orphan Weapon.
+		old.queue_free()
+		return
+	WeaponPickup.drop(old, parent, _drop_position())
+
+
+## In front of the player, short of walls, on the floor. Falls back to the player's feet when
+## the space ahead is blocked or there's no floor below.
+func _drop_position() -> Vector3:
+	var feet := _player.global_position
+	var forward := -_player.global_transform.basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return feet
+	forward = forward.normalized()
+	var space := _player.get_world_3d().direct_space_state
+	var chest := feet + Vector3.UP * DROP_CHEST_HEIGHT
+	var ahead := PhysicsRayQueryParameters3D.create(
+		chest, chest + forward * drop_distance, DROP_WORLD_MASK, [_player.get_rid()]
+	)
+	var distance := drop_distance
+	var wall := space.intersect_ray(ahead)
+	if not wall.is_empty():
+		distance = chest.distance_to(wall.position) - DROP_WALL_MARGIN
+	if distance < DROP_MIN_DISTANCE:
+		return feet
+	var point := chest + forward * distance
+	var down := PhysicsRayQueryParameters3D.create(
+		point, point + Vector3.DOWN * DROP_FLOOR_SEARCH, DROP_WORLD_MASK, [_player.get_rid()]
+	)
+	var floor_hit := space.intersect_ray(down)
+	if floor_hit.is_empty() or (floor_hit.normal as Vector3).y < 0.7:
+		return feet
+	return floor_hit.position
 
 
 func _input_enabled() -> bool:
