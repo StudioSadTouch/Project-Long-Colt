@@ -37,3 +37,7 @@ What spread implies (cone half-angle -> miss radius; dummy body is 0.7 m wide, h
   (0.375 per burst before the x0.4 spread multiplier); the 0.47 s cycle recovers 0.52 deg, so
   bursts don't stack bloom at the intended cadence; spamming faster isn't possible. Near-100% body hits to 70 m, headshots realistic to ~35 m.
 - Pistol: 0.1 deg rested, the precision finisher.
+
+## Reload animation
+
+`reload_insert_fraction` is the mag-insert beat as a fraction of `reload_time`; ammo moves there (once). The viewmodel `reload_empty` / `reload_tactical` animations key the mag seat at the same fraction of their authored length and play at `length / reload_time`, so changing `reload_time` retimes them. If you retime the insert key in an animation, update this value to match.

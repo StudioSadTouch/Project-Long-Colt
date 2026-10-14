@@ -46,6 +46,10 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 @export var reserve_max: int = 48
 @export var reserve_start: int = 48
 @export var reload_time: float = 1.2
+## Fraction of reload_time at which the new magazine seats and ammo transfers (the mag-insert
+## beat). 1.0 refills at the very end. Viewmodel reload animations key their insert at the same
+## fraction of their authored length, so keep the two in sync when retiming an animation.
+@export_range(0.0, 1.0) var reload_insert_fraction: float = 1.0
 @export var equip_time: float = 0.35
 
 @export_group("Recoil")

@@ -1,6 +1,7 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="Script" path="res://scripts/weapons/viewmodel_reload.gd" id="3_reload"]
 [ext_resource type="Resource" path="res://resources/weapons/service_pistol.tres" id="2_data"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_steel"]
@@ -29,6 +30,440 @@ size = Vector3(0.03, 0.1, 0.045)
 [sub_resource type="BoxMesh" id="BoxMesh_sight"]
 material = SubResource("StandardMaterial3D_sight")
 size = Vector3(0.006, 0.012, 0.006)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
+albedo_color = Color(0.72, 0.55, 0.42, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_hand"]
+material = SubResource("StandardMaterial3D_skin")
+size = Vector3(0.05, 0.05, 0.09)
+
+[sub_resource type="BoxMesh" id="BoxMesh_thumb"]
+material = SubResource("StandardMaterial3D_skin")
+size = Vector3(0.014, 0.014, 0.035)
+
+[sub_resource type="BoxMesh" id="BoxMesh_mag"]
+material = SubResource("StandardMaterial3D_grip")
+size = Vector3(0.026, 0.1, 0.038)
+
+[sub_resource type="Animation" id="Animation_RESET"]
+resource_name = "RESET"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.16, -0.15, -0.34)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Magazine:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -0.075, 0.075)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Magazine:visible")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("LeftHand:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.04, -0.085, 0.04)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("RightThumb:position")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.024, -0.05, 0.07)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("Slide:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_idle"]
+resource_name = "idle"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.16, -0.15, -0.34)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Magazine:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -0.075, 0.075)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Magazine:visible")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("LeftHand:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.04, -0.085, 0.04)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("RightThumb:position")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.024, -0.05, 0.07)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("Slide:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_reload_empty"]
+resource_name = "reload_empty"
+length = 1.2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.2, 0.35, 0.744, 0.777, 0.8, 0.867, 0.9, 0.95, 1.05, 1.1, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.16, -0.15, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.163, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.156, -0.34), Vector3(0.16, -0.156, -0.34), Vector3(0.16, -0.154, -0.34), Vector3(0.16, -0.15, -0.34), Vector3(0.16, -0.148, -0.34), Vector3(0.16, -0.15, -0.34), Vector3(0.16, -0.15, -0.34)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.2, 0.35, 0.744, 0.777, 0.8, 0.867, 0.9, 0.95, 1.05, 1.1, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.10472, 0, -0.27925), Vector3(0.017453, 0, -0.10472), Vector3(-0.0087266, 0, 0.05236), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Magazine:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.35, 0.351, 0.45, 0.6, 0.744, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.075, 0.075), Vector3(0, -0.075, 0.075), Vector3(0, -0.4, 0.12), Vector3(-0.1, -0.42, 0.1), Vector3(-0.06, -0.26, 0.1), Vector3(0, -0.13, 0.08), Vector3(0, -0.075, 0.075), Vector3(0, -0.075, 0.075)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Magazine:visible")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.35, 0.351),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 1,
+"values": [true, false, true]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("LeftHand:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.35, 0.45, 0.6, 0.744, 0.777, 0.95, 1.05, 1.1, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.04, -0.085, 0.04), Vector3(-0.06, -0.15, 0.06), Vector3(-0.1, -0.47, 0.1), Vector3(-0.06, -0.32, 0.1), Vector3(0, -0.19, 0.08), Vector3(0, -0.13, 0.08), Vector3(0, -0.13, 0.08), Vector3(-0.05, -0.1, 0.05), Vector3(-0.043, -0.08, 0.043), Vector3(-0.04, -0.085, 0.04), Vector3(-0.04, -0.085, 0.04)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("RightThumb:position")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.12, 0.16, 0.82, 0.867, 0.92, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.024, -0.05, 0.07), Vector3(0.024, -0.05, 0.07), Vector3(0.014, -0.045, 0.05), Vector3(0.024, -0.05, 0.07), Vector3(0.024, -0.05, 0.07), Vector3(0.022, -0.008, 0.03), Vector3(0.024, -0.05, 0.07), Vector3(0.024, -0.05, 0.07)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("Slide:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.867, 0.9, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0.035), Vector3(0, 0, 0.035), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/7/type = "method"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("ViewmodelReload")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0.12, 0.14, 0.3, 0.6, 0.744, 0.867, 0.95),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"values": [{
+"args": [&"sfx_mag_release", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_out", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_drop", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_in", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_seat", 0.75],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_slide_release", 1],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_regrip", 0],
+"method": &"_anim_event"
+}]
+}
+
+[sub_resource type="Animation" id="Animation_reload_tactical"]
+resource_name = "reload_tactical"
+length = 1.2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.133, 0.25, 0.45, 0.744, 0.777, 0.8, 0.9, 1, 1.1, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.16, -0.15, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.163, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.16, -0.34), Vector3(0.16, -0.156, -0.34), Vector3(0.16, -0.15, -0.34), Vector3(0.16, -0.148, -0.34), Vector3(0.16, -0.15, -0.34), Vector3(0.16, -0.15, -0.34)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.133, 0.25, 0.45, 0.744, 0.777, 0.8, 0.9, 1, 1.1, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.069813, 0, -0.31416), Vector3(0.017453, 0, -0.10472), Vector3(-0.0087266, 0, 0.05236), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Magazine:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.15, 0.25, 0.33, 0.4, 0.401, 0.45, 0.6, 0.744, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.075, 0.075), Vector3(0, -0.075, 0.075), Vector3(0, -0.13, 0.075), Vector3(-0.06, -0.25, 0.09), Vector3(-0.1, -0.4, 0.1), Vector3(-0.09, -0.38, 0.1), Vector3(-0.06, -0.26, 0.1), Vector3(0, -0.13, 0.08), Vector3(0, -0.075, 0.075), Vector3(0, -0.075, 0.075)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Magazine:visible")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.4, 0.401),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 1,
+"values": [true, false, true]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("LeftHand:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.15, 0.25, 0.33, 0.4, 0.45, 0.6, 0.744, 0.777, 0.9, 1, 1.1, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.04, -0.085, 0.04), Vector3(-0.05, -0.12, 0.05), Vector3(0, -0.14, 0.08), Vector3(0, -0.19, 0.08), Vector3(-0.06, -0.31, 0.09), Vector3(-0.1, -0.45, 0.1), Vector3(-0.06, -0.32, 0.1), Vector3(0, -0.19, 0.08), Vector3(0, -0.13, 0.08), Vector3(0, -0.13, 0.08), Vector3(-0.05, -0.1, 0.05), Vector3(-0.043, -0.08, 0.043), Vector3(-0.04, -0.085, 0.04), Vector3(-0.04, -0.085, 0.04)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("RightThumb:position")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.15, 0.2, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.024, -0.05, 0.07), Vector3(0.024, -0.05, 0.07), Vector3(0.014, -0.045, 0.05), Vector3(0.024, -0.05, 0.07), Vector3(0.024, -0.05, 0.07)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("Slide:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 1.2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/7/type = "method"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("ViewmodelReload")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0.15, 0.25, 0.6, 0.744, 0.9),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"values": [{
+"args": [&"sfx_mag_release", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_out", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_in", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_seat", 0.75],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_regrip", 0],
+"method": &"_anim_event"
+}]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_viewmodel"]
+_data = {
+&"RESET": SubResource("Animation_RESET"),
+&"idle": SubResource("Animation_idle"),
+&"reload_empty": SubResource("Animation_reload_empty"),
+&"reload_tactical": SubResource("Animation_reload_tactical")
+}
 
 [node name="ServicePistol" type="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16, -0.15, -0.34)
@@ -61,3 +496,32 @@ mesh = SubResource("BoxMesh_sight")
 
 [node name="Muzzle" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, -0.11)
+
+[node name="Magazine" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0, -0.075, 0.075)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_mag")
+
+[node name="RightHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0.01, -0.09, 0.1)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="RightThumb" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.024, -0.05, 0.07)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_thumb")
+
+[node name="LeftHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.04, -0.085, 0.04)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." groups=["viewmodel_only"]]
+libraries = {
+&"": SubResource("AnimationLibrary_viewmodel")
+}
+
+[node name="ViewmodelReload" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("animation_player")]
+script = ExtResource("3_reload")
+animation_player = NodePath("../AnimationPlayer")

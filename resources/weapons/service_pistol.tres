@@ -21,6 +21,7 @@ magazine_size = 12
 reserve_max = 48
 reserve_start = 48
 reload_time = 1.2
+reload_insert_fraction = 0.62
 equip_time = 0.3
 recoil_pitch = 1.1
 recoil_yaw = 0.25
