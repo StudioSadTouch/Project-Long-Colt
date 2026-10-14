@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/main/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/pickups/ammo_crate.tscn" id="5_crate"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="6_rifle"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="7_pistol"]
+[ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="8_moving"]
 
 [sub_resource type="Environment" id="Environment_boot"]
 background_mode = 1
@@ -167,3 +168,40 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -12)
 
 [node name="AmmoCrateWest" parent="." instance=ExtResource("5_crate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 8)
+
+[node name="MovingStrafe15m" parent="." instance=ExtResource("8_moving")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 15, 0, 5)
+pattern = 1
+move_seed = 1015
+bounds_min = Vector2(14.5, 2)
+bounds_max = Vector2(15.5, 8)
+strafe_speed = 3.0
+strafe_duration = 1.0
+strafe_jitter = 0.3
+
+[node name="MovingADAD30m" parent="." instance=ExtResource("8_moving")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 30, 0, 5)
+pattern = 1
+move_seed = 1030
+bounds_min = Vector2(29.5, 2)
+bounds_max = Vector2(30.5, 8)
+strafe_speed = 7.5
+strafe_duration = 0.55
+strafe_jitter = 0.35
+
+[node name="MovingSpartan50m" parent="." instance=ExtResource("8_moving")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 50, 0, 5)
+pattern = 2
+move_seed = 1050
+bounds_min = Vector2(49.5, 2)
+bounds_max = Vector2(50.5, 8)
+
+[node name="MovingPatrol70m" parent="." instance=ExtResource("8_moving")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 62, 0, 7.5)
+pattern = 0
+move_seed = 1070
+bounds_min = Vector2(61.5, 6.5)
+bounds_max = Vector2(78.5, 8.5)
+patrol_points = PackedVector3Array(0, 0, 0, 16, 0, 0)
+patrol_speed = 3.5
+patrol_pause = 0.6
