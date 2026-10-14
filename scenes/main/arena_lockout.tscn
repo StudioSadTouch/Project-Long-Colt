@@ -1,0 +1,275 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn" id="1_level"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/pickups/weapon_pickup.tscn" id="3_pickup"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="4_rifle"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="5_pistol"]
+[ext_resource type="PackedScene" path="res://scenes/ai/bot.tscn" id="6_bot"]
+[ext_resource type="Script" path="res://scripts/ai/arena_events.gd" id="7_events"]
+[ext_resource type="Script" path="res://scripts/ai/arena_navigation.gd" id="8_nav"]
+[ext_resource type="Script" path="res://scripts/ai/bot_grav_lift.gd" id="9_botlift"]
+[ext_resource type="Script" path="res://scripts/ai/spawn_manager.gd" id="10_spawns"]
+[ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="11_diff"]
+
+[sub_resource type="Environment" id="Environment_arena"]
+background_mode = 1
+background_color = Color(0.07, 0.08, 0.09, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.18, 0.19, 0.2, 1)
+ambient_light_energy = 0.45
+tonemap_mode = 3
+
+[sub_resource type="BoxShape3D" id="Shape_BotLift"]
+size = Vector3(3, 10, 3)
+
+[node name="ArenaLockout" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_arena")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)
+light_color = Color(0.85, 0.88, 0.95, 1)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="ArenaEvents" type="Node" parent="."]
+script = ExtResource("7_events")
+
+[node name="Lockout" parent="." instance=ExtResource("1_level")]
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -18, 4.55, 4)
+
+[node name="RiflePickup_BotMid" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="PistolPickup_S3" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 10.5, -6)
+weapon_scene = ExtResource("5_pistol")
+
+[node name="RiflePickup_TopBlue" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, 16)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="PistolPickup_TopBlueW" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 9, 16)
+weapon_scene = ExtResource("5_pistol")
+
+[node name="PistolPickup_TopBlueE" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 9, 16)
+weapon_scene = ExtResource("5_pistol")
+
+[node name="RiflePickup_BR3" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 10.5, -3)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="RiflePickup_Green" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="Navigation" type="NavigationRegion3D" parent="."]
+script = ExtResource("8_nav")
+geometry_root = NodePath("../Lockout")
+
+[node name="Link_GravLift" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 1
+start_position = Vector3(0, 0, 21)
+end_position = Vector3(0, 9, 18.4)
+metadata/traversal = "lift"
+metadata/release_y = 9.5
+
+[node name="Link_Drop_TopBlue_TopMid" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 1
+start_position = Vector3(0, 9, 12)
+end_position = Vector3(0, 4.5, 6)
+metadata/traversal = "drop"
+
+[node name="Link_Drop_Library_TopMid" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 1
+start_position = Vector3(-1, 7.5, -10.6)
+end_position = Vector3(-1, 4.5, -5.5)
+metadata/traversal = "drop"
+
+[node name="Link_Drop_LeftMag_BottomBlue" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 1
+start_position = Vector3(-4.5, 6, 15.5)
+end_position = Vector3(-4.5, 3, 17.5)
+metadata/traversal = "drop"
+
+[node name="Link_Drop_RightMag_BottomBlue" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 1
+start_position = Vector3(4.5, 6, 15.5)
+end_position = Vector3(4.5, 3, 17.5)
+metadata/traversal = "drop"
+
+[node name="Link_Jump_Elbow" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 2
+start_position = Vector3(16, 2.7248, 11.35)
+end_position = Vector3(16, 4.5, 5)
+metadata/traversal = "jump"
+metadata/lip = Vector3(16, 2.7, 10.85)
+
+[node name="Link_Jump_OpenRamp" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 2
+start_position = Vector3(-24, 4.5, -2.6)
+end_position = Vector3(-24, 6.5, -9.3)
+metadata/traversal = "jump"
+metadata/lip = Vector3(-24, 4.5, -3.9)
+
+[node name="Link_Hop_BR2Ledge" type="NavigationLink3D" parent="Navigation"]
+bidirectional = false
+navigation_layers = 1
+start_position = Vector3(-16.8, 6.5, -9.3)
+end_position = Vector3(-15, 7.5, -9.3)
+metadata/traversal = "jump"
+metadata/lip = Vector3(-16.05, 6.5, -9.3)
+
+[node name="BotGravLift" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 21)
+collision_layer = 16
+collision_mask = 4
+monitorable = false
+script = ExtResource("9_botlift")
+level_lift = NodePath("../Lockout/GravLift")
+
+[node name="Shape" type="CollisionShape3D" parent="BotGravLift"]
+shape = SubResource("Shape_BotLift")
+
+[node name="NavPoints" type="Node3D" parent="."]
+
+[node name="TopMid" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.55, 0)
+metadata/weight = 2
+metadata/callout = "TopMid"
+
+[node name="BottomMid" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.05, -4)
+metadata/weight = 1
+metadata/callout = "BottomMid"
+
+[node name="GreenHall" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 11)
+metadata/weight = 1
+metadata/callout = "GreenHall"
+
+[node name="BottomBlue" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 3.05, 17.5)
+metadata/weight = 1
+metadata/callout = "BottomBlue"
+
+[node name="LeftMag" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 6.05, 13.5)
+metadata/weight = 1
+metadata/callout = "LeftMag"
+
+[node name="RightMag" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 6.05, 13.5)
+metadata/weight = 1
+metadata/callout = "RightMag"
+
+[node name="TopBlue" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9.05, 15)
+metadata/weight = 2
+metadata/callout = "TopBlue"
+
+[node name="ElbowSouth" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.05, 19)
+metadata/weight = 1
+metadata/callout = "ElbowSouth"
+
+[node name="S1" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 4.55, 1)
+metadata/weight = 1
+metadata/callout = "S1"
+
+[node name="S2" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 7.55, -5)
+metadata/weight = 1
+metadata/callout = "S2"
+
+[node name="S3" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 10.55, -6)
+metadata/weight = 2
+metadata/callout = "S3"
+
+[node name="BR1" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 4.55, 2)
+metadata/weight = 1
+metadata/callout = "BR1"
+
+[node name="BR2" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 7.55, -2)
+metadata/weight = 1
+metadata/callout = "BR2"
+
+[node name="BR3" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 10.55, -3)
+metadata/weight = 2
+metadata/callout = "BR3"
+
+[node name="Courtyard" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 0.05, 9)
+metadata/weight = 1
+metadata/callout = "Courtyard"
+
+[node name="BRBridge" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 7.55, -10)
+metadata/weight = 1
+metadata/callout = "BRBridge"
+
+[node name="Library" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 7.55, -14)
+metadata/weight = 1.5
+metadata/callout = "Library"
+
+[node name="Sword" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 2.05, -12)
+metadata/weight = 1
+metadata/callout = "Sword"
+
+[node name="SwordHall" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.05, 1)
+metadata/weight = 1
+metadata/callout = "SwordHall"
+
+[node name="ArenaSpawns" type="Node3D" parent="."]
+
+[node name="Spawn_BotMidNW" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.5, 0.05, -5.5)
+
+[node name="Spawn_BotMidSE" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 0.05, 5)
+
+[node name="Spawn_GreenHallN" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 9.5)
+
+[node name="Spawn_Courtyard" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0.05, 9)
+
+[node name="Spawn_S2" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 7.55, -5)
+
+[node name="Spawn_BR2" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 7.55, 1)
+
+[node name="Spawn_Library" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 7.55, -15)
+
+[node name="Spawn_ElbowSouthW" type="Marker3D" parent="ArenaSpawns"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 3.05, 19)
+
+[node name="SpawnManager" type="Node" parent="."]
+script = ExtResource("10_spawns")
+bot_scene = ExtResource("6_bot")
+bot_count = 3
+difficulty = ExtResource("11_diff")
