@@ -1,0 +1,146 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn" id="1_level"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/pickups/weapon_pickup.tscn" id="3_pickup"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="4_rifle"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="5_pistol"]
+[ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="6_moving"]
+
+[sub_resource type="Environment" id="Environment_lockout"]
+background_mode = 1
+background_color = Color(0.07, 0.08, 0.09, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.18, 0.19, 0.2, 1)
+ambient_light_energy = 0.45
+tonemap_mode = 3
+
+[sub_resource type="Curve3D" id="Curve_Path_TopMid"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -6, 4.55, -6, 0, 0, 0, 0, 0, 0, 6, 4.55, -6, 0, 0, 0, 0, 0, 0, 6, 4.55, 6, 0, 0, 0, 0, 0, 0, -6, 4.55, 6, 0, 0, 0, 0, 0, 0, -6, 4.55, -6),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0)
+}
+point_count = 5
+
+[sub_resource type="Curve3D" id="Curve_Path_BotMid"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -6, 0.05, -6, 0, 0, 0, 0, 0, 0, 6, 0.05, -6, 0, 0, 0, 0, 0, 0, 6, 0.05, 6, 0, 0, 0, 0, 0, 0, -6, 0.05, 6, 0, 0, 0, 0, 0, 0, -6, 0.05, -6),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0)
+}
+point_count = 5
+
+[node name="MainLockout" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_lockout")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)
+light_color = Color(0.85, 0.88, 0.95, 1)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="Lockout" parent="." instance=ExtResource("1_level")]
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -18, 4.55, 4)
+
+[node name="RiflePickup_BotMid" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="PistolPickup_S3" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 10.5, -6)
+weapon_scene = ExtResource("5_pistol")
+
+[node name="RiflePickup_TopBlue" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9, 18)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="PistolPickup_TopBlueW" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 9, 18)
+weapon_scene = ExtResource("5_pistol")
+
+[node name="PistolPickup_TopBlueE" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 9, 18)
+weapon_scene = ExtResource("5_pistol")
+
+[node name="RiflePickup_BR3" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 10.5, -3)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="RiflePickup_Green" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
+weapon_scene = ExtResource("4_rifle")
+
+[node name="SwordSpot" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 2, -12)
+
+[node name="Label" type="Label3D" parent="SwordSpot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+billboard = 1
+font_size = 48
+outline_size = 8
+modulate = Color(1, 0.3, 1, 1)
+text = "ENERGY SWORD (empty spot)"
+
+[node name="Path_TopMid" type="Path3D" parent="."]
+curve = SubResource("Curve_Path_TopMid")
+
+[node name="Path_BotMid" type="Path3D" parent="."]
+curve = SubResource("Curve_Path_BotMid")
+
+[node name="Strafer_BRBridge" parent="." instance=ExtResource("6_moving")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -10, 7.55, -10)
+pattern = 1
+move_seed = 2001
+strafe_speed = 7.5
+strafe_duration = 0.7
+strafe_jitter = 0.3
+bounds_min = Vector2(-14.4, -10.75)
+bounds_max = Vector2(-5.6, -9.25)
+
+[node name="Strafer_S1Link" parent="." instance=ExtResource("6_moving")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 10.5, 4.55, 0)
+pattern = 1
+move_seed = 2002
+strafe_speed = 5.0
+strafe_duration = 0.5
+strafe_jitter = 0.3
+bounds_min = Vector2(8.6, -1.5)
+bounds_max = Vector2(12.4, 1.5)
+
+[node name="Strafer_ElbowSouth" parent="." instance=ExtResource("6_moving")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 2.55, 19)
+pattern = 1
+move_seed = 2003
+strafe_speed = 7.5
+strafe_duration = 0.9
+strafe_jitter = 0.4
+bounds_min = Vector2(7.6, 18.25)
+bounds_max = Vector2(16.4, 19.75)
+
+[node name="Spartan_TopMid" parent="." instance=ExtResource("6_moving")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2, 4.55, -3)
+pattern = 2
+move_seed = 2004
+bounds_min = Vector2(-7, -7)
+bounds_max = Vector2(7, 7)
+
+[node name="Pather_TopMid" parent="." instance=ExtResource("6_moving")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -6, 4.55, -6)
+pattern = 3
+move_seed = 0
+path = NodePath("../Path_TopMid")
+path_speed = 4.0
+bounds_min = Vector2(-7, -7)
+bounds_max = Vector2(7, 7)
+
+[node name="Pather_BotMid" parent="." instance=ExtResource("6_moving")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.05, -6)
+pattern = 3
+move_seed = 0
+path = NodePath("../Path_BotMid")
+path_speed = 4.0
+bounds_min = Vector2(-7, -7)
+bounds_max = Vector2(7, 7)
