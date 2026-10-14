@@ -97,6 +97,11 @@ func _reset() -> void:
 	_point_index = 0
 	_path_offset = 0.0
 	_path_sign = 1.0
+	if _curve != null and _path_node != null:
+		# Start from the curve point nearest the spawn, not the curve's first point, so the
+		# dummy doesn't cut across (or out of its bounds) to reach offset 0.
+		var local_start := _path_node.global_transform.affine_inverse() * _start.origin
+		_path_offset = _curve.get_closest_offset(local_start)
 
 
 func _physics_process(delta: float) -> void:
