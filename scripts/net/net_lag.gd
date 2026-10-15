@@ -34,7 +34,7 @@ func record(bodies: Array[Node3D], tick: int) -> void:
 ## Moves every recorded body except `shooter` to its state at `tick` (clamped to history).
 func rewind(tick: int, shooter: Node) -> void:
 	restore()
-	for body: Node3D in _history:
+	for body in _history:  # untyped: keys may be freed bodies
 		if body == shooter or not is_instance_valid(body):
 			continue
 		var frames: Array = _history[body]
@@ -55,7 +55,7 @@ func rewind(tick: int, shooter: Node) -> void:
 
 func restore() -> void:
 	for colliders: Array in _rewound:
-		for collider: CollisionObject3D in colliders:
+		for collider in colliders:  # untyped: may hold freed colliders
 			if is_instance_valid(collider):
 				_set_transform(collider, collider.global_transform)
 	_rewound.clear()

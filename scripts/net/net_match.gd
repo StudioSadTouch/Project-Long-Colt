@@ -167,7 +167,7 @@ func _host_tick(delta: float, tick: int) -> void:
 	_refresh_bots()
 	var bodies: Array[Node3D] = []
 	for id: int in entities:
-		var body: Node3D = entities[id]
+		var body: Variant = entities[id]  # may be freed: check before any typed assignment
 		if is_instance_valid(body):
 			bodies.append(body)
 	_net_host.lag.record(bodies, tick)
@@ -436,7 +436,7 @@ func _rpc_client_ready() -> void:
 		spawn_manager.register_player(puppet, HUMAN_TEAM_BASE + peer)
 	# Everyone else's current pose and life, so the newcomer's puppets aren't stuck at origin.
 	for id: int in entities:
-		var body: Node3D = entities[id]
+		var body: Variant = entities[id]  # may be freed: check before any typed assignment
 		if (
 			id != peer
 			and is_instance_valid(body)
@@ -515,9 +515,10 @@ func _rpc_pickup(key: String) -> void:
 func _send_snapshot(tick: int) -> void:
 	var entries: Array = []
 	for id: int in entities:
-		var body: Node3D = entities[id]
-		if not is_instance_valid(body):
+		var value: Variant = entities[id]  # may be freed: check before the typed assignment
+		if not is_instance_valid(value):
 			continue
+		var body: Node3D = value
 		var head := body.get_node_or_null(^"Head") as Node3D
 		var pitch := head.rotation.x if head != null else 0.0
 		var health := body.get(&"health_shield") as HealthShield
@@ -561,9 +562,10 @@ func _rpc_snapshot(tick: int, entries: Array) -> void:
 		if entry.size() < 7:
 			continue
 		var id: int = entry[0]
-		var body: Node3D = entities.get(id)
-		if body == null or not is_instance_valid(body):
+		var value: Variant = entities.get(id)  # may be freed: check before the typed assignment
+		if value == null or not is_instance_valid(value):
 			continue
+		var body: Node3D = value
 		var vitals: Vector2 = entry[4]
 		var health := body.get(&"health_shield") as HealthShield
 		if health != null and not health.dead:
