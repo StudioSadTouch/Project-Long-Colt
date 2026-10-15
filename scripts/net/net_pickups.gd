@@ -35,8 +35,10 @@ func key_of(node: Node) -> String:
 
 
 func find(key: String) -> Node3D:
+	# A taken or despawned drop is freed in place. `is` on a freed object errors, so the
+	# validity check has to come first (same rule as NetMatch entity lookups).
 	var node: Variant = nodes.get(key)
-	if node is Node3D and is_instance_valid(node):
+	if is_instance_valid(node) and node is Node3D:
 		return node
 	nodes.erase(key)
 	return null

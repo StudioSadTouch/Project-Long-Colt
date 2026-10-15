@@ -100,7 +100,8 @@ func anim_swap_weapon() -> void:
 
 func _process(delta: float) -> void:
 	if _model != null:
-		var hidden := _model.get(&"first_person_hidden") == true
+		# get() is a Variant. Comparing it does not infer a type, so := will not compile.
+		var hidden := bool(_model.get(&"first_person_hidden"))
 		if hidden != _hidden_layers:
 			_hidden_layers = hidden
 			for prop: Node3D in _hand_props.values() + _holster_props.values():
