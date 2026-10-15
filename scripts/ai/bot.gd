@@ -97,6 +97,8 @@ var _melee_left: float = 0.0
 var _aim_dir: Vector3 = Vector3.FORWARD
 var _stand_probe: CapsuleShape3D
 var _layers: Dictionary = {}
+## Dead and airborne: downward speed of the corpse drop (see _drop_corpse); < 0 once on the floor.
+var _corpse_fall: float = -1.0
 ## Stance the hurtbox was last sized for (-1 = not yet): resized on stance changes only.
 var _hurtbox_stance: int = -1
 
@@ -370,6 +372,7 @@ func respawn_at(xform: Transform3D) -> void:
 			(body as CollisionObject3D).collision_layer = _layers[body]
 	collision_mask = MOVE_MASK
 	collision_shape.disabled = false
+	_corpse_fall = -1.0
 	health_shield.reset()
 	last_damage_info = {}
 	_clear_weapons()
@@ -385,6 +388,7 @@ func respawn_at(xform: Transform3D) -> void:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		_drop_corpse(delta)
 		return
 	gravity = get_gravity().length()
 	_melee_left = maxf(_melee_left - delta, 0.0)
@@ -704,6 +708,26 @@ func _drop_position(side: float = 0.0) -> Vector3:
 # ------------------------------------------------------------------ death
 
 
+## Dead: drop the corpse straight down onto the floor, then stop. The capsule is disabled and
+## the mask is 0 while dead, so this ray-casts DROP_MASK (world) instead of move_and_slide, and
+## leaves velocity, layers and the shape alone. No AI input, no horizontal motion.
+func _drop_corpse(delta: float) -> void:
+	if _corpse_fall < 0.0:
+		return
+	_corpse_fall += get_gravity().length() * delta
+	var feet := global_position
+	var drop := _corpse_fall * delta
+	var query := PhysicsRayQueryParameters3D.create(
+		feet + Vector3.UP * 0.1, feet + Vector3.DOWN * drop, DROP_MASK
+	)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		global_position = feet + Vector3.DOWN * drop
+	else:
+		global_position = Vector3(feet.x, hit.position.y, feet.z)
+		_corpse_fall = -1.0
+
+
 func _on_health_died() -> void:
 	if dead:
 		return
@@ -723,6 +747,7 @@ func _on_health_died() -> void:
 	for body: Variant in _layers:  # untyped: a collider may have been freed
 		if is_instance_valid(body):
 			(body as Object).set_deferred(&"collision_layer", 0)
+	_corpse_fall = 0.0
 	set_deferred(&"collision_mask", 0)
 	collision_shape.set_deferred(&"disabled", true)
 	velocity = Vector3.ZERO
