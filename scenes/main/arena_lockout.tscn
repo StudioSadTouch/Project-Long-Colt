@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn" id="1_level"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ai/bot.tscn" id="6_bot"]
 [ext_resource type="Script" path="res://scripts/ai/arena_events.gd" id="7_events"]
 [ext_resource type="Script" path="res://scripts/ai/arena_navigation.gd" id="8_nav"]
+[ext_resource type="Script" path="res://scripts/net/net_match.gd" id="14_net"]
 [ext_resource type="Script" path="res://scripts/ai/spawn_manager.gd" id="9_spawns"]
 [ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="10_diff"]
 
@@ -252,6 +253,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 7.55, -15)
 
 [node name="Spawn_ElbowSouthW" type="Marker3D" parent="ArenaSpawns"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 3.05, 19)
+
+[node name="NetMatch" type="Node" parent="."]
+script = ExtResource("14_net")
 
 [node name="SpawnManager" type="Node" parent="."]
 script = ExtResource("9_spawns")

@@ -5,7 +5,8 @@ Does NOT touch scenes/levels/lockout.tscn or main_lockout.tscn (emit_lockout_tsc
 those). Reads P, RAMPS, W, S from build_lockout.py with ast (nothing executed) and writes:
   Lockout instance, Player, the same weapon pickups as main_lockout, ArenaEvents,
   Navigation (runtime-baked NavigationRegion3D) + NavigationLink3D lift / drops / jumps,
-  NavPoints (roam markers), ArenaSpawns (extra spawns), SpawnManager. Bots ride the level's
+  NavPoints (roam markers), ArenaSpawns (extra spawns), NetMatch (networking + match UI; before
+  SpawnManager so its _ready configures it first), SpawnManager. Bots ride the level's
   GravLift (group lift_rider), so no bot-side lift is placed.
 Every link endpoint, roam point and spawn is checked to sit on a walkable floor top at least
 one agent radius from the floor's edge and clear of walls/parapets; the script fails otherwise.
@@ -192,6 +193,7 @@ ext = [
     ("PackedScene", "res://scenes/ai/bot.tscn", "6_bot"),
     ("Script", "res://scripts/ai/arena_events.gd", "7_events"),
     ("Script", "res://scripts/ai/arena_navigation.gd", "8_nav"),
+    ("Script", "res://scripts/net/net_match.gd", "14_net"),
     ("Script", "res://scripts/ai/spawn_manager.gd", "9_spawns"),
     ("Resource", "res://resources/ai/bot_difficulty_normal.tres", "10_diff"),
 ]
@@ -240,6 +242,8 @@ nodes.append('[node name="ArenaSpawns" type="Node3D" parent="."]\n')
 for callout, (x, y, z) in SPAWN_PTS:
     nodes.append(f'[node name="Spawn_{callout}" type="Marker3D" parent="ArenaSpawns"]\n'
                  f'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {fmt(x)}, {fmt(y + 0.05)}, {fmt(z)})\n')
+# NetMatch before SpawnManager: its _ready sets bot fill, difficulty and names first.
+nodes.append('[node name="NetMatch" type="Node" parent="."]\nscript = ExtResource("14_net")\n')
 nodes.append('[node name="SpawnManager" type="Node" parent="."]\nscript = ExtResource("9_spawns")\n'
              'bot_scene = ExtResource("6_bot")\n'
              f'bot_count = {BOT_COUNT}\ndifficulty = ExtResource("10_diff")\n')
