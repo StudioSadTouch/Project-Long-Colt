@@ -11,7 +11,7 @@ signal baked
 @export var geometry_root: NodePath = ^"../Lockout"
 @export var agent_radius: float = 0.35
 @export var agent_height: float = 1.8
-@export var agent_max_climb: float = 0.25
+@export var agent_max_climb: float = 0.35  # = step-up height (Player.step_height, Bot.STEP_HEIGHT)
 @export var agent_max_slope: float = 45.0
 @export var geometry_mask: int = 1
 
