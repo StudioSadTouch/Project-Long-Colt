@@ -51,7 +51,7 @@ func _ready() -> void:
 func get_aim_points() -> Dictionary:
 	if dead:
 		return {}
-	var points := {"body": _root.global_position + Vector3.UP * 0.7}
+	var points := {"body": _root.global_position + Vector3.UP * 0.852}
 	var head := _root.get_node_or_null("Rig/HeadArmored") as Node3D
 	if head != null:
 		points["head"] = head.global_position

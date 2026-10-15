@@ -338,13 +338,19 @@ func _watch_fx_weapon(id: int, weapon: Weapon) -> void:
 	_shots[weapon.get_instance_id()] = shot
 	shot.captured.connect(
 		func(r: Array, tos: PackedVector3Array, hits: PackedByteArray) -> void:
-			_broadcast_fx(id, r[NetShot.REQ_ORIGIN], tos, hits, 0)
+			var from: Vector3 = r[NetShot.REQ_ORIGIN]
+			# Host is not a shot-fx peer, so bot pellets (and their spread) are drawn here.
+			NetFx.spawn_shots(get_parent(), from, tos, hits)
+			_broadcast_fx(id, from, tos, hits, 0)
 	)
 
 
 func _on_local_shot(request: Array, tos: PackedVector3Array, hits: PackedByteArray) -> void:
+	var from: Vector3 = request[NetShot.REQ_ORIGIN]
+	# The shooter is skipped by _broadcast_fx, so their own pellets are drawn locally.
+	NetFx.spawn_shots(get_parent(), from, tos, hits)
 	if _host:
-		_broadcast_fx(1, request[NetShot.REQ_ORIGIN], tos, hits, 0)
+		_broadcast_fx(1, from, tos, hits, 0)
 		return
 	var render := roundi(_host_tick_now() - INTERP_DELAY * Engine.physics_ticks_per_second)
 	_rpc_fire.rpc_id(1, render, request)

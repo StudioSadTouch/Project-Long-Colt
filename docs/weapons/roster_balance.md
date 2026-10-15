@@ -94,7 +94,8 @@ Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills 
 Tuning decided by Morgon: vs 70 shield / 45 health, **2 blasts strip, then 1 head blast or 2
 body blasts kill**. Full-pellet blast D = 10 x 4.0 = 40 (35 <= D < 45), head x4.0 (D x 4 >= 45).
 
-- 10 pellets x 4.0 in a 4 deg half-angle cone (seeded, see the framework section), pump 0.83 s,
+- 10 pellets x 4.0 in a 7 deg half-angle cone (opened from 4 deg so the pattern clears a
+  2.1 m body inside the full-damage range; seeded, see the framework section), pump 0.83 s,
   6 shells, 12 reserve (max 24). Full damage to 6 m, falloff 6 -> 12 m to 0.1.
 - **A blast is one damage event per victim.** Every pellet traces the shared ray path with its own
   falloff; the pellets that hit the same victim are summed into a single `take_damage`. So
@@ -112,10 +113,15 @@ body blasts kill**. Full-pellet blast D = 10 x 4.0 = 40 (35 <= D < 45), head x4.
   ~4.6 at 6 m (centre-mass: 10 and ~9.3). With x4 a head blast kills on 3 pellets (48) at full
   damage, which is a >= 93% kill to 6 m with the centre on the helmet. x1.3 would kill only
   inside ~3 m. Point-blank overkill (160) is health-only and irrelevant.
-- Guarantees: one body blast never kills a full-health unshielded target (max 40 < 45, any
-  range); 2 body blasts kill a stripped target out to ~7 m; head blasts do nothing extra to a
-  shield (zone multipliers are health only).
+- Guarantees that still hold: one body blast never kills a full-health unshielded target
+  (max 40 < 45), and head blasts do nothing extra to a shield. Point-blank, two centre-mass
+  blasts still strip. Past about 4 m the 7° cone drops pellets, so the old two-blast strip
+  out to ~7 m no longer holds.
 - Huge kick (7 deg pitch, 1.8 deg yaw) and a 0.6 s equip.
+
+The table below was measured at 4 deg against the old 0.7 x 1.4 m body. The live cone is 7 deg
+on the 2.1 m body, so fewer pellets land past about 4 m than these rows show. A point-blank
+centre-mass blast still lands all 10.
 
 Expected values with the target's real silhouette (body 0.7 x 1.4 m box, neck, 0.36 m helmet),
 centre-mass aim for body blasts and helmet-centre aim for head blasts; P = chance that a single

@@ -7,8 +7,8 @@ extends CharacterBody3D
 ##
 ## Collision layout (see docs/ai/arena_ai_spec.md):
 ##   root capsule  layer 0, mask World | Player | Enemy. Movement only; weapons never hit it,
-##                 because a 0.35 m capsule would cover the visor and turn head shots into body.
-##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.7 x 1.46 x 0.4 like the dummies.
+##                 because a 0.41 m capsule would cover the visor and turn head shots into body.
+##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.82 x 1.70 x 0.47 like the dummies.
 ##   Rig heads     HeadArmored / HeadUnarmored on Hitbox (32), from dummy_rig.tscn.
 ##   PlayerModel   scenes/characters/player_body.tscn (visual + anims only); the dummy_rig
 ##                 meshes are hidden in bot.tscn, its hitboxes stay on Rig.
@@ -34,11 +34,11 @@ const JUMP_HEIGHT := 2.2
 const COYOTE_TIME := 0.1
 const JUMP_BUFFER_TIME := 0.12
 const EYE_BLEND_SPEED := 12.0
-const STAND_HEIGHT := 1.8
-const CROUCH_HEIGHT := 1.15
-const CAPSULE_RADIUS := 0.35
-const STAND_EYE := 1.62
-const CROUCH_EYE := 0.95
+const STAND_HEIGHT := 2.1
+const CROUCH_HEIGHT := 1.342
+const CAPSULE_RADIUS := 0.408
+const STAND_EYE := 1.89
+const CROUCH_EYE := 1.108
 const PITCH_LIMIT := 89.0
 const FLOOR_SNAP := 0.3
 const FLOOR_MAX_ANGLE_DEG := 50.0
@@ -47,14 +47,14 @@ const STEP_HEIGHT := 0.35
 const SLOT_COUNT := 2
 const ENEMY_LAYER := 4
 const MOVE_MASK := 1 | 2 | 4
-const HURTBOX_HEIGHT := 1.46
-const HURTBOX_MIN_HEIGHT := 0.7
+const HURTBOX_HEIGHT := 1.703
+const HURTBOX_MIN_HEIGHT := 0.817
 ## Horizontal reach to take or top up from a WeaponPickup.
 const DROP_MASK := 1
 ## Half the spacing between the two weapons a dead bot drops (Halo 2 drops both). The pickup
 ## trigger spheres have radius 1.0, so 2 x 1.1 m keeps them apart; walls shorten it.
 const DROP_SPREAD := 1.1
-const BODY_AIM_HEIGHT := 0.7
+const BODY_AIM_HEIGHT := 0.852
 
 @export var display_name: String = "Bot"
 ## Same team = friendly. SpawnManager assigns unique teams in FFA. Player is team 0.

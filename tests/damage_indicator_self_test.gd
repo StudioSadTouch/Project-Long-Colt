@@ -25,6 +25,7 @@ func _run() -> void:
 	_check(script, yawed, -fwd, 0.0, "yawed body, attacker in front")
 	_check(script, yawed, -right, PI * 0.5, "yawed body, attacker on the right")
 	_check_guns()
+	_check_shotgun_cone()
 	if _failed:
 		quit(1)
 		return
@@ -74,3 +75,31 @@ func _check_guns() -> void:
 				push_error("%s %s length %.3f is not a one-shot" % [path, prop, seconds])
 				_failed = true
 		gun.free()
+
+
+## Every pellet offset stays inside the live half-angle, and some reach the rim.
+func _check_shotgun_cone() -> void:
+	var data := load("res://resources/weapons/combat_shotgun.tres")
+	var weapon := load("res://scripts/weapons/weapon.gd") as GDScript
+	if data == null or weapon == null:
+		push_error("shotgun cone resources missing")
+		_failed = true
+		return
+	var spread := float(data.get("pellet_spread"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var max_deg := 0.0
+	for _i in 300:
+		var offset: Vector2 = weapon.call(&"_cone_offset", spread, rng)
+		var dir := Vector3(offset.x, offset.y, -1.0).normalized()
+		var deg := rad_to_deg(acos(clampf(dir.dot(Vector3(0.0, 0.0, -1.0)), -1.0, 1.0)))
+		if deg > max_deg:
+			max_deg = deg
+		if deg > spread + 0.05:
+			push_error("pellet %.2f deg is outside the %.2f deg cone" % [deg, spread])
+			_failed = true
+			return
+	print("shotgun cone max=%.2f half-angle=%.2f" % [max_deg, spread])
+	if max_deg < spread * 0.75:
+		push_error("shotgun cone never reaches the rim (max %.2f of %.2f)" % [max_deg, spread])
+		_failed = true

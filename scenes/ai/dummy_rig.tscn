@@ -7,7 +7,7 @@ roughness = 0.85
 
 [sub_resource type="BoxMesh" id="BoxMesh_body"]
 material = SubResource("StandardMaterial3D_dummy")
-size = Vector3(0.7, 1.46, 0.4)
+size = Vector3(0.817, 1.703, 0.467)
 
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_visor"]
@@ -24,40 +24,40 @@ roughness = 0.9
 
 [sub_resource type="BoxMesh" id="BoxMesh_helmet"]
 material = SubResource("StandardMaterial3D_dummy")
-size = Vector3(0.36, 0.34, 0.36)
+size = Vector3(0.42, 0.397, 0.42)
 
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_helmet"]
-size = Vector3(0.36, 0.34, 0.36)
+size = Vector3(0.42, 0.397, 0.42)
 
 
 [sub_resource type="BoxMesh" id="BoxMesh_visor"]
 material = SubResource("StandardMaterial3D_visor")
-size = Vector3(0.24, 0.14, 0.04)
+size = Vector3(0.28, 0.163, 0.047)
 
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_visor"]
-size = Vector3(0.24, 0.14, 0.04)
+size = Vector3(0.28, 0.163, 0.047)
 
 
 [sub_resource type="BoxMesh" id="BoxMesh_neck"]
 material = SubResource("StandardMaterial3D_neck")
-size = Vector3(0.16, 0.07, 0.16)
+size = Vector3(0.187, 0.082, 0.187)
 
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_neck"]
-size = Vector3(0.16, 0.07, 0.16)
+size = Vector3(0.187, 0.082, 0.187)
 
 
 [node name="Rig" type="Node3D"]
 
 [node name="BodyMesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.73, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.852, 0)
 mesh = SubResource("BoxMesh_body")
 
 
 [node name="HeadArmored" type="StaticBody3D" parent="." groups=["hitbox_head_armored"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.64, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.913, 0)
 collision_layer = 32
 collision_mask = 0
 
@@ -76,27 +76,27 @@ collision_mask = 0
 
 
 [node name="VisorMesh" type="MeshInstance3D" parent="HeadUnarmored"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -0.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.867, -0.233)
 mesh = SubResource("BoxMesh_visor")
 
 
 [node name="VisorShape" type="CollisionShape3D" parent="HeadUnarmored"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -0.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.867, -0.233)
 shape = SubResource("BoxShape3D_visor")
 
 
 [node name="NeckMesh" type="MeshInstance3D" parent="HeadUnarmored"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.435, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.674, 0)
 mesh = SubResource("BoxMesh_neck")
 
 
 [node name="NeckShape" type="CollisionShape3D" parent="HeadUnarmored"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.435, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.674, 0)
 shape = SubResource("BoxShape3D_neck")
 
 
 [node name="HPLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, 0)
 billboard = 1
 no_depth_test = true
 fixed_size = true

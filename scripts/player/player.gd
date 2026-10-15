@@ -6,9 +6,9 @@ extends CharacterBody3D
 ## Hit layout, same scheme and sizes as the dummies and bots (dummy_rig.tscn), so TTK matches
 ## both ways:
 ##   root capsule  layer 2 (Player), movement, pickups, lifts, kill volumes. In group
-##                 Weapon.PASSTHROUGH_GROUP, so hitscan and melee pass through it (a 0.35 m
+##                 Weapon.PASSTHROUGH_GROUP, so hitscan and melee pass through it (a 0.41 m
 ##                 capsule would cover the visor and turn head shots into body shots).
-##   Hurtbox       AnimatableBody3D on layer 2, box 0.7 x 1.46 x 0.4: body hits.
+##   Hurtbox       AnimatableBody3D on layer 2, box 0.82 x 1.70 x 0.47: body hits.
 ##   Rig heads     HeadArmored (helmet) / HeadUnarmored (visor + neck) on Hitbox (32).
 ## Crouch lowers the Rig and shortens the Hurtbox with the eye. The player's own weapons and
 ## AimAssist exclude all of these (get_own_colliders()). take_damage stays on the root, so
@@ -49,16 +49,17 @@ signal died(player: Player, killer: Node, info: Dictionary)
 signal respawn_requested(player: Player)
 signal respawned(player: Player)
 
-const STAND_HEIGHT := 1.8
-const CROUCH_HEIGHT := 1.15
-const CAPSULE_RADIUS := 0.35
-const STAND_EYE := 1.62
-const CROUCH_EYE := 0.95
+## Lockout is built for a 2.1 m Spartan. These are the old 1.8 m body scaled by 2.1/1.8.
+const STAND_HEIGHT := 2.1
+const CROUCH_HEIGHT := 1.342
+const CAPSULE_RADIUS := 0.408
+const STAND_EYE := 1.89
+const CROUCH_EYE := 1.108
 const PITCH_LIMIT := 89.0
-const HURTBOX_HEIGHT := 1.46
-const HURTBOX_MIN_HEIGHT := 0.7
+const HURTBOX_HEIGHT := 1.703
+const HURTBOX_MIN_HEIGHT := 0.817
 ## get_aim_points().body height above the Rig origin, as DummyCore and Bot.
-const BODY_AIM_HEIGHT := 0.7
+const BODY_AIM_HEIGHT := 0.852
 ## Step camera smoothing: the -dy view offset decays at this rate per second (~0.1 s to 5%).
 const STEP_SMOOTH_RATE := 30.0
 ## Render layer for first-person-hidden bodies (layer 2); every gameplay camera culls it.

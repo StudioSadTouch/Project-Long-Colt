@@ -5,8 +5,8 @@ extends RefCounted
 ## pull, every pellet in it) and from snapshot weapon state (charge glow, overheat vent).
 ## Audio and real VFX can hook NetMatch.remote_shot instead; this keeps greybox readable.
 
-const TRACER_TIME := 0.06
-const IMPACT_TIME := 0.15
+const TRACER_TIME := 0.12
+const IMPACT_TIME := 0.22
 const FLASH_TIME := 0.05
 const VENT_TIME := 0.6
 const TRACER_COLOR := Color(1.0, 0.85, 0.45, 0.9)

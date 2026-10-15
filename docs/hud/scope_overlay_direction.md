@@ -106,7 +106,7 @@ The early-2000s military-HUD feel comes from the hard rectangular tabs, the plat
 - Stadia are true for the current camera FOV:
   - `px_per_mil = 0.001 / tan(fov/2) * H/2`;
   - `px_for(m, d) = m / d * 1000 * px_per_mil`.
-- **Feet-line stadia:** put the target's head on the centre, and its feet land on the bar for its range. The target is the Player capsule, **1.8 m**.
+- **Feet-line stadia:** put the target's head on the centre, and its feet land on the bar for its range. The target is the Player capsule, **2.1 m**.
 - Ranges stay inside Lockout's 15 to 75 m band (roster_balance).
 
 ## 3. Identities

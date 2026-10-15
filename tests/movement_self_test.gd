@@ -56,7 +56,8 @@ func _build_world() -> void:
 	ceiling.name = "Ceiling"
 	ceiling.collision_layer = 1
 	ceiling.collision_mask = 0
-	ceiling.position = Vector3(30, 1.5, 0)
+	# Bottom sits at 1.55 m: the 1.34 m crouch fits, the 2.1 m stand does not.
+	ceiling.position = Vector3(30, 1.8, 0)
 	var ceiling_shape := CollisionShape3D.new()
 	var ceiling_box := BoxShape3D.new()
 	ceiling_box.size = Vector3(4, 0.5, 4)

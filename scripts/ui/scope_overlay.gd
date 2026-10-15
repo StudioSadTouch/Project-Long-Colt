@@ -34,9 +34,9 @@ const TEXT_RANGE := 18.0
 const RETICLE_MIN_PX := 2.0
 const HALO_PX := 1.5
 
-## Ranging: the Player capsule is 1.8 m tall. Stadia are feet lines: hold the head on the
+## Ranging: the Player capsule is 2.1 m tall. Stadia are feet lines: hold the head on the
 ## centre and the feet land on the bar for that range.
-const TARGET_HEIGHT_M := 1.8
+const TARGET_HEIGHT_M := 2.1
 const RIFLE_RANGES: Array[float] = [20.0, 40.0]
 const MARKSMAN_RANGES: Array[float] = [25.0, 50.0, 75.0]
 ## Mil tick spacing candidates; the first that is at least MIL_TICK_MIN_PX (ref px) apart wins.

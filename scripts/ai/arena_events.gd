@@ -11,7 +11,7 @@ signal kill(killer: Node, victim: Node, info: Dictionary)
 
 const GROUP := &"arena_events"
 const PLAYER_EYE_PATH := ^"Head/Camera3D"
-const BODY_HEIGHT := 0.9
+const BODY_HEIGHT := 1.05
 
 var _pickups: Array[WeaponPickup] = []
 ## Instance ids already connected (bound callables make is_connected unreliable).
@@ -118,7 +118,7 @@ static func eye_of(node: Node3D) -> Vector3:
 	var cam := node.get_node_or_null(PLAYER_EYE_PATH) as Node3D
 	if cam != null:
 		return cam.global_position
-	return node.global_position + Vector3.UP * 1.6
+	return node.global_position + Vector3.UP * 1.89
 
 
 static func velocity_of(node: Node3D) -> Vector3:

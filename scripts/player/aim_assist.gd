@@ -29,7 +29,7 @@ const TARGET_GROUP := &"aim_target"
 ## World only: hitboxes and bodies don't block line of sight to their own aim points.
 const LOS_MASK := 1
 ## Fallback aim point height above a target's origin when it has no get_aim_points().
-const BODY_FALLBACK_HEIGHT := 1.0
+const BODY_FALLBACK_HEIGHT := 1.17
 ## Cap on magnetism correction per second (radians), so teleports or respawns can't snap aim.
 const MAX_MAGNETISM_RATE := 3.0
 

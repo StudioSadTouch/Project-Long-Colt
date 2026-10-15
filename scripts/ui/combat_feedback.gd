@@ -8,10 +8,12 @@ extends Control
 ## Other guns play in 3D from ArenaEvents.gunfire / NetMatch.remote_shot. The local player's
 ## own shot is skipped there: WeaponFx already played it on the viewmodel.
 
-const HIT_TIME := 0.14
-const MARK_TIME := 0.85
-const MARK_LIMIT := 4
+const HIT_TIME := 0.16
+const MARK_TIME := 1.15
+const MARK_LIMIT := 3
 const BLOT_LIMIT := 24
+const HEALTH_MARK := Color(1.0, 0.16, 0.08)
+const SHIELD_MARK := Color(0.5, 0.9, 1.0)
 const HIT_MARKER := preload("res://assets/audio/feedback/hit_marker.wav")
 const SHIELD_HIT := preload("res://assets/audio/feedback/shield_hit.wav")
 const HEALTH_HIT := preload("res://assets/audio/feedback/health_hit.wav")
@@ -42,6 +44,7 @@ var _blots: Array[Dictionary] = []
 
 
 func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var hud := get_parent()
 	if hud != null:
@@ -123,7 +126,7 @@ func _draw_blood() -> void:
 		for i in bands:
 			var t := float(i) / float(bands)
 			var inset := t * 80.0
-			var color := Color(0.42, 0.0, 0.02, _vignette * (1.0 - t) * 0.28)
+			var color := Color(0.55, 0.02, 0.03, _vignette * (1.0 - t) * 0.5)
 			draw_rect(
 				Rect2(inset, inset, size.x - inset * 2.0, size.y - inset * 2.0), color, false, 22.0
 			)
@@ -137,20 +140,33 @@ func _draw_blood() -> void:
 		draw_circle(spot + blot["nudge"], radius * 0.5, Color(0.32, 0.0, 0.02, alpha * 0.75))
 
 
+## Edge arc plus an inward chevron. Angle 0 is the top of the screen. Drawn with plain
+## strokes: antialiased thick lines were easy to miss on the Forward+ HUD.
 func _draw_marks(center: Vector2) -> void:
-	var radius := minf(size.x, size.y) * 0.34
+	var u := size.y / 1080.0
+	var radius := minf(size.x, size.y) * 0.5 - 36.0 * u
+	if radius < 48.0:
+		return
+	var span := deg_to_rad(52.0)
+	var width := maxf(8.0, 16.0 * u)
 	for mark in _marks:
 		var life := float(mark["life"])
-		var fade := clampf(1.0 - float(mark["age"]) / life, 0.0, 1.0)
+		var fade := clampf((1.0 - float(mark["age"]) / life) * 1.35, 0.0, 1.0)
 		var angle := float(mark["angle"])
 		var color: Color = mark["color"]
-		color.a = 0.92 * fade
+		color.a = 0.95 * fade
+		var mid := angle - PI * 0.5
+		var shadow := Color(0.02, 0.01, 0.01, color.a * 0.8)
+		draw_arc(center, radius, mid - span * 0.5, mid + span * 0.5, 18, shadow, width + 8.0 * u, false)
+		draw_arc(center, radius, mid - span * 0.5, mid + span * 0.5, 18, color, width, false)
 		var dir := Vector2(sin(angle), -cos(angle))
-		var tangent := Vector2(cos(angle), sin(angle))
-		var outer := center + dir * radius
-		var tip := center + dir * (radius - 26.0)
-		draw_line(outer + tangent * 24.0, tip, color, 4.5, true)
-		draw_line(outer - tangent * 24.0, tip, color, 4.5, true)
+		var tangent := Vector2(-dir.y, dir.x)
+		var tip := center + dir * (radius - 34.0 * u)
+		var wing := 26.0 * u
+		var outer := center + dir * (radius - 4.0 * u)
+		draw_colored_polygon(
+			PackedVector2Array([tip, outer + tangent * wing, outer - tangent * wing]), color
+		)
 
 
 func _draw_hit(center: Vector2) -> void:
@@ -158,10 +174,14 @@ func _draw_hit(center: Vector2) -> void:
 		return
 	var color := _hit_color
 	color.a = 0.95 * clampf(_hit_left / HIT_TIME, 0.0, 1.0)
+	var u := size.y / 1080.0
+	var gap := 16.0 * u
+	var reach := 34.0 * u
+	var width := maxf(3.0, 4.0 * u)
 	for x in [-1.0, 1.0]:
 		for y in [-1.0, 1.0]:
 			var dir := Vector2(x, y).normalized()
-			draw_line(center + dir * 12.0, center + dir * 23.0, color, 2.5, true)
+			draw_line(center + dir * gap, center + dir * reach, color, width, false)
 
 
 func _on_weapon_changed(weapon: Weapon) -> void:
@@ -194,15 +214,22 @@ func _on_damaged(_amount: float, info: Dictionary) -> void:
 		health_hit = true
 	elif _shield_pending > 0.0:
 		health_hit = false
-	var color := Color(0.9, 0.14, 0.1) if health_hit else Color(0.45, 0.84, 1.0)
-	_marks.append({
-		"angle": attacker_screen_angle(_player.global_basis, travel as Vector3),
-		"age": 0.0,
-		"life": MARK_TIME,
-		"color": color,
-	})
+	var color := HEALTH_MARK if health_hit else SHIELD_MARK
+	var angle := attacker_screen_angle(_player.global_basis, travel as Vector3)
+	for mark in _marks:
+		if absf(angle_difference(float(mark["angle"]), angle)) > 0.45:
+			continue
+		mark["angle"] = angle
+		mark["age"] = 0.0
+		mark["life"] = MARK_TIME
+		if health_hit:
+			mark["color"] = HEALTH_MARK
+		queue_redraw()
+		return
+	_marks.append({"angle": angle, "age": 0.0, "life": MARK_TIME, "color": color})
 	while _marks.size() > MARK_LIMIT:
 		_marks.remove_at(0)
+	queue_redraw()
 
 
 func _on_shield_damaged(amount: float) -> void:
@@ -275,7 +302,7 @@ func _tint_latest(health_hit: bool) -> void:
 	var latest: Dictionary = _marks[_marks.size() - 1]
 	if float(latest["age"]) > 0.2:
 		return
-	latest["color"] = Color(0.9, 0.14, 0.1) if health_hit else Color(0.45, 0.84, 1.0)
+	latest["color"] = HEALTH_MARK if health_hit else SHIELD_MARK
 
 
 func _add_blood(amount: float) -> void:
@@ -389,12 +416,12 @@ func _play_world(stream: AudioStream, at: Vector3) -> void:
 	host.add_child(voice)
 	voice.global_position = at
 	voice.play()
-	get_tree().create_timer(2.0, false).timeout.connect(_free_voice.bind(voice))
-
-
-func _free_voice(voice: Node) -> void:
-	if is_instance_valid(voice):
-		voice.queue_free()
+	# A typed bind() on this timer fails at runtime ("Object to Object") and spams the log.
+	var pending := voice
+	get_tree().create_timer(2.0, false).timeout.connect(func() -> void:
+		if is_instance_valid(pending):
+			pending.queue_free()
+	)
 
 
 func _decay(items: Array[Dictionary], delta: float) -> void:

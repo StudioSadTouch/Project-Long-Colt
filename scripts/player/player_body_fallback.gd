@@ -3,7 +3,7 @@ extends Node3D
 ## Capsule placeholder body until LC Modeler's player_model.tscn lands. Same API and node name
 ## (PlayerModel) as the real model, so PlayerColor and Player treat both alike:
 ##   set_primary_color(color), set_accent_color(color), first_person_hidden (layer 1 / 2).
-## Origin at the feet, -Z forward, 1.8 m tall. Under the Player root (not the Rig), so it doesn't
+## Origin at the feet, -Z forward, 2.1 m tall. Under the Player root (not the Rig), so it doesn't
 ## crouch; hitboxes are separate and unaffected.
 
 const VISIBLE_LAYER := 1
