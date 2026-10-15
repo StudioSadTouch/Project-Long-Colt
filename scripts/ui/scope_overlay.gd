@@ -163,8 +163,12 @@ func _draw_service_rifle(c: Vector2) -> void:
 		_line(Vector2(c.x - half_w, y), Vector2(c.x + half_w, y), AMBER, 5.0)
 		_line(Vector2(c.x - half_w, y - 12.0 * _u), Vector2(c.x - half_w, y), AMBER, 5.0)
 		_line(Vector2(c.x + half_w, y - 12.0 * _u), Vector2(c.x + half_w, y), AMBER, 5.0)
-		_text(str(int(RIFLE_RANGES[i])), Vector2(c.x + half_w + 26.0 * _u, y - 4.0 * _u),
-			TEXT_RANGE, AMBER_DIM)
+		_text(
+			str(int(RIFLE_RANGES[i])),
+			Vector2(c.x + half_w + 26.0 * _u, y - 4.0 * _u),
+			TEXT_RANGE,
+			AMBER_DIM
+		)
 	# Readout plates sit on the flat bottom bezel, clear of the centre tab.
 	var edge_x := maxf(hw - hh, 150.0 * _u)
 	var plate_y := c.y + hh + bezel * 0.5 * _u
@@ -228,10 +232,13 @@ func _draw_marksman(c: Vector2) -> void:
 		var half_w := (30.0 - 7.0 * i) * _u
 		var p := c + Vector2(0.0, y)
 		_line(p - Vector2(half_w, 0.0), p + Vector2(half_w, 0.0), AMBER, 4.0)
-		_text(str(int(MARKSMAN_RANGES[i])), p + Vector2(half_w + 22.0 * _u, 0.0), TEXT_RANGE,
-			AMBER_DIM)
-	_plate(_mag_text(), c + Vector2.from_angle(PI * 0.25) * (r + bezel * 0.5 * _u), TEXT_MAG,
-		AMBER)
+		_text(
+			str(int(MARKSMAN_RANGES[i])),
+			p + Vector2(half_w + 22.0 * _u, 0.0),
+			TEXT_RANGE,
+			AMBER_DIM
+		)
+	_plate(_mag_text(), c + Vector2.from_angle(PI * 0.25) * (r + bezel * 0.5 * _u), TEXT_MAG, AMBER)
 
 
 ## Fallback for any other zoomer: chamfered octagon, T-post with a centre circle.
@@ -240,11 +247,18 @@ func _draw_field(c: Vector2) -> void:
 	var hh := 380.0 * _u
 	var ch := 130.0 * _u
 	var bezel := 24.0
-	var corners := PackedVector2Array([
-		c + Vector2(-hw + ch, -hh), c + Vector2(hw - ch, -hh), c + Vector2(hw, -hh + ch),
-		c + Vector2(hw, hh - ch), c + Vector2(hw - ch, hh), c + Vector2(-hw + ch, hh),
-		c + Vector2(-hw, hh - ch), c + Vector2(-hw, -hh + ch),
-	])
+	var corners := PackedVector2Array(
+		[
+			c + Vector2(-hw + ch, -hh),
+			c + Vector2(hw - ch, -hh),
+			c + Vector2(hw, -hh + ch),
+			c + Vector2(hw, hh - ch),
+			c + Vector2(hw - ch, hh),
+			c + Vector2(-hw + ch, hh),
+			c + Vector2(-hw, hh - ch),
+			c + Vector2(-hw, -hh + ch),
+		]
+	)
 	var pts := _subdivide(corners, 8)
 	_draw_glass(c, pts, 60.0)
 	_draw_mask(c, pts, 0.95)
@@ -334,8 +348,12 @@ func _plate(text: String, center: Vector2, ref_size: float, col: Color) -> void:
 	draw_rect(rect, PLATE)
 	draw_rect(rect, BEZEL_EDGE, false, _w(2.0))
 	var lip := _w(1.5)
-	draw_line(rect.position + Vector2(lip * 2.0, lip * 1.5),
-		Vector2(rect.end.x - lip * 2.0, rect.position.y + lip * 1.5), BEZEL_LIP, lip)
+	draw_line(
+		rect.position + Vector2(lip * 2.0, lip * 1.5),
+		Vector2(rect.end.x - lip * 2.0, rect.position.y + lip * 1.5),
+		BEZEL_LIP,
+		lip
+	)
 	_text(text, center, ref_size, col)
 
 
@@ -444,7 +462,9 @@ func _draw_tab(center: Vector2, outward: Vector2, length: float, depth: float) -
 	draw_colored_polygon(quad, BEZEL)
 	draw_polyline(_closed(quad), BEZEL_EDGE, _w(3.0), true)
 	var inset := outward * _w(4.0)
-	draw_line(center - t * 0.85 + n - inset, center + t * 0.85 + n - inset, BEZEL_LIP, _w(2.0), true)
+	draw_line(
+		center - t * 0.85 + n - inset, center + t * 0.85 + n - inset, BEZEL_LIP, _w(2.0), true
+	)
 
 
 ## Faint horizontal scanlines inside a circle (one draw_multiline).

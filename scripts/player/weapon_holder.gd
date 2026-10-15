@@ -555,9 +555,7 @@ func _update_zoom_fov(delta: float) -> void:
 	var step := absf(_player.fov - zoom_fov)
 	_camera.fov = move_toward(_camera.fov, target, maxf(step, 1.0) / blend_time * delta)
 	var scoped := (
-		weapon != null
-		and weapon.zoomed
-		and weapon.data.scope_style != WeaponData.ScopeStyle.NONE
+		weapon != null and weapon.zoomed and weapon.data.scope_style != WeaponData.ScopeStyle.NONE
 	)
 	# Fade in over zoom_time; snap off on unzoom (the viewmodel is already back).
 	_zoom_blend = move_toward(_zoom_blend, 1.0, delta / blend_time) if scoped else 0.0
