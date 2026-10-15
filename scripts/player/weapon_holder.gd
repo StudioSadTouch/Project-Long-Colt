@@ -280,7 +280,11 @@ func _physics_process(delta: float) -> void:
 
 
 func _update_pickup_hold(delta: float) -> void:
-	_pickups = _pickups.filter(func(p: WeaponPickup) -> bool: return is_instance_valid(p))
+	var live: Array[WeaponPickup] = []
+	for pickup in _pickups:
+		if is_instance_valid(pickup):
+			live.append(pickup)
+	_pickups = live
 	var held := _input_enabled() and Input.is_action_pressed("action_interact")
 	if not held:
 		_hold = 0.0
@@ -382,9 +386,11 @@ func _drop_all_on_death() -> void:
 		carried.append(w)
 	if carried.is_empty():
 		return
-	var sides: Array[float] = [0.0] if carried.size() == 1 else [1.0, -1.0]
 	for i in carried.size():
-		WeaponPickup.drop(carried[i], parent, _death_drop_position(sides[i]))
+		# One weapon drops at the feet. Two drop to either side. A typed array literal in a
+		# ternary is an untyped Array, which Godot refuses to assign to Array[float].
+		var side := 0.0 if carried.size() == 1 else (1.0 if i == 0 else -1.0)
+		WeaponPickup.drop(carried[i], parent, _death_drop_position(side))
 	if get_active() == null:
 		active_weapon_changed.emit(null)
 
