@@ -11,8 +11,12 @@ extends Node3D
 ## The meshes come from res://assets/models/characters/player_blockout.glb (parts PB_*,
 ## grouped BodyMesh / NeckMesh / HelmetMesh / VisorMesh like dummy_rig.tscn). On _ready the
 ## glb's four imported materials are swapped, by material name, for the project materials
-## below, and every mesh is put on render layer 2 only (model_layers), so the local
-## first-person camera can cull its own body with cull_mask.
+## below.
+##
+## Render layers (first_person_hidden): false (default, remote players, bots) puts every mesh
+## on layer 1 only; true (set on the LOCAL player only) puts every mesh on layer 2 only, so the
+## first-person camera can drop layer 2 from its cull_mask. cast_shadow is SHADOW_CASTING_SETTING_ON
+## in both states, so the local player still casts its own shadow.
 
 const PRIMARY_MATERIAL := preload("res://assets/characters/player/materials/player_armor_primary.tres")
 const SECONDARY_MATERIAL := preload("res://assets/characters/player/materials/player_armor_secondary.tres")
@@ -29,8 +33,13 @@ const PRIMARY_PARAM := &"primary_color"
 ## Field olive #4a5039, same as the shader default.
 const DEFAULT_PRIMARY := Color(0.290196, 0.313725, 0.223529)
 
-## Render layers for every model mesh. Default 2 (layer 2 only, not 1).
-@export_flags_3d_render var model_layers: int = 2
+const LAYERS_VISIBLE := 1  ## layer 1 only
+const LAYERS_FIRST_PERSON_HIDDEN := 2  ## layer 2 only
+
+## True on the local player only: meshes go to layer 2 so its own camera can cull them.
+## Safe to set at runtime and before _ready (re-applied in _ready).
+@export var first_person_hidden: bool = false:
+	set = set_first_person_hidden
 @export var primary_color: Color = DEFAULT_PRIMARY
 
 var _primary_meshes: Array[MeshInstance3D] = []
@@ -42,6 +51,7 @@ func _ready() -> void:
 	if _primary_meshes.is_empty():
 		push_warning("PlayerModel: no mat_armor meshes found; primary tint will do nothing.")
 	set_primary_color(primary_color)
+	_apply_layers()
 
 
 ## The only tint entry point. Safe to call before the node is in the tree (applied in _ready).
@@ -50,6 +60,18 @@ func set_primary_color(color: Color) -> void:
 	var value := Vector3(color.r, color.g, color.b)
 	for mesh: MeshInstance3D in _primary_meshes:
 		mesh.set_instance_shader_parameter(PRIMARY_PARAM, value)
+
+
+func set_first_person_hidden(hidden: bool) -> void:
+	first_person_hidden = hidden
+	_apply_layers()
+
+
+func _apply_layers() -> void:
+	var layer_bits := LAYERS_FIRST_PERSON_HIDDEN if first_person_hidden else LAYERS_VISIBLE
+	for mesh: MeshInstance3D in _all_meshes:
+		mesh.layers = layer_bits
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 
 ## Primary-armor meshes (mat_armor), e.g. for outlines or hit flashes.
@@ -72,7 +94,6 @@ func _collect(node: Node) -> void:
 
 func _setup_mesh(mesh: MeshInstance3D) -> void:
 	_all_meshes.append(mesh)
-	mesh.layers = model_layers
 	var source := mesh.mesh.surface_get_material(0)
 	var key := StringName(source.resource_name) if source != null else &""
 	var material: Material = MATERIAL_BY_NAME.get(key)

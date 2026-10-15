@@ -17,6 +17,14 @@
   (mat_accent #9c3b2a, left pauldron + left helmet stripe). All matte, roughness 0.9.
   `player_model.gd` swaps the glb's imported materials for these by name on `_ready`.
 - Tint: `set_primary_color(color)` sets the `primary_color` instance uniform on every mat_armor mesh.
-- Render layers: all meshes `layers = 2` (layer 2 only).
+- Render layers: `first_person_hidden` (export, default false; setter works at runtime and
+  before `_ready`, and is re-applied in `_ready`).
+  - false: every mesh `layers = 1` (layer 1 only). Use for remote players, bots, dummies.
+  - true: every mesh `layers = 2` (layer 2 only). Set on the LOCAL player only, and clear bit 2
+    from that player's first-person camera `cull_mask`.
+  - `cast_shadow = SHADOW_CASTING_SETTING_ON` in both states, so the local player keeps its shadow.
+- Key heights (m): chest 1.12-1.40, collar top 1.46, pauldron tops 1.46, neck 1.40-1.54,
+  helmet shell 1.52-1.81 (chin guard to 1.51, rear flap to 1.49), visor 1.52-1.672,
+  visor centre 1.6035 (at x 0).
 - Wiring (not done yet): instance `player_model.tscn` as `PlayerModel` directly under the Player
-  root, and clear layer 2 from the local first-person camera's `cull_mask`.
+  root; set `first_person_hidden = true` on the local player.
