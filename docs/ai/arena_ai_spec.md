@@ -82,7 +82,7 @@ Memory 4 s; a target lost for > 1 s costs a new reaction delay on reacquire.
    Pistol/rifle scores stay 2.0 in band, 0.5 / -0.5 out of band.
    | Role | Score | Band (m) | Fire / aim |
    |---|---|---|---|
-   | Combat Shotgun | 4.0 under 7 m (+3 m held), 1.0 under 15 m, else -1.0 | 0-4: carrying a loaded shotgun with the target under 14 m, the bot pushes in | paced pumps; body only (no head bonus) |
+   | Combat Shotgun | 4.0 under 7 m (+3 m held), 1.0 under 15 m, else -1.0 | 0-4: carrying a loaded shotgun with the target under 14 m, the bot pushes in | paced pumps; body while shielded, head blast (centre pellet on the head, x4 health) once the shield is down |
    | Marksman Carbine | 3.5 from 12 m (-3 m held), else 0.5 (rifle wins close) | 15-50 | paced semi at `semi_cadence`; zooms past 25 m when `uses_zoom`; head on bare health |
    | Directed Energy Rifle | 3.5 on a shielded target under 30 m (+3 m held); -1.5 once the shield is down (swap to the precision gun: the DER + pistol combo); -2.0 at heat >= 0.85 or overheated; -100 with a flat battery | 6-20 | AUTO sprays; lets go at heat 0.85, resumes at 0.4; body only |
    DER charge shots: rolled per engagement with `weapon_switch_skill`. If on, a cool DER with

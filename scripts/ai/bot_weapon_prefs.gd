@@ -17,7 +17,7 @@ const ROLE_BY_PATH := {
 	"res://resources/weapons/combat_shotgun.tres": Role.SHOTGUN,
 	"res://resources/weapons/directed_energy_rifle.tres": Role.ENERGY,
 }
-## Preferred engagement bands (m) for the new roles. Shotgun: inside its 3 m full-damage range,
+## Preferred engagement bands (m) for the new roles. Shotgun: well inside its 6 m full-damage range,
 ## so the bot pushes in. Carbine: mid-long, inside its 50 m full-damage range. Energy: inside the
 ## 20 m bolt falloff start.
 const RANGE_CARBINE := Vector2(15.0, 50.0)
@@ -109,7 +109,8 @@ static func score(
 	return 2.0 if dist >= split else 0.5
 
 
-## True when the gun gives the head no bonus (shotgun, DER): aim centre mass.
+## True when the gun gives the head no bonus (DER): aim centre mass. The shotgun has one (a head
+## blast: the centre pellet on the head), so a bot goes for it once the shield is down.
 static func body_only(w: Weapon) -> bool:
 	return (
 		w != null
