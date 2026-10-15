@@ -133,7 +133,8 @@ var heat_charge: WeaponHeatCharge
 ## was written since the last shot (netcode replay), else randi(). last_shot_seed is the seed
 ## the last shot used. next_shot_spread >= 0 overrides get_spread() for the next shot only.
 ## Draw order per shot: 2 randf for a single ray (radius, angle); a blast 2 for pellet 0 (the
-## centre, aimed and assisted like a single ray), then 2 per further pellet (2 x pellet_count).
+## centre, aimed and assisted like a single ray), then 2 per further pellet (2 x pellet_count);
+## then 1 for the recoil yaw (_kick). Nothing in the shot path reads the global RNG.
 var last_shot_seed: int = 0
 var next_shot_seed: int = 0:
 	set(value):
@@ -933,7 +934,8 @@ func add_view_kick(pitch_deg: float) -> void:
 
 func _kick() -> void:
 	_recoil.x += deg_to_rad(data.recoil_pitch)
-	_recoil.y += deg_to_rad(randf_range(-data.recoil_yaw, data.recoil_yaw))
+	# Seeded: the shot's last _spread_rng draw (after its rays), so replays kick the same way.
+	_recoil.y += deg_to_rad(_spread_rng.randf_range(-data.recoil_yaw, data.recoil_yaw))
 
 
 func _update_recoil(delta: float) -> void:
