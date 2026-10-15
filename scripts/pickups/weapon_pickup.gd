@@ -212,7 +212,8 @@ func net_set_available(on: bool) -> void:
 	available = on
 	pivot.visible = on
 	var method := &"register_pickup" if on else &"unregister_pickup"
-	for carrier: Object in _carriers.keys():
+	# Untyped: a freed carrier key can't be assigned to an Object-typed variable.
+	for carrier in _carriers.keys():
 		if is_instance_valid(carrier) and carrier.has_method(method):
 			carrier.call(method, self)
 
@@ -223,7 +224,7 @@ func _physics_process(delta: float) -> void:
 	pivot.rotation.y += SPIN_SPEED * delta
 	if not available or not is_authority():
 		return
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if not available:
 			return
 		if is_instance_valid(carrier):
@@ -253,7 +254,7 @@ func _ammo_offered() -> int:
 func _consume() -> void:
 	available = false
 	pivot.visible = false
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if is_instance_valid(carrier) and carrier.has_method(&"unregister_pickup"):
 			carrier.call(&"unregister_pickup", self)
 	if dropped or weapon_scene == null:
@@ -269,7 +270,7 @@ func _respawn() -> void:
 	weapon = weapon_scene.instantiate() as Weapon
 	available = true
 	pivot.visible = true
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if is_instance_valid(carrier) and carrier.has_method(&"register_pickup"):
 			carrier.call(&"register_pickup", self)
 
@@ -293,7 +294,7 @@ func _on_body_entered(body: Node3D) -> void:
 func _on_body_exited(body: Node3D) -> void:
 	if not _bodies.has(body):
 		return
-	var carrier: Object = _bodies[body]
+	var carrier: Variant = _bodies[body]  # may be a freed carrier: no Object-typed assignment
 	_bodies.erase(body)
 	var count: int = _carriers.get(carrier, 1) - 1
 	if count > 0:

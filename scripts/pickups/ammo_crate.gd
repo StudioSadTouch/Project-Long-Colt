@@ -76,7 +76,7 @@ func net_set_available(on: bool) -> void:
 func _physics_process(_delta: float) -> void:
 	if not available:
 		return
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if is_instance_valid(carrier) and give(carrier):
 			return
 
@@ -114,7 +114,7 @@ func _on_body_entered(body: Node3D) -> void:
 func _on_body_exited(body: Node3D) -> void:
 	if not _bodies.has(body):
 		return
-	var carrier: Object = _bodies[body]
+	var carrier: Variant = _bodies[body]  # may be a freed carrier: no Object-typed assignment
 	_bodies.erase(body)
 	var count := int(_carriers.get(carrier, 1)) - 1
 	if count > 0:
