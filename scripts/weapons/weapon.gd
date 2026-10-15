@@ -132,8 +132,8 @@ var heat_charge: WeaponHeatCharge
 ## Every shot (single ray, pellets, charged) reseeds _spread_rng once: next_shot_seed if one
 ## was written since the last shot (netcode replay), else randi(). last_shot_seed is the seed
 ## the last shot used. next_shot_spread >= 0 overrides get_spread() for the next shot only.
-## Draw order per shot: 2 randf for a single ray (radius, angle); pellets 2 for the centre,
-## then 2 per pellet in order.
+## Draw order per shot: 2 randf for a single ray (radius, angle); a blast 2 for pellet 0 (the
+## centre, aimed and assisted like a single ray), then 2 per further pellet (2 x pellet_count).
 var last_shot_seed: int = 0
 var next_shot_seed: int = 0:
 	set(value):
@@ -509,15 +509,35 @@ func _shot_spread() -> float:
 	return spread
 
 
-## The shot spread picks the pattern centre, each pellet scatters within data.pellet_spread of
-## it, all from the shot's _spread_rng seed (same seed + aim = same pellets). No bend.
+## A blast. Pellet 0 is the exact aim ray (shot spread + aim assist / bend, as a single shot);
+## pellets 1.. scatter within data.pellet_spread around it. Seeded from _spread_rng: 2 draws for
+## pellet 0, then 2 per further pellet (2 x pellet_count). Pellets on the same victim are summed
+## (each with its own falloff) into ONE take_damage per victim per blast, so no-bleedthrough
+## holds per blast. Zone = pellet 0's: head only if the centre ray hit that victim's head zone,
+## otherwise body. info is the first pellet's on that victim, plus pellet_hits.
 func _emit_pellets(damage_scale: float = 1.0) -> void:
-	_bent = false
+	var centre := _assisted_direction(_spread_direction(_shot_spread())).normalized()
 	var basis := _aim().global_transform.basis
-	var centre := _cone_offset(_shot_spread(), _spread_rng)
-	for _i in data.pellet_count:
-		var offset := centre + _cone_offset(data.pellet_spread, _spread_rng)
-		_fire_ray((basis * Vector3(offset.x, offset.y, -1.0)).normalized(), damage_scale)
+	basis = Basis(Quaternion(-basis.z.normalized(), centre)) * basis
+	var blasts := {}  # victim -> {target, amount, info}, in first-hit order
+	for i in data.pellet_count:
+		var direction := centre
+		if i > 0:
+			var offset := _cone_offset(data.pellet_spread, _spread_rng)
+			direction = (basis * Vector3(offset.x, offset.y, -1.0)).normalized()
+		var shot := _trace_ray(direction, damage_scale)
+		if shot.is_empty():
+			continue
+		if not blasts.has(shot.target):
+			if i > 0:
+				_set_zone(shot.info, HitZone.BODY)
+			shot.info["pellet_hits"] = 0
+			blasts[shot.target] = shot
+		else:
+			blasts[shot.target].amount += shot.amount
+		blasts[shot.target].info.pellet_hits += 1
+	for blast in blasts.values():
+		_apply_hit(blast.target, blast.amount, blast.info)
 
 
 ## Uniform point in a cone (half-angle in degrees) as a tangent-plane offset at z = -1.
@@ -694,27 +714,47 @@ func _apply_melee(hit: Dictionary) -> void:
 
 ## damage_scale: charged shots (1.0 for everything else).
 func _fire_ray(direction: Vector3, damage_scale: float = 1.0) -> void:
+	var shot := _trace_ray(direction, damage_scale)
+	if not shot.is_empty():
+		_apply_hit(shot.target, shot.amount, shot.info)
+
+
+## One ray, resolved but not applied: {target, amount, info}, or {} if nothing damageable.
+func _trace_ray(direction: Vector3, damage_scale: float) -> Dictionary:
 	var hit := _raycast(direction, data.max_range)
 	if hit.is_empty():
-		return
+		return {}
 	var target := _damage_receiver(hit.collider)
 	if target == null:
-		return
+		return {}
 	# Body-only bend mode: bent rays never score a head zone (visor probe skipped too).
 	var zone := HitZone.BODY if _bent else _resolve_zone(hit, direction, target)
 	_bent = false
 	var distance: float = _aim().global_position.distance_to(hit.position)
-	var amount := data.damage * _falloff(distance) * damage_scale
+	var info := _hit_info(hit, direction, zone)
+	_set_zone(info, zone)
+	info["shield_multiplier"] = data.shield_damage_multiplier
+	info["bleedthrough"] = data.bleedthrough
+	return {
+		"target": target, "amount": data.damage * _falloff(distance) * damage_scale, "info": info
+	}
+
+
+## Zone fields and the health multiplier for that zone (head multipliers x health multiplier).
+func _set_zone(info: Dictionary, zone: HitZone) -> void:
 	var zone_multiplier := 1.0
 	match zone:
 		HitZone.HEAD_ARMORED:
 			zone_multiplier = data.headshot_armored_multiplier
 		HitZone.HEAD_UNARMORED:
 			zone_multiplier = data.headshot_unarmored_multiplier
-	var info := _hit_info(hit, direction, zone)
+	info["hit_zone"] = zone
+	info["hit_zone_name"] = ZONE_NAMES[zone]
+	info["headshot"] = zone != HitZone.BODY
 	info["zone_multiplier"] = zone_multiplier * data.health_damage_multiplier
-	info["shield_multiplier"] = data.shield_damage_multiplier
-	info["bleedthrough"] = data.bleedthrough
+
+
+func _apply_hit(target: Object, amount: float, info: Dictionary) -> void:
 	target.take_damage(amount, info)
 	hit_confirmed.emit(target, info)
 

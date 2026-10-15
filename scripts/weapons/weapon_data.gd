@@ -49,11 +49,13 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 @export var burst_cooldown: float = 0.35
 
 @export_group("Pellets")
-## Rays per shot (shotguns). 1 = the classic single ray (bend and global randf, unchanged).
-## > 1: each pellet is its own hit through the shared ray path, so shields and zones resolve per
-## pellet. Directions come from Weapon's seedable _spread_rng (see Weapon.set_next_shot_seed).
+## Rays per shot (shotguns). 1 = the classic single ray.
+## > 1: a blast (Weapon._emit_pellets). Pellet 0 is the aim ray itself (spread, assist, bend);
+## the rest scatter around it. Each pellet traces the shared ray path with its own falloff, then
+## all pellets on one victim are summed into ONE take_damage, zoned by pellet 0 (head only if
+## the centre ray hit the head). Directions come from Weapon's seeded _spread_rng.
 @export var pellet_count: int = 1
-## Pellet cone half-angle in degrees, around the (bloomed) aim ray.
+## Pellet cone half-angle in degrees, around pellet 0 (the bloomed, assisted aim ray).
 @export var pellet_spread: float = 0.0
 
 @export_group("Ammo")
