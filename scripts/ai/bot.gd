@@ -40,6 +40,7 @@ const CROUCH_EYE := 0.95
 const PITCH_LIMIT := 89.0
 const FLOOR_SNAP := 0.3
 const FLOOR_MAX_ANGLE_DEG := 50.0
+const STEP_HEIGHT := 0.35
 
 const SLOT_COUNT := 2
 const ENEMY_LAYER := 4
@@ -392,7 +393,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 	if airborne:
 		velocity.y -= gravity * delta * 0.5
-	move_and_slide()
+	StepUp.move_and_slide(self, STEP_HEIGHT, on_floor_before, jumped)
 	if airborne and not is_on_floor():
 		velocity.y -= gravity * delta * 0.5
 	if jumped:

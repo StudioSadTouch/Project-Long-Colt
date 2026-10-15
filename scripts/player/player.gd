@@ -39,6 +39,8 @@ const HURTBOX_HEIGHT := 1.46
 const HURTBOX_MIN_HEIGHT := 0.7
 ## get_aim_points().body height above the Rig origin, as DummyCore and Bot.
 const BODY_AIM_HEIGHT := 0.7
+## Step camera smoothing: the -dy view offset decays at this rate per second (~0.1 s to 5%).
+const STEP_SMOOTH_RATE := 30.0
 
 @export var stand_speed: float = 7.5
 @export var crouch_speed: float = 3.2
@@ -52,6 +54,8 @@ const BODY_AIM_HEIGHT := 0.7
 @export var slide_speed: float = 9.2
 @export var slide_duration: float = 0.5
 @export var slide_decel: float = 10.0
+## Auto step-up / step-down height (StepUp, shared with Bot). 0 = off.
+@export var step_height: float = 0.35
 @export var mouse_sensitivity: float = 0.0022
 @export var eye_blend_speed: float = 12.0
 @export var fov: float = 75.0
@@ -87,6 +91,8 @@ var last_damage_info: Dictionary = {}
 
 var _eye_height: float = STAND_EYE
 var _landing_dip: float = 0.0
+## Camera-only vertical offset that hides step-ups/downs (and small net snaps); decays to 0.
+var _view_offset: float = 0.0
 var _coyote_left: float = 0.0
 var _jump_buffer_left: float = 0.0
 var _crouch_edge: bool = false
@@ -218,7 +224,9 @@ func _physics_process(delta: float) -> void:
 	if airborne:
 		velocity.y -= gravity * delta * 0.5
 
-	move_and_slide()
+	var stepped := StepUp.move_and_slide(self, step_height, on_floor_before, jumped)
+	if stepped != 0.0:
+		absorb_view_offset(stepped)
 
 	if airborne and not is_on_floor():
 		velocity.y -= gravity * delta * 0.5
@@ -282,6 +290,7 @@ func respawn_at(xform: Transform3D) -> void:
 	crouched = false
 	_eye_height = STAND_EYE
 	_landing_dip = 0.0
+	_view_offset = 0.0
 	_coyote_left = 0.0
 	_jump_buffer_left = 0.0
 	_crouch_edge = false
@@ -404,6 +413,12 @@ func cancel_lunge() -> void:
 
 func is_lunging() -> bool:
 	return _lunge_left > 0.0
+
+
+## The body just moved up by dy (a step, or a small net correction): offset the camera by -dy so
+## the view eases there instead of popping. Camera only; hitboxes follow the body at once.
+func absorb_view_offset(dy: float) -> void:
+	_view_offset = clampf(_view_offset - dy, -step_height * 2.0, step_height * 2.0)
 
 
 func _apply_look(relative: Vector2) -> void:
@@ -552,7 +567,10 @@ func _update_head(delta: float) -> void:
 	var target := CROUCH_EYE if crouched else STAND_EYE
 	_eye_height = move_toward(_eye_height, target, eye_blend_speed * delta)
 	_landing_dip = move_toward(_landing_dip, 0.0, 0.45 * delta)
-	head.position.y = _eye_height - _landing_dip
+	_view_offset *= exp(-STEP_SMOOTH_RATE * delta)
+	if absf(_view_offset) < 0.001:
+		_view_offset = 0.0
+	head.position.y = _eye_height - _landing_dip + _view_offset
 	camera.rotation = Vector3(view_kick.x, view_kick.y, 0.0)
 	_apply_hit_pose()
 
