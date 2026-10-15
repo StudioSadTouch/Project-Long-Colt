@@ -74,6 +74,9 @@ var _spray_left: float = 0.0
 var _pause_left: float = 0.0
 var _next_press_at: float = 0.0
 var _press_held: bool = false
+## DER: letting heat drop (BotWeaponPrefs.keep_cooling); charge shots rolled per engagement.
+var _cooling: bool = false
+var _use_charge: bool = false
 # movement
 var _goal: Vector3 = Vector3.ZERO
 var _has_goal: bool = false
@@ -341,6 +344,7 @@ func _on_engage_start() -> void:
 	# A full first spray (0 would fire one round, then a full pause).
 	_spray_left = _diff.spray_time
 	_pause_left = 0.0
+	_use_charge = _rng.randf() < _diff.weapon_switch_skill
 	_has_goal = false
 	_pickup = null
 	var entry := _target_entry()
@@ -365,8 +369,9 @@ func _choose_pickup(radius: float) -> bool:
 			continue
 		var d := _bot.global_position.distance_to(p.global_position)
 		# Prefer pickups that solve the actual problem: ammo for what we carry, or a new gun.
-		if _bot.find_weapon(p.get_weapon_id()) == null and _all_ammo() > 0:
-			d *= 1.5
+		# Roster power weapons (BotWeaponPrefs.pickup_weight) are worth a detour.
+		if _bot.find_weapon(p.get_weapon_id()) == null:
+			d *= (1.5 if _all_ammo() > 0 else 1.0) * BotWeaponPrefs.pickup_weight(p)
 		if d < best_d:
 			best_d = d
 			best = p
@@ -394,6 +399,9 @@ func _choose_weapon(dist: float) -> void:
 func _weapon_score(w: BotWeapon, dist: float, held: bool) -> float:
 	if w == null or w.data == null or _bot.total_ammo(w) <= 0:
 		return -100.0
+	var roster := BotWeaponPrefs.score(w, dist, held, _target_shielded())
+	if not is_nan(roster):
+		return roster
 	var auto := w.data.fire_mode == WeaponData.FireMode.AUTO
 	var split := WEAPON_SPLIT
 	if held:
@@ -469,9 +477,7 @@ func _do_engage(delta: float) -> Vector3:
 			if not points.is_empty() and _bot.try_melee(target, points.body):
 				_release_trigger()
 	# Range keeping, scaled by aggression.
-	var band := RANGE_RIFLE
-	if weapon != null and weapon.data != null and weapon.data.fire_mode != WeaponData.FireMode.AUTO:
-		band = RANGE_PISTOL
+	var band := BotWeaponPrefs.band_for(weapon, _bot.slots, dist, RANGE_RIFLE, RANGE_PISTOL)
 	var to_target := target.global_position - _bot.global_position
 	to_target.y = 0.0
 	var fwd := to_target.normalized() if to_target.length_squared() > 0.01 else Vector3.FORWARD
@@ -526,7 +532,7 @@ func _aim_at_target(delta: float) -> void:
 		_aim_head = _rng.randf() < _diff.headshot_bias
 	_target_was_shielded = shielded
 	var point: Vector3 = points.body
-	if _aim_head and not _bot.is_lunging():
+	if _aim_head and not _bot.is_lunging() and not BotWeaponPrefs.body_only(weapon):
 		if (
 			points.has("face")
 			and weapon != null
@@ -587,7 +593,15 @@ func _fire(weapon: BotWeapon, desired: Vector3, dist: float, delta: float) -> vo
 		_release_trigger()
 		return
 	var tolerance := atan(0.45 / maxf(dist, 0.5)) + deg_to_rad(_diff.fire_tolerance_deg)
-	if _track_dir.angle_to(desired) > tolerance:
+	var aligned := _track_dir.angle_to(desired) <= tolerance
+	if weapon.fire_mode == WeaponData.FireMode.CHARGE:
+		_fire_charge(weapon, aligned)
+		return
+	if not aligned:
+		_release_trigger()
+		return
+	_cooling = BotWeaponPrefs.keep_cooling(weapon, _cooling)
+	if _cooling:
 		_release_trigger()
 		return
 	if weapon.fire_mode == WeaponData.FireMode.AUTO:
@@ -634,10 +648,25 @@ func _manage_modes(weapon: BotWeapon, dist: float) -> void:
 		if not weapon.alt_mode and want_alt or weapon.alt_mode and dist < _diff.burst_switch_range:
 			weapon.toggle_fire_mode()
 			_press_held = false
+	if BotWeaponPrefs.sync_charge_mode(weapon, _use_charge, dist, target):
+		_press_held = false
 	if data.secondary == WeaponData.Secondary.ZOOM:
 		var want_zoom := _diff.uses_zoom and dist > ZOOM_RANGE and not weapon.reloading
 		if want_zoom != weapon.zoomed:
 			weapon.set_zoom(want_zoom)
+
+
+## CHARGE mode: hold to charge (keep holding while off target), release once full and on target.
+func _fire_charge(weapon: BotWeapon, aligned: bool) -> void:
+	if weapon.charging:
+		if weapon.charge >= 1.0 and aligned:
+			_release_trigger()
+		return
+	if not aligned or _press_held:
+		_release_trigger()
+		return
+	weapon.trigger(true, true)
+	_press_held = true
 
 
 func _release_trigger() -> void:
