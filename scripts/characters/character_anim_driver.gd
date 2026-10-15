@@ -7,12 +7,15 @@ extends Node
 ## Tree (parameters/<name>):
 ##   Locomotion (StateMachine: Ground and Crouch = BS2D -> TimeScale "rate" (playback follows
 ##     the synced velocity, see loco_rate), StopSettle, JumpStart -> Fall,
-##     Land -> Ground, Slide)                                                  full body
-##   weapon (Transition none/rifle/pistol of aim_<w> BS1D down/mid/up)          upper only
+##     Land -> Ground, Slide; stand/crouch/slide changes cross-fade loco_xfade)  full body
+##   weapon (Transition none/rifle/pistol of aim_<w> BS1D down/down_half/mid/up_half/up)
+##                                                                              upper only
 ##   -> action_shot (OneShot, reload/melee/switch, scaled by action_scale)
 ##   -> crouch_add (Add2 + crouch_weapon Transition of crouch_upper_<w>, amount = crouch)
 ##   upper_blend (Blend2, filtered to upper_body_paths): Locomotion + crouch_add
 ##   -> fire_shot (OneShot ADD) -> flinch_shot (OneShot ADD)
+##   -> pump_add (Add2: pump_weapon Transition of run_pump_<w> -> pump_rate -> pump_seek,
+##      phase-locked to the locomotion cycle, amount from synced speed, see _update_pump)
 ##   -> life (Transition alive / dead: death_anim) -> output
 ##
 ## Usage: apply_state(state) every physics tick (authority) or per snapshot (remote).
@@ -78,6 +81,16 @@ const DIRS := {
 @export var crouch_smoothing: float = 14.0
 ## Horizontal speed (m/s) above which coming to a stop plays stop_settle.
 @export var settle_from_speed: float = 2.0
+## Cross-fade (s) for stand <-> crouch <-> slide changes in the locomotion state machine.
+@export var loco_xfade: float = 0.13
+## Run pump (upper-body additive): weight ramps from 0 at pump_start_speed to 1 at
+## pump_full_speed (synced horizontal speed, m/s); off when crouched, sliding, airborne and
+## while reload / melee / switch play. pump_cycle must match the generator's CYCLE.
+@export var pump_start_speed: float = 3.5
+@export var pump_full_speed: float = 7.5
+@export var pump_cycle: float = 0.6
+## Pump weight smoothing (1/s). 0 = snap.
+@export var pump_smoothing: float = 10.0
 @export var action_fade_in: float = 0.08
 @export var action_fade_out: float = 0.12
 ## False: on death only death_started is emitted and the tree is frozen (ragdoll mode).
@@ -98,6 +111,11 @@ var _crouch_amount: float = 0.0
 var _was_on_floor: bool = true
 var _prev_speed: float = 0.0
 var _loco_rate: float = 1.0
+var _pump_weight: float = 0.0
+var _pump_phase: float = 0.0
+var _phase_node: StringName = &""
+## "from>to" pairs of locomotion states joined by a cross-fade transition (travel, not start).
+var _xfade_pairs: Dictionary = {}
 
 
 func _ready() -> void:
@@ -122,9 +140,11 @@ func apply_state(state: CharacterAnimState) -> void:
 		_crouch_amount = 1.0 if state.crouched or state.sliding else 0.0
 		_move_blend = Vector2.ZERO
 		_loco_rate = 1.0
+		_pump_weight = 0.0
 		_set_life(state, false)
 		if not state.dead:
 			_playback.start(ST_CROUCH if state.crouched else ST_GROUND)
+			_restart_phase(ST_CROUCH if state.crouched else ST_GROUND)
 		state_applied.emit(state)
 		return
 	var delta := get_physics_process_delta_time()
@@ -133,6 +153,7 @@ func apply_state(state: CharacterAnimState) -> void:
 		_update_locomotion(state, delta)
 		_update_upper(state, delta)
 		_update_one_shots(state)
+		_update_pump(state, delta)
 	_was_on_floor = state.on_floor
 	_last = CharacterAnimState.from_dict(state.to_dict())
 	state_applied.emit(state)
@@ -145,6 +166,7 @@ func _update_life(state: CharacterAnimState) -> void:
 		if not state.dead:
 			tree.active = true
 			_playback.start(ST_GROUND)
+			_restart_phase(ST_GROUND)
 
 
 func _set_life(state: CharacterAnimState, emit: bool) -> void:
@@ -208,7 +230,10 @@ func _update_locomotion(state: CharacterAnimState, delta: float) -> void:
 	else:
 		wanted = ST_GROUND
 	if wanted != current:
-		_playback.start(wanted)
+		if _xfade_pairs.has("%s>%s" % [current, wanted]):
+			_playback.travel(wanted)
+		else:
+			_playback.start(wanted)
 	_prev_speed = speed
 
 
@@ -241,6 +266,39 @@ func _update_upper(state: CharacterAnimState, delta: float) -> void:
 	else:
 		_crouch_amount = crouch_target
 	tree.set(&"parameters/crouch_add/add_amount", _crouch_amount)
+
+
+## start() restarts a state at 0 even when it is already current: restart the pump clock too.
+func _restart_phase(node: StringName) -> void:
+	_phase_node = node
+	_pump_phase = 0.0
+
+
+## Run pump: phase follows the Ground state's own clock (it restarts at 0 whenever Ground is
+## entered and advances at the locomotion rate, like the synced blendspace), so the additive's
+## footfalls stay on the legs' footfalls. Weight from the synced velocity only.
+func _update_pump(state: CharacterAnimState, delta: float) -> void:
+	var current := _playback.get_current_node()
+	if current != _phase_node:
+		_phase_node = current
+		_pump_phase = 0.0
+	elif pump_cycle > 0.0:
+		_pump_phase = fposmod(_pump_phase + delta * _loco_rate, pump_cycle)
+	var speed := Vector2(state.velocity.x, state.velocity.z).length()
+	var target := smoothstep(pump_start_speed, pump_full_speed, speed)
+	if current != ST_GROUND or not state.on_floor or state.crouched or state.sliding:
+		target = 0.0
+	if bool(tree.get(&"parameters/action_shot/active")):
+		target = 0.0
+	if pump_smoothing > 0.0:
+		_pump_weight = lerpf(_pump_weight, target, 1.0 - exp(-pump_smoothing * delta))
+	else:
+		_pump_weight = target
+	var idx := clampi(state.weapon_type, 0, WEAPON_INPUTS.size() - 1)
+	tree.set(&"parameters/pump_weapon/transition_request", WEAPON_INPUTS[idx])
+	tree.set(&"parameters/pump_rate/scale", _loco_rate)
+	tree.set(&"parameters/pump_seek/seek_request", _pump_phase)
+	tree.set(&"parameters/pump_add/add_amount", _pump_weight)
 
 
 func _update_one_shots(state: CharacterAnimState) -> void:
@@ -336,7 +394,9 @@ func _build_tree() -> void:
 		aim.min_space = -1.0
 		aim.max_space = 1.0
 		aim.add_blend_point(_anim(StringName("aim_%s_down" % w)), -1.0)
+		aim.add_blend_point(_anim(StringName("aim_%s_down_half" % w)), -0.5)
 		aim.add_blend_point(_anim(StringName("aim_%s_mid" % w)), 0.0)
+		aim.add_blend_point(_anim(StringName("aim_%s_up_half" % w)), 0.5)
 		aim.add_blend_point(_anim(StringName("aim_%s_up" % w)), 1.0)
 		root.add_node(StringName("aim_%s" % w), aim, Vector2(-300, 200 + i * 100))
 		root.connect_node(&"weapon", i, StringName("aim_%s" % w))
@@ -378,14 +438,35 @@ func _build_tree() -> void:
 	root.connect_node(&"flinch_shot", 0, &"fire_shot")
 	root.connect_node(&"flinch_shot", 1, &"flinch_anim")
 
+	# Run pump additive, phase-locked to locomotion (seeked every tick, rated in between).
+	var pump_weapon := AnimationNodeTransition.new()
+	pump_weapon.xfade_time = 0.15
+	for i in WEAPON_INPUTS.size():
+		var w: String = WEAPON_INPUTS[i]
+		pump_weapon.add_input(w)
+		var pump_clip := StringName("run_pump_%s" % w)
+		root.add_node(pump_clip, _anim(pump_clip), Vector2(700, 500 + i * 100))
+	root.add_node(&"pump_weapon", pump_weapon, Vector2(900, 500))
+	for i in WEAPON_INPUTS.size():
+		root.connect_node(&"pump_weapon", i, StringName("run_pump_%s" % WEAPON_INPUTS[i]))
+	root.add_node(&"pump_rate", AnimationNodeTimeScale.new(), Vector2(1050, 500))
+	root.connect_node(&"pump_rate", 0, &"pump_weapon")
+	root.add_node(&"pump_seek", AnimationNodeTimeSeek.new(), Vector2(1200, 500))
+	root.connect_node(&"pump_seek", 0, &"pump_rate")
+	var pump_add := AnimationNodeAdd2.new()
+	_apply_filter(pump_add)
+	root.add_node(&"pump_add", pump_add, Vector2(1100, 100))
+	root.connect_node(&"pump_add", 0, &"flinch_shot")
+	root.connect_node(&"pump_add", 1, &"pump_seek")
+
 	_death_anim = _anim(&"")
 	root.add_node(&"death_anim", _death_anim, Vector2(900, 300))
 	var life := AnimationNodeTransition.new()
 	life.add_input("alive")
 	life.add_input("dead")
 	life.xfade_time = 0.08
-	root.add_node(&"life", life, Vector2(1100, 100))
-	root.connect_node(&"life", 0, &"flinch_shot")
+	root.add_node(&"life", life, Vector2(1300, 100))
+	root.connect_node(&"life", 0, &"pump_add")
 	root.connect_node(&"life", 1, &"death_anim")
 	root.connect_node(&"output", 0, &"life")
 
@@ -399,6 +480,7 @@ func _build_tree() -> void:
 	# Without a filter the upper layer would replace the legs, so it stays off until paths exist.
 	tree.set(&"parameters/upper_blend/blend_amount", 0.0 if upper_body_paths.is_empty() else 1.0)
 	tree.set(&"parameters/crouch_add/add_amount", 0.0)
+	tree.set(&"parameters/pump_add/add_amount", 0.0)
 	_playback = tree.get(&"parameters/Locomotion/playback")
 	_playback.start(ST_GROUND)
 
@@ -433,6 +515,24 @@ func _build_locomotion() -> AnimationNodeStateMachine:
 	sm.add_transition(ST_JUMP, ST_FALL, _auto_at_end(0.05))
 	sm.add_transition(ST_LAND, ST_GROUND, _auto_at_end(0.1))
 	sm.add_transition(ST_SETTLE, ST_GROUND, _auto_at_end(0.1))
+	# Stand / crouch / slide: short cross-fades instead of instant switches, so the pelvis
+	# height drop (crouch hitbox and eye height already move smoothly) doesn't pop.
+	_xfade_pairs.clear()
+	var pairs := [
+		[ST_GROUND, ST_SLIDE],
+		[ST_SLIDE, ST_GROUND],
+		[ST_CROUCH, ST_SLIDE],
+		[ST_SLIDE, ST_CROUCH],
+		[ST_GROUND, ST_CROUCH],
+		[ST_CROUCH, ST_GROUND],
+		[ST_LAND, ST_CROUCH],
+		[ST_SETTLE, ST_CROUCH],
+		[ST_LAND, ST_SLIDE],
+		[ST_SETTLE, ST_SLIDE],
+	]
+	for pair: Array in pairs:
+		sm.add_transition(pair[0], pair[1], _xfade(loco_xfade))
+		_xfade_pairs["%s>%s" % [pair[0], pair[1]]] = true
 	return sm
 
 
@@ -450,6 +550,15 @@ func _auto_at_end(xfade: float) -> AnimationNodeStateMachineTransition:
 	var t := AnimationNodeStateMachineTransition.new()
 	t.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_AT_END
 	t.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_AUTO
+	t.xfade_time = xfade
+	return t
+
+
+## Immediate cross-fade, taken only when the driver travels to it.
+func _xfade(xfade: float) -> AnimationNodeStateMachineTransition:
+	var t := AnimationNodeStateMachineTransition.new()
+	t.switch_mode = AnimationNodeStateMachineTransition.SWITCH_MODE_IMMEDIATE
+	t.advance_mode = AnimationNodeStateMachineTransition.ADVANCE_MODE_ENABLED
 	t.xfade_time = xfade
 	return t
 

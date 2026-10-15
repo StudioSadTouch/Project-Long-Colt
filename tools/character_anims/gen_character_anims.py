@@ -201,6 +201,11 @@ class Pose:
     def __init__(self):
         self.rot = {j: I3.copy() for j in ALL}
         self.pelvis = PELVIS_REST.copy()
+        self.tr = {}  # joint -> extra translation in the parent's space (Abdomen, Chest)
+
+    def copy(self):
+        p = Pose(); p.pelvis = self.pelvis.copy(); p.rot = dict(self.rot); p.tr = dict(self.tr)
+        return p
 
     def world(self):
         W = {"Pelvis": (self.rot["Pelvis"], self.pelvis.copy())}
@@ -214,7 +219,8 @@ class Pose:
                   "Thigh_R": "Pelvis", "Shin_R": "Thigh_R", "Boot_R": "Shin_R"}
         for j in order:
             Rp, pp = W[parent[j]]
-            W[j] = (Rp @ self.rot[j], pp + Rp @ OFF[j])
+            off = OFF[j] + self.tr[j] if j in self.tr else OFF[j]
+            W[j] = (Rp @ self.rot[j], pp + Rp @ off)
         return W
 
 
@@ -283,13 +289,85 @@ HOLDS = {
 POUCH_W = np.array([-0.17, 0.98, -0.12])  # left front belt pouch, model space (stand)
 
 
-# Share of the aim pitch taken by abdomen / chest (rest: neck + head + arms). v1.2: was
-# 0.25 / 0.40; at +-70 deg that tilted the spine 45 deg and moved PB_Head 14 cm off the
-# stance-only head hitbox. Now about 11 deg of spine at the extremes, inside +-3 cm.
-AIM_SPINE = (0.03, 0.05)
-# Share of the remaining look pitch on the neck (the rest on PB_Head, which pitches about its
-# own pivot and so doesn't move it). Only the pitched aim poses use it.
+# v1.3 aim pitch: a share of the pitch goes into the spine (abdomen AIM_SPLIT, chest the
+# rest), the remainder into neck (AIM_NECK_SHARE) and head. Pitching the spine moves PB_Head,
+# so the pitched poses counter-translate PB_Abdomen / PB_Chest (position tracks) to pitch the
+# spine about a pivot at the head: the head keeps its pelvis-space position, which holds for
+# any pelvis lean the lower body brings (run 8 deg, crouch 22 deg); a vertical-only fix does
+# not, it misses by the horizontal head shift times sin(lean). The vertical part is split
+# between abdomen and chest so the waist seams stay closed, the horizontal part goes on the
+# chest within what its bigger box keeps covering over the abdomen (block-out overlaps:
+# abdomen bottom 3 cm into the pelvis, chest bottom 2 cm into the abdomen; chest box overhangs
+# the abdomen 8.4 cm in front, 1.7 cm behind, 7.6 cm per side). Whatever the chest can't take
+# stays as residual. Up and down shares are searched separately at build time
+# (find_aim_spine_share): the largest share whose combined worst case (combined_report) passes.
+AIM_SPLIT = 0.4
+TRANSLATED = ("Abdomen", "Chest")  # joints with position tracks besides the pelvis
 AIM_NECK_SHARE = 0.15
+AIM_SPINE_SHARE = {"up": 0.0, "down": 0.0}  # set by find_aim_spine_share()
+PELVIS_TOP, AB_BOTTOM, AB_TOP, CHEST_BOTTOM = 0.07, -0.03, 0.14, 0.0  # mesh extents, local y
+AB_FOOT = [(x, z) for x in (-0.152, 0.152) for z in (-0.11, 0.11)]  # abdomen box footprint
+CHEST_SHIFT_Z = (-0.017, 0.084)  # chest shift over the abdomen (abdomen space) that stays covered
+CHEST_SHIFT_X = 0.076
+# How far a single layer may slide the chest back over the abdomen to keep the head on its
+# pivot (waist shear). The rest of the horizontal head shift stays, and with a pelvis lean it
+# turns into a little height change, which the combined check bounds.
+CHEST_SHEAR_BACK = 0.06
+
+
+def seam_openings(pose):
+    """(pelvis/abdomen, abdomen/chest, chest coverage) in m: >0 means a box lifts off the one
+    below, or the chest no longer covers the abdomen top."""
+    Ra, ta = pose.rot["Abdomen"], pose.tr.get("Abdomen", np.zeros(3))
+    Rc, tc = pose.rot["Chest"], pose.tr.get("Chest", np.zeros(3))
+    oa = max((OFF["Abdomen"] + ta + Ra @ np.array([x, AB_BOTTOM, z]))[1] for x, z in AB_FOOT) - PELVIS_TOP
+    oc = max((OFF["Chest"] + tc + Rc @ np.array([x, CHEST_BOTTOM, z]))[1] for x, z in AB_FOOT) - AB_TOP
+    cov = max(tc[2] - CHEST_SHIFT_Z[1], CHEST_SHIFT_Z[0] - tc[2], abs(tc[0]) - CHEST_SHIFT_X, 0.0)
+    return oa, oc, cov
+
+
+def head_in_pelvis(pose):
+    W = pose.world()
+    Rp, pp = W["Pelvis"]
+    return Rp.T @ (W["Head"][1] - pp)
+
+
+def compensate_head(pose, target):
+    """Translate PB_Abdomen / PB_Chest so PB_Head is back at `target` (pelvis space)."""
+    pose.tr.pop("Abdomen", None); pose.tr.pop("Chest", None)
+    d = np.asarray(target, float) - head_in_pelvis(pose)
+    if np.linalg.norm(d) < 1e-6:
+        return
+    Ra = pose.rot["Abdomen"]
+    dz = min(max(d[2], CHEST_SHIFT_Z[0]), CHEST_SHEAR_BACK)
+    best = None
+    for k in np.linspace(0.0, 1.0, 41):
+        q = pose.copy()
+        q.tr["Abdomen"] = np.array([0.0, d[1] * k, 0.0])
+        q.tr["Chest"] = Ra.T @ np.array([0.0, d[1] * (1 - k), dz])
+        m = max(seam_openings(q)[:2])
+        if best is None or m < best[0]:
+            best = (m, q.tr["Abdomen"], q.tr["Chest"])
+    pose.tr["Abdomen"], pose.tr["Chest"] = best[1], best[2]
+
+
+def find_aim_spine_share(lower, pump, crouch_delta):
+    """Per direction, the largest spine share (1 % steps, every smaller share passing too) whose
+    rifle aim at half and full pitch passes the combined worst case on the given lower-body
+    clips (head windows, seams). Weapon doesn't change PB_Head, so rifle stands for all."""
+    for key, sg in (("up", 1.0), ("down", -1.0)):
+        best = 0.0
+        for k in range(0, 61):
+            AIM_SPINE_SHARE[key] = k * 0.01
+            aims = []
+            for x in (0.5, 1.0):
+                p = ref_stand(); upper_aim(p, "rifle", sg * x * AIM_PITCH); aims.append((sg * x, p))
+            res = combined_eval(lower, aims, crouch_delta, pump)
+            if not res["ok"]:
+                break
+            best = k * 0.01
+        AIM_SPINE_SHARE[key] = best
+    return AIM_SPINE_SHARE
 
 
 def upper_aim(pose, weapon, pitch, hold_rot=None, hold_pos=(0, 0, 0), r_override=None,
@@ -297,12 +375,20 @@ def upper_aim(pose, weapon, pitch, hold_rot=None, hold_pos=(0, 0, 0), r_override
     """Aim pose. pitch degrees (+ up). hold_rot/hold_pos move the weapon in the aim frame.
     r_override: (attach_world, hand_world, weight) blend for the right hand (holster).
     l_target: off-hand world point (blended in with l_weight; None = stay on the weapon)."""
-    ab = rx(AIM_SPINE[0] * pitch) @ spine_extra[0]
-    ch = rx(AIM_SPINE[1] * pitch) @ spine_extra[1]
+    share = AIM_SPINE_SHARE["up" if pitch > 0.0 else "down"]
+    hw = head_extra if head_extra is not None else I3
+    if pitch != 0.0:
+        ref = pose.copy()
+        set_spine(ref, spine_extra[0], spine_extra[1])
+        look(ref, hw, 0.5)
+        target = head_in_pelvis(ref)
+    ab = rx(AIM_SPLIT * share * pitch) @ spine_extra[0]
+    ch = rx((1 - AIM_SPLIT) * share * pitch) @ spine_extra[1]
     set_spine(pose, ab, ch)
     A = rx(pitch)
-    hw = head_extra if head_extra is not None else I3
     look(pose, A @ hw, AIM_NECK_SHARE if pitch != 0.0 else 0.5)
+    if pitch != 0.0:
+        compensate_head(pose, target)
     if weapon == "none":
         relax_arms(pose)
         return
@@ -708,15 +794,83 @@ def aim_clip(weapon, name, pitch):
 
 
 AIM_PITCH = 70.0  # pose pitch at blend +-1 (driver maps aim pitch / 70 deg, clamped)
+# Aim blendspace points (driver aim_<w> BS1D). v1.3 adds the +-35 deg half points: the spine
+# counter-translation is not linear in pitch, so a 3-point blend would lift the head ~1 cm
+# mid-way; with the half points the in-between error is a few mm.
+AIM_POINTS = (("down", -1.0), ("down_half", -0.5), ("mid", 0.0), ("up_half", 0.5), ("up", 1.0))
+
+
+# v1.3: crouch and slide heads run 0.863-0.894 against the 0.838-0.898 crouch window (crouch
+# walk carries the pelvis higher), so the crouch layer sinks the torso this much into the
+# pelvis (abdomen translation; deeper overlap, no seam) to centre them before aim pitch.
+CROUCH_SINK = 0.01
 
 
 def crouch_additive(weapon):
     s = ref_stand(); upper_aim(s, weapon, 0.0)
     c = ref_crouch(); upper_aim(c, weapon, 0.0, spine_extra=CROUCH_SPINE, lower=0.03)
     d = Pose()
+    d.tr["Abdomen"] = np.array([0.0, -CROUCH_SINK, 0.0])
     for j in UPPER:
         d.rot[j] = s.rot[j].T @ c.rot[j]
     return clip_from("crouch_upper_" + weapon, 1.0 / FPS, lambda t: d, tracks=UPPER, additive=True)
+
+
+# v1.3 run pump: additive upper-body loop (CYCLE long, phase-locked by the driver to the
+# locomotion cycle; left foot strikes at t=0, right at CYCLE/2, mid-stance low at RUN low_at).
+# Weighted by synced speed (walk -> run), off when crouched/sliding/airborne and faded out under
+# reload/melee/switch. Content: forward pitch, chest counter-yaw (shoulder forward with the
+# opposite foot) and a dip toward the stance side, the weapon riding a little of the shoulder
+# motion plus a small bob twice per cycle. The weapon keeps its world orientation (aim
+# direction) and the hands re-solve onto it; the head keeps its world orientation and height
+# (abdomen/chest counter-translation as for aim pitch).
+PUMP_PITCH = 3.0     # deg forward, abdomen AIM_SPLIT share, chest the rest
+# The run clips' head sits at the bottom of its window (1.512-1.535: hip height is capped by
+# leg reach, the 8 deg drive lean lowers it). At full pump weight the torso rises this much out
+# of the hips (abdomen translation, inside the 3 cm pelvis overlap) to re-centre the run head
+# and leave room for aim pitch on top.
+PUMP_LIFT = 0.012
+PUMP_YAW = 2.5       # deg chest yaw amplitude (abdomen counter-yaws by half)
+PUMP_ROLL = 1.5      # deg chest roll amplitude toward the stance side
+PUMP_FOLLOW = 0.5    # share of the shoulder displacement the weapon follows
+PUMP_BOB = 0.006     # m weapon bob amplitude (2x per cycle, low at mid-stance)
+PUMP_SWING = 10.0    # deg arm swing for the unarmed variant
+
+
+def pump_clip(weapon):
+    base = ref_stand(); upper_aim(base, weapon, 0.0)
+    Wb = base.world()
+    head_t = head_in_pelvis(base)
+    hands = {s: (Wb["Hand_" + s][1] + Wb["Hand_" + s][0] @ MARK[s], Wb["Hand_" + s][0]) for s in "LR"}
+    low = RUN["low_at"]
+
+    def fn(t):
+        ph = 2 * math.pi * t / CYCLE
+        yaw = PUMP_YAW * math.cos(ph)
+        roll = PUMP_ROLL * math.cos(ph - 2 * math.pi * low / CYCLE)
+        bob = -PUMP_BOB * math.cos(2 * (ph - 2 * math.pi * low / CYCLE))
+        p = ref_stand()
+        set_spine(p, rx(-AIM_SPLIT * PUMP_PITCH) @ ry(-0.5 * yaw),
+                  rx(-(1 - AIM_SPLIT) * PUMP_PITCH) @ ry(yaw) @ rz(roll))
+        look(p, I3, 0.5)
+        compensate_head(p, head_t)
+        p.tr["Abdomen"] = p.tr["Abdomen"] + np.array([0.0, PUMP_LIFT, 0.0])
+        if weapon == "none":
+            relax_arms(p, swing=PUMP_SWING * math.cos(ph))
+        else:
+            h = HOLDS[weapon]
+            off = PUMP_FOLLOW * (shoulder_mid(p) - shoulder_mid(base)) + np.array([0, bob, 0])
+            for s in "RL":
+                att, rot = hands[s]
+                solve_arm(p, s, att + off, rot, h["pole_" + s])
+        d = Pose()
+        for j in UPPER:
+            d.rot[j] = base.rot[j].T @ p.rot[j]
+        for j in TRANSLATED:
+            if j in p.tr:
+                d.tr[j] = p.tr[j] - base.tr.get(j, np.zeros(3))
+        return d
+    return clip_from("run_pump_" + weapon, CYCLE, fn, loop=True, tracks=UPPER, additive=True)
 
 
 def additive_clip(name, length, peak, deltas):
@@ -896,6 +1050,18 @@ def write(clips, path):
             for t, v in vals:
                 flat += [fmt(t), "1", fmt(v[0]), fmt(v[1]), fmt(v[2])]
             out += _track(ti, "position_3d", P["Pelvis"], flat); ti += 1
+        for j in TRANSLATED:
+            # v1.3: spine counter-translation. RESET carries the rest offsets so clips without
+            # these tracks blend to rest and additive clips' values are deltas against it.
+            if j not in tracks or not (c.name == "RESET" or any(j in p.tr for _, p in c.frames)):
+                continue
+            vals = [(t, OFF[j] + p.tr.get(j, np.zeros(3))) for t, p in c.frames]
+            if all(np.allclose(v, vals[0][1], atol=1e-6) for _, v in vals):
+                vals = vals[:1]
+            flat = []
+            for t, v in vals:
+                flat += [fmt(t), "1", fmt(v[0]), fmt(v[1]), fmt(v[2])]
+            out += _track(ti, "position_3d", P[j], flat); ti += 1
         for j in tracks:
             qs = [(t, quat(p.rot[j])) for t, p in c.frames]
             for k in range(1, len(qs)):  # keep hemisphere continuity
@@ -957,11 +1123,13 @@ def build():
     clips.append(clip_from("fall", 0.6, fall_fn, loop=True))
     clips.append(clip_from("land", 0.25, land_fn))
     clips.append(clip_from("slide", 0.5, slide_fn))
+    find_aim_spine_share({c.name: c for c in clips}, pump_clip("rifle"),
+                         crouch_additive("rifle").frames[0][1])
     for w in ("rifle", "pistol", "none"):
-        clips.append(aim_clip(w, "aim_%s_up" % w, AIM_PITCH))
-        clips.append(aim_clip(w, "aim_%s_mid" % w, 0.0))
-        clips.append(aim_clip(w, "aim_%s_down" % w, -AIM_PITCH))
+        for suffix, k in AIM_POINTS:
+            clips.append(aim_clip(w, "aim_%s_%s" % (w, suffix), k * AIM_PITCH))
         clips.append(crouch_additive(w))
+        clips.append(pump_clip(w))
     clips.append(additive_clip("fire_rifle", 0.1, 0.02, {"Chest": (2.5, 0, 0), "Hand_R": (3, 0, 0),
                                                           "Hand_L": (2, 0, 0)}))
     clips.append(additive_clip("fire_pistol", 0.2, 0.03, {"Forearm_R": (4, 0, 0), "Forearm_L": (4, 0, 0),
@@ -1010,10 +1178,12 @@ def head_class(name):
     return "stand"
 
 
-def _apply_additive(base, delta):
-    p = Pose(); p.pelvis = base.pelvis.copy(); p.rot = dict(base.rot)
+def _apply_additive(base, delta, weight=1.0):
+    p = base.copy()
     for j, m in delta.rot.items():
-        p.rot[j] = base.rot[j] @ m
+        p.rot[j] = base.rot[j] @ (m if weight == 1.0 else slerp_m(I3, m, weight))
+    for j, v in delta.tr.items():
+        p.tr[j] = p.tr.get(j, np.zeros(3)) + weight * v
     return p
 
 
@@ -1025,6 +1195,7 @@ def head_report(clips):
     fails = []
     stand_up = ref_stand(); upper_aim(stand_up, "rifle", 0.0)
     crouch_up = ref_crouch(); upper_aim(crouch_up, "rifle", 0.0, spine_extra=CROUCH_SPINE, lower=0.03)
+    crouch_up.tr["Abdomen"] = np.array([0.0, -CROUCH_SINK, 0.0])
     runtime_upper = {"stand": stand_up, "crouch": crouch_up}
     print("head height (PB_Head world y), stand %.3f / crouch %.3f, tolerance +-%.2f m:"
           % (HEAD_STAND, HEAD_CROUCH, HEAD_TOL))
@@ -1035,8 +1206,9 @@ def head_report(clips):
         ys = []
         if c.additive:
             weapon = "pistol" if "pistol" in c.name else "rifle"
+            if c.name.endswith("_none"):
+                weapon = "none"
             if c.name.startswith("crouch_upper_"):
-                weapon = c.name[len("crouch_upper_"):]
                 base = ref_crouch()
             else:
                 base = ref_stand()
@@ -1050,7 +1222,7 @@ def head_report(clips):
                 # pose (plus the crouch additive in crouch/slide): count that version too.
                 up = runtime_upper[cls]
                 for _, p in c.frames:
-                    q = Pose(); q.pelvis = p.pelvis; q.rot = dict(p.rot)
+                    q = Pose(); q.pelvis = p.pelvis; q.rot = dict(p.rot); q.tr = dict(up.tr)
                     q.rot.update({j: up.rot[j] for j in UPPER})
                     ys.append(q.world()["Head"][1][1])
         ref = HEAD_CROUCH if cls == "crouch" else HEAD_STAND
@@ -1077,19 +1249,95 @@ def floor_report(clips, tol=0.001):
     return bad
 
 
-def combo_report(clips):
-    """In game the aim layer rides on locomotion: worst head = loco min/max + aim up/down offset
-    from aim mid (rifle). Informational, same tolerance."""
+def _blend(a, b, k):
+    p = a.copy()
+    for j in UPPER:
+        p.rot[j] = slerp_m(a.rot[j], b.rot[j], k)
+    for j in TRANSLATED:
+        va, vb = a.tr.get(j, np.zeros(3)), b.tr.get(j, np.zeros(3))
+        p.tr[j] = va + (vb - va) * k
+    return p
+
+
+def aim_blend(by, weapon, x):
+    """The aim_<w> BlendSpace1D at blend x in [-1, 1] (linear between neighbouring points)."""
+    pts = [(k, by["aim_%s_%s" % (weapon, n)].frames[0][1]) for n, k in AIM_POINTS]
+    for (k0, p0), (k1, p1) in zip(pts, pts[1:]):
+        if x <= k1 + 1e-9:
+            return _blend(p0, p1, (x - k0) / (k1 - k0))
+    return pts[-1][1]
+
+
+COMBINED_STAND = ["idle", "stop_settle", "jump_start", "fall", "land"] + ["walk_" + k for k in DIRS] \
+    + ["run_" + k for k in DIRS]
+COMBINED_CROUCH = ["crouch_idle", "slide"] + ["crouch_walk_" + k for k in DIRS]
+SEAM_LIMIT = 0.001
+
+
+def combined_eval(lower, aims, crouch_delta, pump):
+    """Head height and seams for every frame of the lower-body clips with each (blend, aim
+    upper pose) on top, plus the crouch additive (crouch/slide) or the run pump (run clips: at
+    weight 1, same frame = phase-locked; plus weight 0 at mid aim for the action case)."""
+    res = {"seam": 0.0, "ok": True}
+    mid = ref_stand(); upper_aim(mid, "rifle", 0.0)
+    for cls, fams in (("stand", COMBINED_STAND), ("crouch", COMBINED_CROUCH)):
+        ref = HEAD_CROUCH if cls == "crouch" else HEAD_STAND
+        lo, hi, wlo, whi = 9.0, -9.0, "", ""
+        for fam in fams:
+            c = lower[fam]
+            run = fam.startswith("run_")
+            for i, (t, lp) in enumerate(c.frames):
+                pd = pump.frames[i % (len(pump.frames) - 1)][1] if run else None
+                for x, up in aims + ([(0.0, mid)] if run else []):
+                    u = _apply_additive(up, crouch_delta) if cls == "crouch" else up
+                    # Run speed means full pump, except under reload/melee/switch, which fade
+                    # it out and own the upper body at mid aim: that case is the extra mid entry.
+                    for wgt in ((1.0,) if run and up is not mid else (0.0,)):
+                        q = _apply_additive(u, pd, wgt) if wgt > 0.0 else u
+                        r = lp.copy(); r.tr = dict(q.tr)
+                        r.rot.update({j: q.rot[j] for j in UPPER})
+                        y = r.world()["Head"][1][1]
+                        res["seam"] = max(res["seam"], *seam_openings(r))
+                        if y < lo or y > hi:
+                            tag = "%s t=%.2f aim %+.0f%s" % (fam, t, x * AIM_PITCH, " +pump" if wgt else "")
+                            if y < lo:
+                                lo, wlo = y, tag
+                            if y > hi:
+                                hi, whi = y, tag
+        ok = lo >= ref - HEAD_TOL - 1e-4 and hi <= ref + HEAD_TOL + 1e-4
+        res[cls] = (lo, hi, wlo, whi, ok)
+        res["ok"] = res["ok"] and ok
+    res["ok"] = res["ok"] and res["seam"] <= SEAM_LIMIT
+    return res
+
+
+def combined_report(clips):
+    """Worst cases as the game layers them: locomotion lower body + aim BS1D at every 0.1 of
+    the +-70 deg range (incl. the extremes and the in-between blends) + crouch additive or run
+    pump. PB_Head must stay in its window and the waist seams closed. Returns failures."""
     by = {c.name: c for c in clips}
-    mid = by["aim_rifle_mid"].frames[0][1].world()["Head"][1][1]
-    offs = [by["aim_rifle_" + k].frames[0][1].world()["Head"][1][1] - mid for k in ("up", "down")]
-    worst = []
-    for fam in ("idle", "walk_f", "walk_r", "run_f", "run_r", "run_fr", "stop_settle", "land"):
-        ys = [p.world()["Head"][1][1] for _, p in by[fam].frames]
-        lo, hi = min(ys) + min(0.0, *offs), max(ys) + max(0.0, *offs)
-        worst.append((fam, lo, hi))
-    print("aim pitch on top of locomotion (offset up %+.3f / down %+.3f):" % tuple(offs),
-          ", ".join("%s %.3f-%.3f" % w for w in worst))
+    blends = [round(-1.0 + 0.1 * i, 3) for i in range(21)]
+    fails, seam = [], 0.0
+    worst = {"stand": [9.0, -9.0], "crouch": [9.0, -9.0]}
+    print("combined worst cases (locomotion + aim +-%d deg + crouch / run pump additive):" % AIM_PITCH)
+    for weapon in ("rifle", "pistol", "none"):
+        aims = [(x, aim_blend(by, weapon, x)) for x in blends]
+        res = combined_eval(by, aims, by["crouch_upper_" + weapon].frames[0][1], by["run_pump_" + weapon])
+        seam = max(seam, res["seam"])
+        for cls in ("stand", "crouch"):
+            lo, hi, wlo, whi, ok = res[cls]
+            worst[cls] = [min(worst[cls][0], lo), max(worst[cls][1], hi)]
+            if not ok:
+                fails.append("combined %s %s" % (cls, weapon))
+            print("  %-6s %-6s head min %.3f (%s)  max %.3f (%s)  %s"
+                  % (cls, weapon, lo, wlo, hi, whi, "ok" if ok else "FAIL"))
+    print("  overall: stand %.3f-%.3f (window %.2f-%.2f), crouch %.3f-%.3f (window %.3f-%.3f)"
+          % (worst["stand"][0], worst["stand"][1], HEAD_STAND - HEAD_TOL, HEAD_STAND + HEAD_TOL,
+             worst["crouch"][0], worst["crouch"][1], HEAD_CROUCH - HEAD_TOL, HEAD_CROUCH + HEAD_TOL))
+    print("  max waist seam opening / chest uncover %.1f mm (limit %.0f mm)" % (1000 * seam, 1000 * SEAM_LIMIT))
+    if seam > SEAM_LIMIT:
+        fails.append("seams")
+    return fails
 
 
 def gait_report(clips):
@@ -1140,7 +1388,19 @@ def main():
     check()
     gait_report(clips)
     fails = head_report(clips)
-    combo_report(clips)
+    fails += combined_report(clips)
+    by = {c.name: c for c in clips}
+    for n in ("aim_rifle_up", "aim_rifle_down", "run_pump_rifle"):
+        trs = [p.tr for _, p in by[n].frames]
+        print("%-15s abdomen shift max %s cm, chest shift max %s cm (parent space; + = up / back)"
+              % (n, np.round(100 * np.max([np.abs(t.get("Abdomen", np.zeros(3))) for t in trs], axis=0), 1),
+                 np.round(100 * np.max([np.abs(t.get("Chest", np.zeros(3))) for t in trs], axis=0), 1)))
+    for key in ("up", "down"):
+        sh = AIM_SPINE_SHARE[key]
+        print("aim spine share at %s %d deg: %.0f %% = %.1f deg (abdomen %.0f %% / chest %.0f %% of it), "
+              "neck %.1f %%, head %.1f %%" % (key, AIM_PITCH, 100 * sh, sh * AIM_PITCH, 100 * AIM_SPLIT,
+                                              100 * (1 - AIM_SPLIT), 100 * (1 - sh) * AIM_NECK_SHARE,
+                                              100 * (1 - sh) * (1 - AIM_NECK_SHARE)))
     fails += floor_report(clips)
     print("max IK reach error %.3f m at %s" % (REPORT["ik_err"], REPORT["ik_where"]))
     print("max IK solve error %.4f m at %s" % (REPORT.get("solve_err", 0.0), REPORT.get("solve_where", "")))
