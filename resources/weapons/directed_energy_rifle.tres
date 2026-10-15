@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_data")
 display_name = "Directed Energy Rifle"
+anim_type = &"der"
 damage = 10.0
 headshot_armored_multiplier = 1.0
 headshot_unarmored_multiplier = 1.0

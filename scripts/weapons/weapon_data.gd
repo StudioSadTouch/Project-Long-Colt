@@ -11,6 +11,8 @@ enum FireMode { SEMI, AUTO, BURST, CHARGE }
 enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 
 @export var display_name: String = "Weapon"
+## Viewmodel / third-person animation set: &"pistol", &"rifle", &"carbine", &"shotgun", &"der".
+@export var anim_type: StringName = &"rifle"
 
 @export_group("Damage")
 @export var damage: float = 25.0
