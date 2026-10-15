@@ -41,6 +41,9 @@ extends Node3D
 ## the usual zone groups, and rays pass through its capsule (PASSTHROUGH_GROUP), so a mask of
 ## HIT_MASK | LAYER_PLAYER scores body, helmet and face on the player exactly as on bots.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
+## WeaponData-driven extras, off by default: pellets (_emit_pellets, seeded _spread_rng),
+## battery (no reload/ammo), heat/overheat (_add_heat, _tick_heat), FireMode.CHARGE (hold to
+## charge, release: a tap shot or _fire_charged, the one hitscan choke point for charged shots).
 
 signal ammo_changed(magazine: int, reserve: int)
 signal fired
@@ -69,6 +72,10 @@ signal melee_whiffed(weapon: Weapon)
 ## weapon, source, direction.
 signal melee_hit_surface(position: Vector3, normal: Vector3, collider: Object, info: Dictionary)
 signal hit_confirmed(target: Object, info: Dictionary)
+signal heat_changed(heat: float, overheated: bool)
+## FireMode.CHARGE. charge_released(charged): charged shot fired, else a tap shot or nothing.
+signal charge_started
+signal charge_released(charged: bool)
 
 enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
 
@@ -113,6 +120,19 @@ var hit_mask_override: int = -1
 var aim_source: Node3D
 var exclude_bodies: Array[CollisionObject3D] = []
 var shooter: Node
+## Heat 0..1 (data.heat_per_shot > 0 only) and the overheat lockout.
+var heat: float = 0.0
+var overheated: bool = false
+## FireMode.CHARGE: a charge is building or held; charge is its 0..1 progress.
+var charging: bool = false
+var charge: float = 0.0
+## Seed the last pellet shot used (data.pellet_count > 1).
+var last_shot_seed: int = 0
+## Write to seed the next pellet shot only (netcode replay). Unset, each shot draws randi().
+var next_shot_seed: int = 0:
+	set(value):
+		next_shot_seed = value
+		_has_next_seed = true
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
@@ -131,6 +151,14 @@ var _trigger_held: bool = false
 var _burst_left: int = 0
 var _bloom: float = 0.0
 var _recoil: Vector2 = Vector2.ZERO
+var _spread_rng := RandomNumberGenerator.new()
+var _has_next_seed: bool = false
+var _since_shot: float = 0.0
+var _vent_left: float = 0.0
+var _charge_held: float = 0.0
+var _charge_drain_carry: float = 0.0
+## Set by a press; the charge starts once the gun is ready, while the trigger stays down.
+var _charge_armed: bool = false
 
 
 func _ready() -> void:
@@ -150,6 +178,7 @@ func _ready() -> void:
 	add_child(_melee_cast)
 	reserve = mini(data.reserve_start, data.reserve_max)
 	fire_mode = data.fire_mode
+	_spread_rng.randomize()
 
 
 func equip() -> void:
@@ -161,11 +190,14 @@ func equip() -> void:
 	set_zoom(false)
 	ammo_changed.emit(magazine, reserve)
 	fire_mode_changed.emit(fire_mode)
+	if data.heat_per_shot > 0.0:
+		heat_changed.emit(heat, overheated)
 
 
 func holster() -> void:
 	visible = false
 	_cancel_reload()
+	_release_charge(false)
 	_trigger_buffer_left = 0.0
 	_burst_left = 0
 	if _melee_target != null:
@@ -183,6 +215,12 @@ func trigger(pressed: bool, held: bool) -> void:
 	if data == null:
 		return
 	_trigger_held = held
+	if fire_mode == WeaponData.FireMode.CHARGE:
+		if pressed:
+			_charge_armed = true
+		if held and _charge_armed and not charging:
+			_begin_charge()
+		return
 	if fire_mode == WeaponData.FireMode.AUTO:
 		var shots := 0
 		while held and shots < MAX_SHOTS_PER_TICK and _try_fire():
@@ -199,12 +237,13 @@ func release_trigger() -> void:
 		return
 	_trigger_held = false
 	trigger_released.emit()
+	_release_charge()
 	_on_trigger_released()
 
 
 ## Adds to reserve, capped at reserve_max. Returns how much was taken.
 func add_ammo(amount: int) -> int:
-	if data == null or amount <= 0:
+	if data == null or amount <= 0 or data.battery:
 		return 0
 	var taken := mini(amount, data.reserve_max - reserve)
 	if taken <= 0:
@@ -239,6 +278,7 @@ func fire_select() -> void:
 func toggle_fire_mode() -> void:
 	if data == null or _burst_left > 0:
 		return
+	_release_charge(false)
 	alt_mode = not alt_mode
 	fire_mode = data.alt_fire_mode if alt_mode else data.fire_mode
 	_trigger_buffer_left = 0.0
@@ -272,6 +312,7 @@ func get_fire_mode_name() -> String:
 func reload() -> void:
 	if (
 		data == null
+		or data.battery
 		or reloading
 		or _burst_left > 0
 		or magazine >= data.magazine_size
@@ -301,6 +342,7 @@ func melee() -> void:
 	melee_swung.emit()
 	# Melee cancels a reload and any burst in progress, Halo style.
 	_cancel_reload()
+	_release_charge(false)
 	_burst_left = 0
 	set_zoom(false)
 	_cooldown = maxf(_cooldown, 0.25)
@@ -345,10 +387,13 @@ func get_spread() -> float:
 
 
 func is_ready_to_fire() -> bool:
-	return data != null and _cooldown <= 0.0 and _equip_left <= 0.0 and not reloading
+	var idle := data != null and _cooldown <= 0.0 and _equip_left <= 0.0 and not reloading
+	return idle and not overheated
 
 
 func _physics_process(delta: float) -> void:
+	if data != null:
+		_tick_heat(delta)  # heat vents even while holstered
 	if not visible or data == null:
 		return
 	# Carry at most one tick of remainder so fire rate holds at any tick rate without
@@ -364,6 +409,8 @@ func _physics_process(delta: float) -> void:
 			_insert_magazine()
 		if _reload_left <= 0.0:
 			_finish_reload()
+	if charging:
+		_tick_charge(delta)
 	if _burst_left > 0:
 		_continue_burst()
 	elif _trigger_buffer_left > 0.0:
@@ -414,6 +461,7 @@ func _try_fire(interval: float = -1.0) -> bool:
 		reload()
 		return false
 	_emit_shots()
+	_add_heat(data.heat_per_shot)
 	var bloom_add := data.bloom_per_shot * (data.alt_bloom_multiplier if alt_mode else 1.0)
 	_bloom = minf(_bloom + bloom_add, data.spread_max - data.spread_base)
 	_kick()
@@ -435,9 +483,136 @@ func _consume_ammo() -> bool:
 	return true
 
 
-## Override for pellets or bursts. Default: one hitscan ray through the spread cone.
+## Override for bursts. Default: one hitscan ray through the spread cone (bent by aim assist),
+## or data.pellet_count pellets (_emit_pellets).
 func _emit_shots() -> void:
+	if data.pellet_count > 1:
+		_emit_pellets()
+		return
 	_fire_ray(_assisted_direction(_spread_direction(get_spread())))
+
+
+## The bloomed aim picks the pattern centre, each pellet scatters within data.pellet_spread of
+## it. One _spread_rng seed per shot: same seed + aim = same pellets. No bend on pellets.
+func _emit_pellets() -> void:
+	_bent = false
+	if _has_next_seed:
+		_spread_rng.seed = next_shot_seed
+		_has_next_seed = false
+	else:
+		_spread_rng.seed = randi()
+	last_shot_seed = _spread_rng.seed
+	var basis := _aim().global_transform.basis
+	var centre := _cone_offset(get_spread(), _spread_rng)
+	for _i in data.pellet_count:
+		var offset := centre + _cone_offset(data.pellet_spread, _spread_rng)
+		_fire_ray((basis * Vector3(offset.x, offset.y, -1.0)).normalized())
+
+
+## Uniform point in a cone (half-angle in degrees) as a tangent-plane offset at z = -1.
+static func _cone_offset(spread_degrees: float, rng: RandomNumberGenerator) -> Vector2:
+	var radius := tan(deg_to_rad(spread_degrees)) * sqrt(rng.randf())
+	var angle := rng.randf() * TAU
+	return Vector2(cos(angle) * radius, sin(angle) * radius)
+
+
+func _tick_heat(delta: float) -> void:
+	if data.heat_per_shot <= 0.0:
+		return
+	if overheated:
+		_vent_left -= delta
+		heat = clampf(_vent_left / maxf(data.overheat_vent_time, 0.001), 0.0, 1.0)
+		if _vent_left <= 0.0:
+			overheated = false
+			heat = 0.0
+		heat_changed.emit(heat, overheated)
+		return
+	if heat <= 0.0:
+		return
+	_since_shot += delta
+	if _since_shot >= data.heat_cooldown_delay:
+		heat = maxf(heat - data.heat_cooldown_rate * delta, 0.0)
+		heat_changed.emit(heat, overheated)
+
+
+func _add_heat(amount: float) -> void:
+	if data.heat_per_shot <= 0.0 or amount <= 0.0:
+		return
+	_since_shot = 0.0
+	heat = minf(heat + amount, 1.0)
+	if heat >= 1.0:
+		overheated = true
+		_vent_left = data.overheat_vent_time
+		_burst_left = 0
+		_trigger_buffer_left = 0.0
+		set_zoom(false)
+	heat_changed.emit(heat, overheated)
+
+
+func _begin_charge() -> void:
+	if not _can_fire():
+		return
+	if magazine <= 0:
+		_charge_armed = false
+		dry_fired.emit()
+		return
+	charging = true
+	_charge_held = 0.0
+	_charge_drain_carry = 0.0
+	charge_started.emit()
+
+
+func _tick_charge(delta: float) -> void:
+	_charge_held += delta
+	charge = clampf(_charge_held / maxf(data.charge_time, 0.001), 0.0, 1.0)
+	if _charge_held < data.charge_time or data.charge_hold_drain <= 0.0:
+		return
+	# A held full charge bleeds the battery and fires itself before running dry.
+	_charge_drain_carry += data.charge_hold_drain * delta
+	var drained := int(_charge_drain_carry)
+	if drained <= 0:
+		return
+	_charge_drain_carry -= drained
+	if drained >= magazine:
+		_charge_armed = false
+		_fire_charged()
+		return
+	magazine -= drained
+	ammo_changed.emit(magazine, reserve)
+
+
+## Trigger up: a full charge fires the charged shot, a short hold one tap shot.
+## fire = false drops the charge unfired (holster, melee, mode switch).
+func _release_charge(fire: bool = true) -> void:
+	_charge_armed = false
+	if not charging:
+		return
+	if fire and _charge_held >= data.charge_time:
+		_fire_charged()
+		return
+	charging = false
+	charge = 0.0
+	charge_released.emit(false)
+	if fire:
+		_try_fire()
+
+
+## Every charged shot: hitscan _fire_ray x charge_damage_multiplier; costs ammo and heat.
+func _fire_charged() -> void:
+	charging = false
+	charge = 0.0
+	if magazine <= 0 or _aim() == null:
+		charge_released.emit(false)
+		return
+	magazine -= mini(maxi(data.charge_ammo_cost, 1), magazine)
+	_cooldown = maxf(_cooldown, 0.0) + 1.0 / data.fire_rate
+	_fire_ray(_assisted_direction(_spread_direction(get_spread())), data.charge_damage_multiplier)
+	_add_heat(data.charge_heat)
+	_bloom = minf(_bloom + data.bloom_per_shot, data.spread_max - data.spread_base)
+	_kick()
+	fired.emit()
+	charge_released.emit(true)
+	ammo_changed.emit(magazine, reserve)
 
 
 ## Bullet bend: only rays that wouldn't already hit something damageable get bent. With
@@ -605,7 +780,8 @@ func _apply_melee(hit: Dictionary) -> void:
 	hit_confirmed.emit(hit.target, info)
 
 
-func _fire_ray(direction: Vector3) -> void:
+## damage_scale: charged shots (1.0 for everything else).
+func _fire_ray(direction: Vector3, damage_scale: float = 1.0) -> void:
 	var hit := _raycast(direction, data.max_range)
 	if hit.is_empty():
 		return
@@ -616,7 +792,7 @@ func _fire_ray(direction: Vector3) -> void:
 	var zone := HitZone.BODY if _bent else _resolve_zone(hit, direction, target)
 	_bent = false
 	var distance: float = _aim().global_position.distance_to(hit.position)
-	var amount := data.damage * _falloff(distance)
+	var amount := data.damage * _falloff(distance) * damage_scale
 	var zone_multiplier := 1.0
 	match zone:
 		HitZone.HEAD_ARMORED:
@@ -624,7 +800,7 @@ func _fire_ray(direction: Vector3) -> void:
 		HitZone.HEAD_UNARMORED:
 			zone_multiplier = data.headshot_unarmored_multiplier
 	var info := _hit_info(hit, direction, zone)
-	info["zone_multiplier"] = zone_multiplier
+	info["zone_multiplier"] = zone_multiplier * data.health_damage_multiplier
 	info["shield_multiplier"] = data.shield_damage_multiplier
 	info["bleedthrough"] = data.bleedthrough
 	target.take_damage(amount, info)
