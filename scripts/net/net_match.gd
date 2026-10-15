@@ -68,6 +68,11 @@ var _last_pickups: Dictionary = {}
 var _roster_sig: String = ""
 var _overheated: Dictionary = {}
 var _ui: MatchUI
+## Grenades in flight: net id -> Grenade (host: the real ones; clients: visual copies).
+var _grenades: Dictionary = {}
+var _next_grenade: int = 1
+## Host: grenade counts last sent to each client (peer -> Array).
+var _grenade_sent: Dictionary = {}
 
 
 func _ready() -> void:
@@ -107,6 +112,7 @@ func _setup_local() -> void:
 	if Net.match_running:
 		Settings.apply_to_player(local_player)
 		local_player.set_primary_color(Settings.primary_color)
+		local_player.set_visor_color(Settings.visor_color)
 	if not _online:
 		# Offline from the menu: our name on the scoreboard. Run directly: untouched.
 		if Net.match_running:
@@ -125,10 +131,16 @@ func _setup_offline() -> void:
 
 func _setup_host() -> void:
 	roster[1] = {
-		"name": Net.name_of(1), "color": Net.players.get(1, {}).get("color", ""), "kind": 0
+		"name": Net.name_of(1),
+		"color": Net.players.get(1, {}).get("color", ""),
+		"visor": Net.players.get(1, {}).get("visor", ""),
+		"kind": 0,
 	}
 	_hook_authority(1, local_player)
 	_watch_local_weapons(local_player)
+	var grenades := _grenades_of(local_player)
+	if grenades != null:
+		grenades.thrown.connect(_on_host_thrown.bind(1))
 	if spawn_manager != null:
 		spawn_manager.end_on_win = true
 		var humans := Net.players.size()
@@ -143,6 +155,9 @@ func _setup_client() -> void:
 	if holder != null:
 		holder.drop_weapons_on_death = false
 		holder.pickup_request_hook = _request_pickup
+	var grenades := _grenades_of(local_player)
+	if grenades != null:
+		grenades.throw_hook = _request_grenade
 	_watch_local_weapons(local_player)
 	local_player.died.connect(_on_local_died_client)
 	_rpc_client_ready.rpc_id(1)
@@ -230,6 +245,9 @@ func _make_puppet(id: int, info: Dictionary, host_side: bool) -> Player:
 	get_parent().add_child(puppet)
 	puppet.set_primary_color(
 		Color.from_string(str(info.get("color", "")), PlayerColor.default_color())
+	)
+	puppet.set_visor_color(
+		Color.from_string(str(info.get("visor", "")), PlayerColor.default_visor())
 	)
 	entities[id] = puppet
 	NetAnim.make_remote(puppet)
@@ -408,7 +426,10 @@ func _rpc_client_ready() -> void:
 		return
 	var info: Dictionary = Net.players[peer]
 	roster[peer] = {
-		"name": info.get("name", ""), "color": info.get("color", ""), "kind": KIND_HUMAN
+		"name": info.get("name", ""),
+		"color": info.get("color", ""),
+		"visor": info.get("visor", ""),
+		"kind": KIND_HUMAN,
 	}
 	var humans := 0
 	for id: int in roster:
@@ -695,6 +716,14 @@ func _poll_loadouts() -> void:
 			_rpc_loadout.rpc_id(peer, change.loadout[0], change.loadout[1])
 		for gain: Array in change.get("ammo", []):
 			_rpc_ammo.rpc_id(peer, gain[0], gain[1])
+		var grenades := _grenades_of(puppet)
+		if grenades != null:
+			var counts: Array = grenades.counts.duplicate()
+			if not _grenade_sent.has(peer):
+				_grenade_sent[peer] = counts
+			elif _grenade_sent[peer] != counts:
+				_grenade_sent[peer] = counts
+				_rpc_grenades.rpc_id(peer, counts)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -733,6 +762,118 @@ func _rpc_ammo(weapon_id: String, amount: int) -> void:
 	var weapon := holder.find_weapon(weapon_id) if holder != null else null
 	if weapon != null:
 		weapon.add_ammo(amount)
+
+
+# ------------------------------------------------------------------ grenades
+# Host-authoritative: the host's grenade deals the damage. Clients ask with _rpc_grenade (the
+# host checks the count and cooldown on its puppet), every client gets _rpc_grenade_spawn for a
+# visual copy (the thrower's included: no local prediction of the grenade itself, only of the
+# count) and _rpc_grenade_boom with the host's detonation point.
+
+
+static func _grenades_of(body: Node) -> GrenadeThrower:
+	return body.get_node_or_null(^"GrenadeThrower") as GrenadeThrower if body != null else null
+
+
+func _request_grenade(type_index: int, origin: Vector3, velocity: Vector3) -> void:
+	_rpc_grenade.rpc_id(1, type_index, origin, velocity)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_grenade(type_index: int, origin: Vector3, velocity: Vector3) -> void:
+	var peer := multiplayer.get_remote_sender_id()
+	var puppet := _player(peer)
+	if not _host or puppet == null or not _net_host.has_client(peer) or puppet.dead:
+		return
+	var grenades := _grenades_of(puppet)
+	if grenades == null or type_index < 0 or type_index >= grenades.types.size():
+		return
+	var data := grenades.types[type_index]
+	# Sanity: released near the puppet's eye, no faster than a running throw.
+	var max_speed := data.throw_speed + data.throw_lift + 15.0
+	if origin.distance_to(puppet.get_eye_position()) > 3.0 or velocity.length() > max_speed:
+		return
+	if not grenades.consume(type_index):
+		# Out or still cooling down on the host: put the client's predicted count back.
+		_rpc_grenades.rpc_id(peer, grenades.counts.duplicate())
+		_grenade_sent[peer] = grenades.counts.duplicate()
+		return
+	var grenade := grenades.spawn(type_index, origin, velocity, true)
+	_on_host_thrown(grenade, type_index, origin, velocity, peer)
+
+
+## Host: a real grenade is out (ours or a client's): give it an id and tell every client.
+func _on_host_thrown(
+	grenade: Grenade, type_index: int, origin: Vector3, velocity: Vector3, thrower_id: int
+) -> void:
+	if not _online or grenade == null:
+		return
+	var id := _next_grenade
+	_next_grenade += 1
+	grenade.net_id = id
+	_grenades[id] = grenade
+	grenade.exploded.connect(_on_host_grenade_exploded.bind(type_index))
+	_forget_when_freed(grenade, id)
+	for peer: int in Net.players:
+		if peer != 1:
+			_rpc_grenade_spawn.rpc_id(peer, id, type_index, origin, velocity, thrower_id)
+
+
+func _on_host_grenade_exploded(grenade: Grenade, at: Vector3, type_index: int) -> void:
+	for peer: int in Net.players:
+		if peer != 1:
+			_rpc_grenade_boom.rpc_id(peer, grenade.net_id, type_index, at)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_grenade_spawn(
+	id: int, type_index: int, origin: Vector3, velocity: Vector3, thrower_id: int
+) -> void:
+	var data := _grenade_data(type_index)
+	if data == null:
+		return
+	var body: Variant = entities.get(thrower_id)
+	var by: Node3D = body if body is Node3D and is_instance_valid(body) else null
+	var grenade := Grenade.spawn(get_parent(), data, origin, velocity, by, false)
+	grenade.net_id = id
+	_grenades[id] = grenade
+	_forget_when_freed(grenade, id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_grenade_boom(id: int, type_index: int, at: Vector3) -> void:
+	var grenade: Variant = _grenades.get(id)
+	if grenade is Grenade and is_instance_valid(grenade):
+		(grenade as Grenade).detonate_at(at)
+		return
+	var data := _grenade_data(type_index)
+	if data != null:
+		Grenade.spawn_explosion_fx(get_parent(), at, data)
+
+
+## Host -> owner: the authoritative grenade counts.
+@rpc("authority", "call_remote", "reliable")
+func _rpc_grenades(counts: Array) -> void:
+	var grenades := _grenades_of(local_player)
+	if grenades != null:
+		grenades.apply_counts(counts)
+
+
+## Drop the id once the grenade is freed. A sticky leaves the tree when it reparents onto a
+## body too, so only a queued free counts.
+func _forget_when_freed(grenade: Grenade, id: int) -> void:
+	grenade.tree_exited.connect(
+		func() -> void:
+			if not is_instance_valid(grenade) or grenade.is_queued_for_deletion():
+				_grenades.erase(id)
+	)
+
+
+func _grenade_data(type_index: int) -> GrenadeData:
+	var grenades := _grenades_of(local_player)
+	if grenades == null or type_index < 0 or type_index >= grenades.types.size():
+		return null
+	return grenades.types[type_index]
 
 
 # ------------------------------------------------------------------ life and death

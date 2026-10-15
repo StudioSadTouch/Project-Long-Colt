@@ -6,7 +6,7 @@
 script = ExtResource("1_data")
 display_name = "Combat Shotgun"
 anim_type = &"shotgun"
-damage = 4.0
+damage = 9.0
 headshot_armored_multiplier = 4.0
 headshot_unarmored_multiplier = 4.0
 shield_damage_multiplier = 1.0

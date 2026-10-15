@@ -6,12 +6,12 @@
 script = ExtResource("1_data")
 display_name = "Marksman Carbine"
 anim_type = &"carbine"
-damage = 28.0
+damage = 55.0
 headshot_armored_multiplier = 2.0
 headshot_unarmored_multiplier = 2.5
 shield_damage_multiplier = 1.0
-health_damage_multiplier = 1.0
-bleedthrough = false
+health_damage_multiplier = 0.75
+bleedthrough = true
 max_range = 200.0
 falloff_start = 50.0
 falloff_end = 90.0

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="GrenadeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/grenade_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Frag Grenade"
+short_name = "FRAG"
+kind = 0
+throw_speed = 18.0
+throw_lift = 3.5
+inherit_velocity = 0.5
+throw_cooldown = 0.8
+radius = 0.12
+mass = 0.5
+bounce = 0.35
+friction = 0.6
+fuse_time = 2.5
+damage = 100.0
+inner_radius = 1.5
+blast_radius = 5.0
+shield_damage_multiplier = 1.0
+bleedthrough = true
+color = Color(0.25, 0.3, 0.22, 1)
+glow = Color(0, 0, 0, 0)
+flash_color = Color(1, 0.7, 0.35, 1)

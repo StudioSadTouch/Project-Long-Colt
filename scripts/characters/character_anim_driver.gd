@@ -24,6 +24,10 @@ extends Node
 ## false and the driver stops posing the body on death so a client-local ragdoll can take it.
 
 signal death_started(hit_dir: int, impulse: Vector3)
+## Ground / crouch foot plant. speed is horizontal m/s. A gait-clock reset does not emit.
+signal foot_contact(speed: float, crouched: bool)
+## Entered Land. impact is the larger of fall speed and horizontal speed, m/s.
+signal foot_landed(impact: float)
 ## After every apply_state (props and other listeners follow the same synced state).
 signal state_applied(state: CharacterAnimState)
 
@@ -37,6 +41,8 @@ const ST_LAND := &"Land"
 const ST_SLIDE := &"Slide"
 const WEAPON_INPUTS := ["none", "rifle", "pistol"]
 const HIT_SUFFIX := ["front", "back", "left", "right"]
+## Below this horizontal speed the idle pose owns the blend, so feet stay quiet.
+const FOOT_MIN_SPEED := 1.0
 ## Eight directions, clockwise from forward; blend position is (right, forward).
 const DIRS := {
 	"f": Vector2(0, 1),
@@ -114,6 +120,9 @@ var _loco_rate: float = 1.0
 var _pump_weight: float = 0.0
 var _pump_phase: float = 0.0
 var _phase_node: StringName = &""
+## True after foot_landed until the body leaves the Land state, so a late current-node
+## read cannot plant the same landing twice.
+var _landing: bool = false
 ## "from>to" pairs of locomotion states joined by a cross-fade transition (travel, not start).
 var _xfade_pairs: Dictionary = {}
 
@@ -128,6 +137,7 @@ func _ready() -> void:
 ## Forget previous sequence counters: the next state sets the baseline without firing.
 func reset_baseline() -> void:
 	_have_baseline = false
+	_landing = false
 
 
 func apply_state(state: CharacterAnimState) -> void:
@@ -229,6 +239,14 @@ func _update_locomotion(state: CharacterAnimState, delta: float) -> void:
 		wanted = ST_SETTLE
 	else:
 		wanted = ST_GROUND
+	if wanted == ST_LAND:
+		if not _landing:
+			_landing = true
+			var fall := maxf(-state.velocity.y, 0.0)
+			var horiz := Vector2(state.velocity.x, state.velocity.z).length()
+			foot_landed.emit(maxf(fall, horiz))
+	else:
+		_landing = false
 	if wanted != current:
 		if _xfade_pairs.has("%s>%s" % [current, wanted]):
 			_playback.travel(wanted)
@@ -277,13 +295,20 @@ func _restart_phase(node: StringName) -> void:
 ## Run pump: phase follows the Ground state's own clock (it restarts at 0 whenever Ground is
 ## entered and advances at the locomotion rate, like the synced blendspace), so the additive's
 ## footfalls stay on the legs' footfalls. Weight from the synced velocity only.
+## Plants are at t = 0 and t = half cycle (generator: left foot at 0, right at CYCLE/2).
 func _update_pump(state: CharacterAnimState, delta: float) -> void:
 	var current := _playback.get_current_node()
+	var previous := _pump_phase
+	var advanced := false
 	if current != _phase_node:
+		# start() snaps this clock to 0. That is not a foot crossing.
 		_phase_node = current
 		_pump_phase = 0.0
 	elif pump_cycle > 0.0:
 		_pump_phase = fposmod(_pump_phase + delta * _loco_rate, pump_cycle)
+		advanced = true
+	if advanced and foot_crossed(previous, _pump_phase, pump_cycle):
+		_emit_foot(state, current)
 	var speed := Vector2(state.velocity.x, state.velocity.z).length()
 	var target := smoothstep(pump_start_speed, pump_full_speed, speed)
 	if current != ST_GROUND or not state.on_floor or state.crouched or state.sliding:
@@ -299,6 +324,28 @@ func _update_pump(state: CharacterAnimState, delta: float) -> void:
 	tree.set(&"parameters/pump_rate/scale", _loco_rate)
 	tree.set(&"parameters/pump_seek/seek_request", _pump_phase)
 	tree.set(&"parameters/pump_add/add_amount", _pump_weight)
+
+
+## True when playback from previous to now crosses a plant (cycle start, or half cycle).
+## now < previous is a wrap. Do not call this for a phase reset.
+static func foot_crossed(previous: float, now: float, cycle: float) -> bool:
+	if cycle <= 0.0 or now == previous:
+		return false
+	if now < previous:
+		return true
+	var half := cycle * 0.5
+	return previous < half and now >= half
+
+
+func _emit_foot(state: CharacterAnimState, current: StringName) -> void:
+	if state.dead or state.sliding or not state.on_floor:
+		return
+	if current != ST_GROUND and current != ST_CROUCH:
+		return
+	var speed := Vector2(state.velocity.x, state.velocity.z).length()
+	if speed < FOOT_MIN_SPEED:
+		return
+	foot_contact.emit(speed, state.crouched)
 
 
 func _update_one_shots(state: CharacterAnimState) -> void:

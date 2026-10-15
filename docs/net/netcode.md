@@ -48,13 +48,15 @@ CharacterAnimState / CharacterAnimDriver (ee83135). All newer APIs are probed wi
 
 ## Session flow
 
-1. **Host:** Menu → LAN → Host. `Net.host()` creates the server and starts the beacon, and
-   the lobby opens.
+1. **Host:** Menu → LAN → pick a map → Host. `Net.host()` creates the server and starts the
+   beacon, and the lobby opens. The host can still change the map in the lobby (`Net.set_map`).
+   Maps are listed in `scripts/core/map_list.gd` (`MapList`); `Net.map_id` is the session map.
 2. **Join:** a client picks a listed game or types an IP. `Net.join()` connects, then the
    client sends `_rpc_register(name, colour, PROTOCOL)`.
 3. **Registration:** the host checks the protocol and the 4-player cap, makes names unique, and
-   broadcasts the registry with `_rpc_players`.
-4. **Start:** the host presses Start Match and `_rpc_load_match` loads the arena on every peer.
+   broadcasts the registry with `_rpc_players(registry, map_id)` (also re-sent on a map change).
+4. **Start:** the host presses Start Match and `_rpc_load_match(map_id)` loads that map's arena
+   on every peer.
    A join during a match loads the arena straight away (late join).
 5. **Client ready:** in the arena, each client's NetMatch sends `_rpc_client_ready`. The host
    then does the following:
@@ -115,6 +117,9 @@ Two independent Host-menu options, both saved in `user://settings.cfg` (`[game]`
 | `_rpc_roster` / `_rpc_scores` / `_rpc_feed` / `_rpc_game_over` | H→C | reliable | host-authored match state |
 | `_rpc_loadout` / `_rpc_ammo` | H→owner | reliable | slot entries (id, scene, magazine, reserve, heat state) and active slot / reserve gains |
 | `_rpc_pickup_state` / `_rpc_drop` | H→C | reliable | key → available (sent on change, polled every 0.2 s) / drop spawn |
+| `_rpc_grenade` | C→H | reliable | grenade type, release point, velocity (host checks count + cooldown on the puppet, and that the release is near its eye) |
+| `_rpc_grenade_spawn` / `_rpc_grenade_boom` | H→C | reliable | grenade id, type, origin, velocity, thrower id / grenade id, type, detonation point |
+| `_rpc_grenades` | H→owner | reliable | grenade counts per type (sent when the host's count changes, or to undo a refused throw) |
 
 * **Quantised dir:** yaw byte | pitch byte << 8, or -1 for none.
 * **Heat:** heat never gets its own RPC (`heat_changed` fires every tick). It rides the state
@@ -261,20 +266,32 @@ copy on clients.
   * Head hitboxes stay stance-driven.
   * Ragdoll is client-local (`death_started(dir, impulse)`).
 * **Rate.** Remote drivers are fed at the packet rate: snapshot rate for the host's bodies,
-  and the client send rate on the host. `Net.PROTOCOL` is 2 (the anim wire format changed).
+  and the client send rate on the host. `Net.PROTOCOL` is 5 (2: the anim wire format changed; 3: map id on `_rpc_players` / `_rpc_load_match`; 4: visor colour on `_rpc_register` / `_rpc_update_info`; 5: grenade RPCs).
 
 ## Settings and colour
 
 * **Look and aim:** sensitivities are multipliers of the scene tuning (1.0 = unchanged). FOV
   -1 means the scene default. Mouse aim assist maps to `AimAssist.mouse_enabled`.
 * **Armor colour:**
-  * 14 presets plus a custom picker. The colour itself travels in the registry, not a preset
+  * 32 presets plus a custom picker, with a live 3D preview (`ArmorPreview`). The colour itself travels in the registry, not a preset
     index.
   * It is applied through the PlayerModel contract (`PlayerColor.apply`):
     1. `set_primary_color`;
     2. else the `primary_color` instance uniform;
     3. else the StandardMaterial albedo.
   * Colours are sRGB, passed as-is.
+* **Visor colour:** Settings → VISOR tab (16 presets + custom), saved as `[profile] visor`. It
+  travels in the registry as `"visor"` next to `"color"` (`_rpc_register` / `_rpc_update_info`,
+  PROTOCOL 4), is copied into the NetMatch roster, and is applied with `PlayerColor.apply_visor`
+  (`PlayerModel.set_visor_color`, the `visor_color` instance uniform). Bots keep the gold default.
+* **Grenades:** host-authoritative. The host's `Grenade` deals the damage (`Grenade.apply_blast`);
+  every client gets a visual copy (`authoritative = false`, the thrower's own included, so only
+  the count is predicted) and the host's detonation point. A client copy whose fuse runs out
+  waits up to 0.75 s for the boom before going off on its own (visual only).
+* **Keybinds:** Settings → Keybinds rebinds keyboard / mouse (two slots per action, controller
+  bindings untouched) through `Keybinds` (`scripts/core/keybinds.gd`). Only changes from the
+  project.godot defaults are saved, in `settings.cfg` `[keybinds]`. Binding an input already in
+  use removes it from the other action. Pause and the stick look actions aren't rebindable.
 * **Local body:** the local model sets `first_person_hidden = true` (render layer 2), and every
   gameplay camera culls layer 2.
 

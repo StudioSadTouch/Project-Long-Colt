@@ -5,6 +5,7 @@ extends Control
 ## Damage indicator: an edge chevron toward the attacker (body yaw, not the pitched camera).
 ## Blood: a screen splatter when health is lost, plus a small puff where your shot drew health.
 ## Shield hits stay blue and silent of blood. Hurt and death stingers are 2D on the UI bus.
+## A confirmed shot also plays that shield or health impact in 3D at the hit (Foley bus).
 ## Other guns play in 3D from ArenaEvents.gunfire / NetMatch.remote_shot. The local player's
 ## own shot is skipped there: WeaponFx already played it on the viewmodel.
 
@@ -196,8 +197,14 @@ func _on_hit(_target: Object, info: Dictionary) -> void:
 	_hit_left = HIT_TIME
 	_hit_color = Weapon.zone_color(int(info.get("hit_zone", Weapon.HitZone.BODY)))
 	var pitch := 1.18 if bool(info.get("headshot", false)) else 1.0
-	_play(_marker, HIT_MARKER, -18.0, pitch)
-	if float(info.get("health_dealt", 0.0)) > 0.0:
+	_play(_marker, HIT_MARKER, -10.0, pitch)
+	var health_dealt := float(info.get("health_dealt", 0.0))
+	var shield_dealt := float(info.get("shield_dealt", 0.0))
+	var at: Variant = info.get("position")
+	if at is Vector3 and (health_dealt > 0.0 or shield_dealt > 0.0):
+		var impact := HEALTH_HIT if health_dealt > 0.0 else SHIELD_HIT
+		_play_world(impact, at as Vector3, -4.0, &"Foley")
+	if health_dealt > 0.0:
 		_spawn_blood(info)
 
 
@@ -245,7 +252,7 @@ func _on_health_damaged(amount: float) -> void:
 
 
 func _on_died(_who: Player, _killer: Node, info: Dictionary) -> void:
-	_play(_death, DEATH, -4.0, randf_range(0.96, 1.02))
+	_play(_death, DEATH, -1.0, randf_range(0.96, 1.02))
 	if not bool(info.get("kill_volume", false)) and not _bled:
 		_add_blood(28.0)
 	_marks.clear()
@@ -270,10 +277,10 @@ func _flush_hurt() -> void:
 		_tint_latest(true)
 		if _player.health_shield != null and _player.health_shield.health <= 0.0:
 			return
-		_play(_hurt, HEALTH_HIT, -8.0, randf_range(0.96, 1.05))
+		_play(_hurt, HEALTH_HIT, -3.0, randf_range(0.96, 1.05))
 	elif shield > 0.0:
 		_tint_latest(false)
-		_play(_hurt, SHIELD_HIT, -12.0, randf_range(0.94, 1.06))
+		_play(_hurt, SHIELD_HIT, -5.0, randf_range(0.94, 1.06))
 
 
 func _on_gunfire(source: Node3D, position: Vector3) -> void:
@@ -398,7 +405,9 @@ func _play(player: AudioStreamPlayer, stream: AudioStream, db: float, pitch: flo
 	player.play()
 
 
-func _play_world(stream: AudioStream, at: Vector3) -> void:
+func _play_world(
+	stream: AudioStream, at: Vector3, db: float = -8.0, bus: StringName = &"Weapons"
+) -> void:
 	if stream == null:
 		return
 	var host := get_tree().current_scene
@@ -406,22 +415,16 @@ func _play_world(stream: AudioStream, at: Vector3) -> void:
 		return
 	var voice := AudioStreamPlayer3D.new()
 	voice.stream = stream
-	voice.volume_db = -8.0
-	voice.unit_size = 7.0
-	voice.max_distance = 55.0
+	voice.volume_db = db
+	voice.unit_size = 7.0 if bus == &"Weapons" else 4.0
+	voice.max_distance = 55.0 if bus == &"Weapons" else 28.0
 	voice.pitch_scale = randf_range(0.97, 1.03)
-	if AudioServer.get_bus_index(&"Weapons") >= 0:
-		voice.bus = &"Weapons"
+	if AudioServer.get_bus_index(bus) >= 0:
+		voice.bus = bus
 	voice.finished.connect(voice.queue_free)
 	host.add_child(voice)
 	voice.global_position = at
 	voice.play()
-	# A typed bind() on this timer fails at runtime ("Object to Object") and spams the log.
-	var pending := voice
-	get_tree().create_timer(2.0, false).timeout.connect(func() -> void:
-		if is_instance_valid(pending):
-			pending.queue_free()
-	)
 
 
 func _decay(items: Array[Dictionary], delta: float) -> void:

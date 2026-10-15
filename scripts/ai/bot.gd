@@ -354,6 +354,10 @@ func set_primary_color(color: Color) -> void:
 	PlayerColor.apply(self, color)
 
 
+func set_visor_color(color: Color) -> void:
+	PlayerColor.apply_visor(self, color)
+
+
 func get_model() -> Node3D:
 	return get_node_or_null(^"PlayerModel") as Node3D
 

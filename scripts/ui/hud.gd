@@ -1,6 +1,7 @@
 extends CanvasLayer
 ## Combat HUD, Bungie-era: chunky shield meter top centre with segmented health under it,
-## low-shield flash + beep hook, ammo and fire mode bottom right, a bloom-tracking crosshair,
+## low-shield flash + beep hook, ammo and fire mode bottom right, grenades bottom left (the
+## selected type lit amber, GrenadeThrower on the owning Player), a bloom-tracking crosshair,
 ## and a per-weapon scope overlay (ScopeOverlay, data.scope_style) that fades in with the zoom
 ## blend, snaps off on unzoom, and hides the crosshair while up (the holder hides the viewmodel).
 ## No audio here: listen to sfx_event(name) (names: "low_shield_beep", "shield_broken",
@@ -30,6 +31,10 @@ const BAR_GAP := 6.0
 ## Crosshair.
 const RETICLE_COLOR := Color(0.92, 0.93, 0.9, 0.9)
 const RETICLE_TARGET_COLOR := Color(1.0, 0.18, 0.15, 0.95)
+## Grenade readout.
+const GRENADE_SELECTED := Color(0.95, 0.68, 0.2, 1.0)
+const GRENADE_IDLE := Color(0.78, 0.86, 0.9, 0.6)
+const GRENADE_EMPTY := Color(0.5, 0.55, 0.58, 0.35)
 
 @export var holder_path: NodePath
 @export var health_path: NodePath
@@ -54,6 +59,9 @@ var _low_shield: bool = false
 var _beep_left: float = 0.0
 var _time: float = 0.0
 var _player: Player
+var _grenades: GrenadeThrower
+var _grenade_row: HBoxContainer
+var _grenade_labels: Array[Label] = []
 
 @onready var ammo_label: Label = $Ammo
 @onready var mode_label: Label = $FireMode
@@ -77,6 +85,7 @@ func _ready() -> void:
 		_on_health_changed(_health.shield, _health.health)
 	else:
 		shield_meter.visible = false
+	_build_grenade_row()
 	_holder = get_node_or_null(holder_path) as WeaponHolder
 	if _holder == null:
 		push_warning("HUD has no WeaponHolder")
@@ -97,6 +106,47 @@ func _process(delta: float) -> void:
 	shield_meter.queue_redraw()
 	_update_prompt()
 	_update_energy_label()
+	_update_grenades(dead)
+
+
+func _build_grenade_row() -> void:
+	_grenade_row = HBoxContainer.new()
+	_grenade_row.name = "Grenades"
+	_grenade_row.anchor_top = 1.0
+	_grenade_row.anchor_bottom = 1.0
+	_grenade_row.offset_left = 32.0
+	_grenade_row.offset_top = -64.0
+	_grenade_row.offset_right = 420.0
+	_grenade_row.offset_bottom = -24.0
+	_grenade_row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_grenade_row.add_theme_constant_override(&"separation", 28)
+	_grenade_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_grenade_row)
+
+
+## Binds to the Player's GrenadeThrower lazily (it is a later sibling of the HUD).
+func _update_grenades(dead: bool) -> void:
+	if _grenades == null and _player != null:
+		_grenades = _player.get_node_or_null(^"GrenadeThrower") as GrenadeThrower
+		if _grenades != null:
+			_grenades.changed.connect(_refresh_grenades)
+			_refresh_grenades()
+	_grenade_row.visible = _grenades != null and not dead
+
+
+func _refresh_grenades() -> void:
+	while _grenade_labels.size() < _grenades.types.size():
+		var label := Label.new()
+		label.add_theme_font_size_override(&"font_size", 24)
+		_grenade_row.add_child(label)
+		_grenade_labels.append(label)
+	for i in _grenade_labels.size():
+		var label := _grenade_labels[i]
+		var count := _grenades.get_count(i)
+		var picked := i == _grenades.selected
+		label.text = "%s%s x%d" % ["> " if picked else "", _grenades.types[i].short_name, count]
+		var color := GRENADE_SELECTED if picked else GRENADE_IDLE
+		label.add_theme_color_override(&"font_color", color if count > 0 else GRENADE_EMPTY)
 
 
 ## Overlay style for the active weapon; NONE if it doesn't zoom (or opted out).

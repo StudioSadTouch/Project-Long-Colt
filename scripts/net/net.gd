@@ -23,21 +23,22 @@ const DEFAULT_PORT := 7777
 const DISCOVERY_PORT := 7778
 const MAX_PLAYERS := 4
 ## Bump on any change to the RPC set or wire formats (here or in NetMatch).
-const PROTOCOL := 2
+const PROTOCOL := 5
 const GAME_TAG := "PLC"
-const MAP_NAME := "Lockout"
-const ARENA_SCENE := "res://scenes/main/arena_lockout.tscn"
 const MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 const CONNECT_TIMEOUT := 8.0
 
 var mode: Mode = Mode.OFFLINE
-## peer id -> {"name": String, "color": String (html)}. Host-authoritative.
+## peer id -> {"name": String, "color": String (html), "visor": String (html)}. Host-authoritative.
 var players: Dictionary = {}
 ## Host: fill empty slots (of MAX_PLAYERS) with bots.
 var bot_fill: bool = true
 ## Host: a human leaving mid-match is replaced by a bot (independent of bot_fill).
 var bot_refill: bool = false
 var match_running: bool = false
+## Map of the current session (MapList id). Host-authoritative: the host sets it (set_map) and
+## sends it with the player registry and with every match load.
+var map_id: String = MapList.DEFAULT_ID
 ## Why the last session ended (shown by the main menu).
 var last_end_reason: String = ""
 var discovery: LanDiscovery
@@ -89,6 +90,11 @@ func name_of(peer_id: int) -> String:
 	return str(players.get(peer_id, {}).get("name", "Player %d" % peer_id))
 
 
+func visor_of(peer_id: int) -> Color:
+	var html := str(players.get(peer_id, {}).get("visor", ""))
+	return Color.from_string(html, PlayerColor.default_visor())
+
+
 func color_of(peer_id: int) -> Color:
 	var html := str(players.get(peer_id, {}).get("color", ""))
 	return Color.from_string(html, PlayerColor.default_color())
@@ -98,14 +104,22 @@ func color_of(peer_id: int) -> Color:
 
 
 ## Bot Arena: no peer, straight to the arena (difficulty comes from Settings).
-func start_offline() -> void:
+## map "" = the menu's last pick (Settings.map_id).
+func start_offline(map: String = "") -> void:
 	leave()
+	map_id = MapList.sanitize(map if map != "" else Settings.map_id)
 	match_running = true
-	_load_scene(ARENA_SCENE)
+	_load_scene(MapList.arena_of(map_id))
 
 
-func host(port: int = DEFAULT_PORT, fill_bots: bool = true, refill_bots: bool = false) -> Error:
+func host(
+	port: int = DEFAULT_PORT,
+	fill_bots: bool = true,
+	refill_bots: bool = false,
+	map: String = ""
+) -> Error:
 	leave()
+	map_id = MapList.sanitize(map if map != "" else Settings.map_id)
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_server(port, MAX_PLAYERS - 1)
 	if err != OK:
@@ -148,6 +162,15 @@ func leave() -> void:
 	_connect_left = 0.0
 
 
+## Host, in the lobby: pick the map. Clients see it with the next registry broadcast and the
+## LAN beacon advertises it from the next ping.
+func set_map(map: String) -> void:
+	if mode != Mode.HOST or match_running:
+		return
+	map_id = MapList.sanitize(map)
+	_broadcast_players()
+
+
 ## Host: load the arena on every peer (also used for Play Again).
 func start_match() -> void:
 	if mode != Mode.HOST:
@@ -155,8 +178,8 @@ func start_match() -> void:
 	match_running = true
 	for peer_id: int in players:
 		if peer_id != 1:
-			_rpc_load_match.rpc_id(peer_id)
-	_load_scene(ARENA_SCENE)
+			_rpc_load_match.rpc_id(peer_id, map_id)
+	_load_scene(MapList.arena_of(map_id))
 
 
 ## Leave the session (if any) and show the main menu.
@@ -175,7 +198,7 @@ func update_my_info() -> void:
 		_broadcast_players()
 	elif mode == Mode.CLIENT and players.has(my_id()):
 		var info := _my_info()
-		_rpc_update_info.rpc_id(1, info.name, info.color)
+		_rpc_update_info.rpc_id(1, info.name, info.color, info.visor)
 
 
 # ------------------------------------------------------------------ multiplayer callbacks
@@ -192,7 +215,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 
 func _on_connected_to_server() -> void:
 	var info := _my_info()
-	_rpc_register.rpc_id(1, info.name, info.color, PROTOCOL)
+	_rpc_register.rpc_id(1, info.name, info.color, PROTOCOL, info.visor)
 
 
 func _on_connection_failed() -> void:
@@ -217,9 +240,12 @@ func _fail_join(reason: String) -> void:
 
 # ------------------------------------------------------------------ RPCs
 
-## Client -> host: join request.
+## Client -> host: join request. visor_html is last (with a default) so a PROTOCOL 3 client's
+## 3-argument call still arrives and gets the version-mismatch rejection.
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_register(player_name: String, color_html: String, protocol: int) -> void:
+func _rpc_register(
+	player_name: String, color_html: String, protocol: int, visor_html: String = ""
+) -> void:
 	if mode != Mode.HOST:
 		return
 	var sender := multiplayer.get_remote_sender_id()
@@ -234,28 +260,31 @@ func _rpc_register(player_name: String, color_html: String, protocol: int) -> vo
 	players[sender] = {
 		"name": _unique_name(Settings.sanitize_name(player_name), sender),
 		"color": _clean_color(color_html),
+		"visor": _clean_color(visor_html, PlayerColor.default_visor()),
 	}
 	_broadcast_players()
 	if match_running:
-		_rpc_load_match.rpc_id(sender)
+		_rpc_load_match.rpc_id(sender, map_id)
 
 
 @rpc("any_peer", "call_remote", "reliable")
-func _rpc_update_info(player_name: String, color_html: String) -> void:
+func _rpc_update_info(player_name: String, color_html: String, visor_html: String) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if mode != Mode.HOST or not players.has(sender):
 		return
 	players[sender] = {
 		"name": _unique_name(Settings.sanitize_name(player_name), sender),
 		"color": _clean_color(color_html),
+		"visor": _clean_color(visor_html, PlayerColor.default_visor()),
 	}
 	_broadcast_players()
 
 
 @rpc("authority", "call_remote", "reliable")
-func _rpc_players(registry: Dictionary) -> void:
+func _rpc_players(registry: Dictionary, map: String) -> void:
 	var first := not players.has(my_id())
 	players = registry
+	map_id = MapList.sanitize(map)
 	players_changed.emit()
 	if first and players.has(my_id()):
 		_connect_left = 0.0
@@ -268,9 +297,10 @@ func _rpc_rejected(reason: String) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _rpc_load_match() -> void:
+func _rpc_load_match(map: String) -> void:
+	map_id = MapList.sanitize(map)
 	match_running = true
-	_load_scene(ARENA_SCENE)
+	_load_scene(MapList.arena_of(map_id))
 
 
 # ------------------------------------------------------------------ helpers
@@ -279,7 +309,7 @@ func _rpc_load_match() -> void:
 func _broadcast_players() -> void:
 	for peer_id: int in players:
 		if peer_id != 1:
-			_rpc_players.rpc_id(peer_id, players)
+			_rpc_players.rpc_id(peer_id, players, map_id)
 	players_changed.emit()
 
 
@@ -292,13 +322,17 @@ func _kick_later(peer_id: int) -> void:
 
 
 func _my_info() -> Dictionary:
-	return {"name": Settings.player_name, "color": Settings.primary_color.to_html(false)}
+	return {
+		"name": Settings.player_name,
+		"color": Settings.primary_color.to_html(false),
+		"visor": Settings.visor_color.to_html(false),
+	}
 
 
 func _beacon_info(port: int) -> Dictionary:
 	return {
 		"name": name_of(1),
-		"map": MAP_NAME,
+		"map": MapList.name_of(map_id),
 		"players": players.size(),
 		"max": MAX_PLAYERS,
 		"port": port,
@@ -319,8 +353,8 @@ func _unique_name(wanted: String, peer_id: int) -> String:
 	return candidate
 
 
-static func _clean_color(html: String) -> String:
-	var color := Color.from_string(html, PlayerColor.default_color())
+static func _clean_color(html: String, fallback: Color = PlayerColor.default_color()) -> String:
+	var color := Color.from_string(html, fallback)
 	color.a = 1.0
 	return color.to_html(false)
 

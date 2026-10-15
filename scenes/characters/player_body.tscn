@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/characters/player/player_model.tscn" id="1_model"]
 [ext_resource type="AnimationLibrary" path="res://assets/characters/player/anims/character_anims.tres" id="2_anims"]
 [ext_resource type="Script" path="res://scripts/characters/character_anim_driver.gd" id="3_driver"]
 [ext_resource type="Script" path="res://scripts/characters/character_anim_source.gd" id="4_source"]
 [ext_resource type="Script" path="res://scripts/characters/character_weapon_props.gd" id="5_props"]
+[ext_resource type="Script" path="res://scripts/audio/footsteps.gd" id="6_steps"]
 
 [node name="PlayerModel" instance=ExtResource("1_model")]
 
@@ -26,3 +27,6 @@ driver = NodePath("../CharacterAnimDriver")
 [node name="CharacterWeaponProps" type="Node" parent="." node_paths=PackedStringArray("driver")]
 script = ExtResource("5_props")
 driver = NodePath("../CharacterAnimDriver")
+
+[node name="Footsteps" type="Node3D" parent="."]
+script = ExtResource("6_steps")

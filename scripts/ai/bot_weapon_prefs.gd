@@ -18,19 +18,19 @@ const ROLE_BY_PATH := {
 	"res://resources/weapons/directed_energy_rifle.tres": Role.ENERGY,
 }
 ## Preferred engagement bands (m) for the new roles. Shotgun: well inside its 6 m full-damage range,
-## so the bot pushes in. Carbine: mid-long, inside its 50 m full-damage range. Energy: inside the
-## 20 m bolt falloff start.
+## so the bot pushes in. Carbine: mid-long, inside its 50 m full-damage range. Energy (the DER, a
+## scoped one-shot since the v2 TTK pass): mid-long, inside its 40 m one-shot range.
 const RANGE_CARBINE := Vector2(15.0, 50.0)
 const RANGE_SHOTGUN := Vector2(0.0, 4.0)
-const RANGE_ENERGY := Vector2(6.0, 20.0)
+const RANGE_ENERGY := Vector2(12.0, 40.0)
 ## Carrying a loaded shotgun and the target is closer than this: close the distance with it.
 const SHOTGUN_PUSH_RANGE := 14.0
 ## Shotgun wins below this (plus hysteresis while held), is a poor choice past SHOTGUN_FAR.
 const SHOTGUN_NEAR := 7.0
 const SHOTGUN_FAR := 15.0
 const CARBINE_NEAR := 12.0
-## DER: worth holding on a shielded target inside this range.
-const ENERGY_RANGE := 30.0
+## DER: one-shots anything inside this range (falloff starts at 40 m), shield up or down.
+const ENERGY_RANGE := 40.0
 ## Heat at which a bot lets go of the DER trigger, and the heat it waits for before resuming.
 const HEAT_STOP := 0.85
 const HEAT_RESUME := 0.4
@@ -83,7 +83,7 @@ static func band(role: int) -> Vector2:
 ## more than 1). `held`: the active weapon gets the hysteresis margin. total_ammo <= 0: -100.
 ## PISTOL / RIFLE keep the brain's original scoring: 2.0 in band and 0.5 / -0.5 out of band.
 static func score(
-	w: Weapon, dist: float, held: bool, target_shielded: bool, total_ammo: int
+	w: Weapon, dist: float, held: bool, _target_shielded: bool, total_ammo: int
 ) -> float:
 	if w == null or w.data == null or total_ammo <= 0:
 		return -100.0
@@ -98,10 +98,11 @@ static func score(
 		Role.ENERGY:
 			if w.overheated or w.heat >= HEAT_STOP:
 				return -2.0
-			if not target_shielded:
-				# Shield's down: swap to the precision gun for the finish (DER + pistol combo).
-				return -1.5
-			return 3.5 if dist < ENERGY_RANGE + margin else 0.0
+			# One-shot kill whatever the shield: the best gun in its range, still decent past it
+			# (two shots). Close in, the 1.67 s cycle loses to anything automatic.
+			if dist < CARBINE_NEAR - margin:
+				return 1.0
+			return 4.0 if dist < ENERGY_RANGE + margin else 2.5
 	var auto := w.data.fire_mode == WeaponData.FireMode.AUTO
 	var split := WEAPON_SPLIT
 	if held:

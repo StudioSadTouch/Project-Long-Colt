@@ -7,9 +7,15 @@ https://github.com/buddingmonkey/FreeFirearmsSFXLibrary
   Combat Shotgun          Mossberg prepared take N_30P
   Service Pistol          Walther PPQ prepared take X_31P
 
-The energy rifle, the shotgun pump, and the hit / hurt / death stingers are
-Kenney Sci-fi Sounds and Kenney Impact Sounds (CC0), www.kenney.nl.
-Credit is not required.
+The energy rifle, the shotgun pump, the hit / hurt / death stingers and the
+grenade placeholders are Kenney Sci-fi Sounds and Kenney Impact Sounds (CC0),
+www.kenney.nl. Credit is not required.
+
+Footsteps and the landing are Fantozzi's Footsteps (Grass/Sand & Stone) by
+Fantozzi (CC0), https://opengameart.org/content/fantozzis-footsteps-grasssand-stone
+  step_0..5              Fantozzi-StoneL1 R1 L2 R2 L3 R3 (alternating feet), mono,
+                         trimmed to 0.19 s, 70 Hz high-pass, loudness-normalised
+  land.wav               StoneL1 + StoneR2 25 ms apart, pitched to 0.85, low-passed
 
   DER bolt               laserLarge_000, shortened
   DER charged shot       laserLarge_004
@@ -17,6 +23,13 @@ Credit is not required.
   DER overheat           explosionCrunch_000
   Shotgun pump           impactMetal_medium_000 then impactMetal_light_001
   Hit marker             impactGeneric_light_002
-  Shield damage          forceField_002
-  Health damage          impactPunch_medium_001
-  Death                  lowFrequency_explosion_001
+  Shield damage          forceField_000 high-passed, plus a short impactMetal_light_004 crack
+  Health damage          impactPunch_heavy_000, plus a short impactMetal_light_002 crack
+  Death                  impactPlate_medium_001, high-passed (not the sub-bass explosion)
+  Grenade throw          impactGeneric_light_000, pitched up (placeholder)
+  Grenade switch         impactGeneric_light_003, pitched up (placeholder)
+  Frag bounce            impactMetal_light_001 (placeholder)
+  Frag explosion         lowFrequency_explosion_000 + explosionCrunch_002 (placeholder)
+  Sticky stick           slime_000 (placeholder)
+  Sticky fuse hiss       spaceEngineSmall_000, high-passed (placeholder)
+  Sticky explosion       explosionCrunch_003 + forceField_002 (placeholder)
