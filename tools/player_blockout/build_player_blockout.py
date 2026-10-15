@@ -51,7 +51,7 @@ MATS = {
     "A": ("mat_armor", "#4a5039"),
     "U": ("mat_undersuit", "#2e2f31"),
     "V": ("mat_visor", "#a87a1e"),
-    "X": ("mat_accent", "#9c3b2a"),
+    "X": ("mat_accent", "#b3261e"),  # team accent, tinted in Godot via accent_color
 }
 
 
@@ -74,6 +74,22 @@ def hexa(b_c, b_w, b_d, t_c, t_w, t_d):
         for sx, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
             vs.append((c[0] + sx * w / 2, c[1], c[2] + sz * d / 2))
     faces = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
+    return vs, faces
+
+
+def loft(rings):
+    """Stack of rectangular rings (y, cz, w, d), bottom to top, centred on x 0."""
+    vs = []
+    for y, cz, w, d in rings:
+        for sx, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+            vs.append((sx * w / 2, y, cz + sz * d / 2))
+    n = len(rings)
+    faces = [(0, 3, 2, 1), tuple(4 * (n - 1) + k for k in range(4))]
+    for r in range(n - 1):
+        a, b = 4 * r, 4 * (r + 1)
+        for k in range(4):
+            k2 = (k + 1) % 4
+            faces.append((a + k, a + k2, b + k2, b + k))
     return vs, faces
 
 
@@ -135,43 +151,50 @@ def side_parts(s):
     x = lambda v: s * v  # noqa: E731
     shoulder, elbow, wrist = (x(0.25), 1.36, 0.0), (x(0.275), 1.00, 0.0), (x(0.29), 0.80, 0.0)
     hip, knee, ankle = (x(0.11), 0.88, 0.0), (x(0.11), 0.51, 0.0), (x(0.11), 0.12, 0.0)
-    # Arm chain (child of chest). Slight A-pose via offset joint x.
-    part(f"PB_UpperArm_{L}", "U", cyl((x(0.27), 0.96, 0), (x(0.255), 1.33, 0), 0.05, 0.05, 8), shoulder, "PB_Chest")
-    part(f"PB_Bicep_{L}", "A", hexa((x(0.298), 1.06, 0), 0.03, 0.09, (x(0.29), 1.26, 0), 0.03, 0.10), shoulder, f"PB_UpperArm_{L}")
+    # Arm chain (child of chest). Slight A-pose via offset joint x. Bulk-up v2: heavier
+    # gauntlets, bigger rounder pauldrons overhanging the upper arm.
+    part(f"PB_UpperArm_{L}", "U", cyl((x(0.265), 0.96, 0), (x(0.255), 1.33, 0), 0.052, 0.052, 8), shoulder, "PB_Chest")
+    part(f"PB_Bicep_{L}", "A", hexa((x(0.292), 1.06, 0), 0.03, 0.10, (x(0.285), 1.24, 0), 0.03, 0.11), shoulder, f"PB_UpperArm_{L}")
     part(f"PB_Pauldron_{L}", "X" if s < 0 else "A",
-         hexa((x(0.25), 1.30, 0), 0.16, 0.20, (x(0.245), 1.46, 0), 0.14, 0.18), shoulder, f"PB_UpperArm_{L}", 0.03)
-    part(f"PB_Forearm_{L}", "A", hexa((x(0.285), 0.81, 0), 0.12, 0.12, (x(0.28), 0.98, 0), 0.13, 0.13), elbow, f"PB_UpperArm_{L}", 0.015)
+         hexa((x(0.24), 1.27, 0), 0.18, 0.23, (x(0.235), 1.46, 0), 0.15, 0.19), shoulder, f"PB_UpperArm_{L}", 0.045)
+    part(f"PB_Forearm_{L}", "A", hexa((x(0.275), 0.81, -0.005), 0.14, 0.145, (x(0.27), 0.98, 0), 0.15, 0.15), elbow, f"PB_UpperArm_{L}", 0.02)
     if s < 0:
-        part("PB_WristDisplay_L", "U", box((x(0.285), 0.88, -0.072), (0.07, 0.06, 0.025)), elbow, "PB_Forearm_L")
-    part(f"PB_Hand_{L}", "U", box((x(0.295), 0.745, -0.005), (0.09, 0.10, 0.10)), wrist, f"PB_Forearm_{L}", 0.01)
-    part(f"PB_Thumb_{L}", "U", box((x(0.255), 0.765, -0.045), (0.03, 0.05, 0.035)), wrist, f"PB_Hand_{L}")
-    # Leg chain (child of pelvis).
-    part(f"PB_Thigh_{L}", "A", hexa((x(0.11), 0.56, -0.01), 0.14, 0.15, (x(0.11), 0.87, 0.0), 0.16, 0.18), hip, "PB_Pelvis", 0.02)
-    part(f"PB_Shin_{L}", "A", hexa((x(0.11), 0.15, 0.0), 0.11, 0.12, (x(0.11), 0.47, 0.0), 0.12, 0.14), knee, f"PB_Thigh_{L}", 0.015)
-    part(f"PB_KneeJoint_{L}", "U", cyl((x(0.11), 0.45, 0), (x(0.11), 0.59, 0), 0.055, 0.055, 8), knee, f"PB_Shin_{L}")
-    part(f"PB_Knee_{L}", "A", box((x(0.11), 0.51, -0.075), (0.13, 0.10, 0.08)), knee, f"PB_Shin_{L}", 0.015)
-    part(f"PB_Boot_{L}", "A", box((x(0.11), 0.09, -0.02), (0.13, 0.10, 0.22)), ankle, f"PB_Shin_{L}", 0.015)
-    part(f"PB_Sole_{L}", "U", box((x(0.11), 0.02, -0.03), (0.14, 0.04, 0.28)), ankle, f"PB_Boot_{L}")
-    part(f"PB_Toe_{L}", "A", hexa((x(0.11), 0.04, -0.125), 0.13, 0.07, (x(0.11), 0.10, -0.11), 0.12, 0.03), ankle, f"PB_Boot_{L}")
+        part("PB_WristDisplay_L", "U", box((x(0.275), 0.88, -0.085), (0.075, 0.065, 0.025)), elbow, "PB_Forearm_L")
+    part(f"PB_Hand_{L}", "U", box((x(0.28), 0.745, -0.005), (0.10, 0.10, 0.11)), wrist, f"PB_Forearm_{L}", 0.012)
+    part(f"PB_Thumb_{L}", "U", box((x(0.235), 0.765, -0.05), (0.035, 0.055, 0.04)), wrist, f"PB_Hand_{L}")
+    # Leg chain (child of pelvis). Bulk-up v2: thicker thighs and shins.
+    part(f"PB_Thigh_{L}", "A", hexa((x(0.11), 0.56, -0.01), 0.16, 0.17, (x(0.11), 0.87, 0.0), 0.18, 0.20), hip, "PB_Pelvis", 0.025)
+    part(f"PB_Shin_{L}", "A", hexa((x(0.11), 0.15, 0.0), 0.12, 0.14, (x(0.11), 0.47, -0.005), 0.14, 0.16), knee, f"PB_Thigh_{L}", 0.02)
+    part(f"PB_KneeJoint_{L}", "U", cyl((x(0.11), 0.45, 0), (x(0.11), 0.59, 0), 0.06, 0.06, 8), knee, f"PB_Shin_{L}")
+    part(f"PB_Knee_{L}", "A", box((x(0.11), 0.51, -0.085), (0.14, 0.10, 0.09)), knee, f"PB_Shin_{L}", 0.018)
+    part(f"PB_Boot_{L}", "A", box((x(0.11), 0.09, -0.02), (0.14, 0.10, 0.23)), ankle, f"PB_Shin_{L}", 0.015)
+    part(f"PB_Sole_{L}", "U", box((x(0.11), 0.02, -0.03), (0.15, 0.04, 0.29)), ankle, f"PB_Boot_{L}")
+    part(f"PB_Toe_{L}", "A", hexa((x(0.11), 0.04, -0.13), 0.14, 0.07, (x(0.11), 0.10, -0.115), 0.13, 0.03), ankle, f"PB_Boot_{L}")
 
 
 PELVIS, WAIST, CHEST, NECK = (0, 0.93, 0), (0, 1.00, 0), (0, 1.12, 0), (0, 1.47, 0)
 # BodyMesh: pelvis is the root of the body chain.
-part("PB_Pelvis", "U", hexa((0, 0.88, 0.0), 0.40, 0.25, (0, 0.98, 0.0), 0.38, 0.24), PELVIS, "BodyMesh")
+part("PB_Pelvis", "U", hexa((0, 0.87, 0.0), 0.41, 0.25, (0, 1.00, 0.0), 0.39, 0.24), PELVIS, "BodyMesh")
 part("PB_Codpiece", "A", hexa((0, 0.80, -0.115), 0.11, 0.04, (0, 0.92, -0.125), 0.20, 0.05), PELVIS, "PB_Pelvis")
 part("PB_ButtPlate", "A", hexa((0, 0.82, 0.12), 0.20, 0.04, (0, 0.93, 0.125), 0.28, 0.05), PELVIS, "PB_Pelvis")
-part("PB_Pouch_L", "U", box((-0.15, 0.91, -0.135), (0.08, 0.09, 0.05)), PELVIS, "PB_Pelvis", 0.008)
-part("PB_Pouch_R", "U", box((0.15, 0.91, -0.135), (0.08, 0.09, 0.05)), PELVIS, "PB_Pelvis", 0.008)
+part("PB_Pouch_L", "U", box((-0.15, 0.925, -0.14), (0.09, 0.10, 0.06)), PELVIS, "PB_Pelvis", 0.01)
+part("PB_Pouch_R", "U", box((0.15, 0.925, -0.14), (0.09, 0.10, 0.06)), PELVIS, "PB_Pelvis", 0.01)
 part("PB_Knife_R", "U", box((0.212, 0.86, 0.03), (0.03, 0.16, 0.05)), PELVIS, "PB_Pelvis")
 part("PB_Abdomen", "U", cyl((0, 0.97, 0), (0, 1.14, 0), 0.16, 0.11, 10), WAIST, "PB_Pelvis")
-part("PB_Chest", "A", hexa((0, 1.12, -0.015), 0.40, 0.24, (0, 1.40, -0.03), 0.46, 0.28), CHEST, "PB_Abdomen", 0.025)
-part("PB_Collar", "A", cyl((0, 1.38, -0.01), (0, 1.46, -0.01), 0.15, 0.13, 10), CHEST, "PB_Chest")
+# Ab plate: covers the front of the abdomen gap; the sides stay dark so the waist still reads.
+part("PB_AbPlate", "A", hexa((0, 0.985, -0.115), 0.20, 0.04, (0, 1.13, -0.13), 0.26, 0.04), WAIST, "PB_Abdomen", 0.01)
+# Chest: deeper plate, forward slope at the pecs (front peaks at y 1.31), back under the pack.
+part("PB_Chest", "A", loft([(1.12, -0.02, 0.40, 0.24), (1.31, -0.035, 0.46, 0.33), (1.40, -0.02, 0.44, 0.27)]),
+     CHEST, "PB_Abdomen", 0.02)
+part("PB_Collar", "A", cyl((0, 1.38, -0.02), (0, 1.46, -0.02), 0.16, 0.14, 10), CHEST, "PB_Chest")
 part("PB_Pack", "A", box((0, 1.23, 0.155), (0.30, 0.30, 0.09)), CHEST, "PB_Chest", 0.02)
 part("PB_Antenna", "U", box((-0.10, 1.45, 0.17), (0.02, 0.14, 0.02)), CHEST, "PB_Chest")
 side_parts(-1)
 side_parts(1)
 # NeckMesh
-part("PB_Neck", "U", cyl((0, 1.40, 0), (0, 1.54, 0), 0.07, 0.07, 10), NECK, "NeckMesh")
+part("PB_Neck", "U", cyl((0, 1.40, 0), (0, 1.54, 0), 0.075, 0.075, 10), NECK, "NeckMesh")
+# Neck seal: a fat undersuit ring between collar and helmet so no thin stalk reads.
+part("PB_NeckSeal", "U", cyl((0, 1.44, -0.005), (0, 1.495, -0.005), 0.11, 0.10, 10), NECK, "PB_Neck")
 # HelmetMesh: every helmet piece is a child of PB_Helmet, which pivots at the neck joint.
 part("PB_Helmet", "A", box((0, 1.665, -0.02), (0.28, 0.29, 0.31)), NECK, "HelmetMesh", 0.05)
 part("PB_HelmetChin", "A", hexa((0, 1.51, -0.13), 0.14, 0.08, (0, 1.545, -0.15), 0.20, 0.07), NECK, "PB_Helmet")

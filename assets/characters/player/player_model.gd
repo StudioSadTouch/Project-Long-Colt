@@ -7,6 +7,8 @@ extends Node3D
 ## Tint contract (LC Programmer): callers only use set_primary_color(). It writes the
 ## `primary_color` instance uniform on every primary-armor MeshInstance3D; the shared
 ## player_armor_primary.tres is never duplicated, so each player tints separately for free.
+## set_accent_color() does the same for the team accent (`accent_color` on the shared
+## player_accent.tres): PB_Pauldron_L and PB_HelmetStripe_L.
 ##
 ## The meshes come from res://assets/models/characters/player_blockout.glb (parts PB_*,
 ## grouped BodyMesh / NeckMesh / HelmetMesh / VisorMesh like dummy_rig.tscn). On _ready the
@@ -30,8 +32,11 @@ const MATERIAL_BY_NAME := {
 	&"mat_accent": ACCENT_MATERIAL,
 }
 const PRIMARY_PARAM := &"primary_color"
+const ACCENT_PARAM := &"accent_color"
 ## Field olive #4a5039, same as the shader default.
 const DEFAULT_PRIMARY := Color(0.290196, 0.313725, 0.223529)
+## Stencil red #b3261e, same as the shader default.
+const DEFAULT_ACCENT := Color(0.701961, 0.149020, 0.117647)
 
 const LAYERS_VISIBLE := 1  ## layer 1 only
 const LAYERS_FIRST_PERSON_HIDDEN := 2  ## layer 2 only
@@ -41,8 +46,10 @@ const LAYERS_FIRST_PERSON_HIDDEN := 2  ## layer 2 only
 @export var first_person_hidden: bool = false:
 	set = set_first_person_hidden
 @export var primary_color: Color = DEFAULT_PRIMARY
+@export var accent_color: Color = DEFAULT_ACCENT
 
 var _primary_meshes: Array[MeshInstance3D] = []
+var _accent_meshes: Array[MeshInstance3D] = []
 var _all_meshes: Array[MeshInstance3D] = []
 
 
@@ -50,7 +57,10 @@ func _ready() -> void:
 	_collect(self)
 	if _primary_meshes.is_empty():
 		push_warning("PlayerModel: no mat_armor meshes found; primary tint will do nothing.")
+	if _accent_meshes.is_empty():
+		push_warning("PlayerModel: no mat_accent meshes found; accent tint will do nothing.")
 	set_primary_color(primary_color)
+	set_accent_color(accent_color)
 	_apply_layers()
 
 
@@ -60,6 +70,14 @@ func set_primary_color(color: Color) -> void:
 	var value := Vector3(color.r, color.g, color.b)
 	for mesh: MeshInstance3D in _primary_meshes:
 		mesh.set_instance_shader_parameter(PRIMARY_PARAM, value)
+
+
+## Team accent. Safe to call before the node is in the tree (applied in _ready).
+func set_accent_color(color: Color) -> void:
+	accent_color = color
+	var value := Vector3(color.r, color.g, color.b)
+	for mesh: MeshInstance3D in _accent_meshes:
+		mesh.set_instance_shader_parameter(ACCENT_PARAM, value)
 
 
 func set_first_person_hidden(hidden: bool) -> void:
@@ -77,6 +95,11 @@ func _apply_layers() -> void:
 ## Primary-armor meshes (mat_armor), e.g. for outlines or hit flashes.
 func get_primary_meshes() -> Array[MeshInstance3D]:
 	return _primary_meshes
+
+
+## Accent meshes (mat_accent): PB_Pauldron_L, PB_HelmetStripe_L.
+func get_accent_meshes() -> Array[MeshInstance3D]:
+	return _accent_meshes
 
 
 ## Every model mesh.
@@ -103,3 +126,5 @@ func _setup_mesh(mesh: MeshInstance3D) -> void:
 	mesh.material_override = material
 	if material == PRIMARY_MATERIAL:
 		_primary_meshes.append(mesh)
+	elif material == ACCENT_MATERIAL:
+		_accent_meshes.append(mesh)
