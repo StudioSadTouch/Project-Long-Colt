@@ -111,29 +111,39 @@ def cyl(b_c, t_c, rx, rz, n=8):
     return vs, faces
 
 
-def visor():
-    """One-piece Mk VI-style wrap visor: wide and short, bottom edge dipping toward the cheeks."""
-    cols = 7
-    hw = 0.12
+def arc_strip(zf, radius, half_deg, y_bot, y_top, thick, segs):
+    """Curved strip on a vertical arc: front face at z = zf on the centreline, wrapping back
+    around a centre at z = zf + radius; ends turned half_deg from facing -Z. y_bot / y_top
+    take u in [-1, 1] (left to right). Thickness runs radially inward."""
+    zc = zf + radius
     vs = []
-    for i in range(cols):
-        x = -hw + 2 * hw * i / (cols - 1)
-        t = (x / hw) ** 2
-        zf = -0.20 + 2.0 * x * x          # wraps back ~3 cm at the edges
-        zb = zf + 0.025
-        top = 1.672 - 0.012 * t
-        bot = 1.535 - 0.015 * t
-        vs += [(x, bot, zf), (x, top, zf), (x, top, zb), (x, bot, zb)]
+    for i in range(segs + 1):
+        u = -1 + 2 * i / segs
+        a = math.radians(half_deg) * u
+        yb, yt = y_bot(u), y_top(u)
+        f = (radius * math.sin(a), zc - radius * math.cos(a))
+        k = ((radius - thick) * math.sin(a), zc - (radius - thick) * math.cos(a))
+        vs += [(f[0], yb, f[1]), (f[0], yt, f[1]), (k[0], yt, k[1]), (k[0], yb, k[1])]
     faces = []
-    for i in range(cols - 1):
+    for i in range(segs):
         a, b = 4 * i, 4 * (i + 1)
-        faces += [(a, b, b + 1, a + 1),          # front
-                  (a + 1, b + 1, b + 2, a + 2),  # top
-                  (a + 2, b + 2, b + 3, a + 3),  # back
-                  (a + 3, b + 3, b, a)]          # bottom
-    last = 4 * (cols - 1)
-    faces += [(0, 1, 2, 3)[::-1], (last, last + 1, last + 2, last + 3)]
+        faces += [(a, b, b + 1, a + 1), (a + 1, b + 1, b + 2, a + 2),
+                  (a + 2, b + 2, b + 3, a + 3), (a + 3, b + 3, b, a)]
+    last = 4 * segs
+    faces += [(3, 2, 1, 0), (last, last + 1, last + 2, last + 3)]
     return vs, faces
+
+
+def visor():
+    """One-piece Mk VI-style visor centred on the eye line (y 1.600 at the centreline): 0.24 wide,
+    0.13 tall, ends wrapped back 28 deg onto the helmet's front corners."""
+    return arc_strip(-0.20, 0.256, 28.0, lambda u: 1.535 - 0.004 * u * u,
+                     lambda u: 1.665 - 0.004 * u * u, 0.025, 8)
+
+
+def brow():
+    """Armour brow ridge: overhangs the visor face by 1.5 cm and laps 0.5 cm over its top edge."""
+    return arc_strip(-0.215, 0.28, 30.0, lambda u: 1.660, lambda u: 1.705, 0.05, 6)
 
 
 # ---- part table ----------------------------------------------------------------------------
@@ -153,23 +163,25 @@ def side_parts(s):
     hip, knee, ankle = (x(0.11), 0.88, 0.0), (x(0.11), 0.51, 0.0), (x(0.11), 0.12, 0.0)
     # Arm chain (child of chest). Slight A-pose via offset joint x. Bulk-up v2: heavier
     # gauntlets, bigger rounder pauldrons overhanging the upper arm.
-    part(f"PB_UpperArm_{L}", "U", cyl((x(0.265), 0.96, 0), (x(0.255), 1.33, 0), 0.052, 0.052, 8), shoulder, "PB_Chest")
-    part(f"PB_Bicep_{L}", "A", hexa((x(0.292), 1.06, 0), 0.03, 0.10, (x(0.285), 1.24, 0), 0.03, 0.11), shoulder, f"PB_UpperArm_{L}")
+    part(f"PB_UpperArm_{L}", "U", cyl((x(0.265), 0.96, 0), (x(0.258), 1.33, 0), 0.056, 0.056, 8), shoulder, "PB_Chest")
+    # v3: full upper-arm plate (0.13 x 0.135) so the arm is no longer the thinnest mass.
+    part(f"PB_UpperArmPlate_{L}", "A", hexa((x(0.264), 1.055, 0), 0.13, 0.13, (x(0.26), 1.25, 0), 0.13, 0.135), shoulder, f"PB_UpperArm_{L}", 0.02)
     part(f"PB_Pauldron_{L}", "X" if s < 0 else "A",
-         hexa((x(0.24), 1.27, 0), 0.18, 0.23, (x(0.235), 1.46, 0), 0.15, 0.19), shoulder, f"PB_UpperArm_{L}", 0.045)
+         hexa((x(0.24), 1.22, 0), 0.18, 0.23, (x(0.235), 1.46, 0), 0.15, 0.19), shoulder, f"PB_UpperArm_{L}", 0.045)
     part(f"PB_Forearm_{L}", "A", hexa((x(0.275), 0.81, -0.005), 0.14, 0.145, (x(0.27), 0.98, 0), 0.15, 0.15), elbow, f"PB_UpperArm_{L}", 0.02)
     if s < 0:
         part("PB_WristDisplay_L", "U", box((x(0.275), 0.88, -0.085), (0.075, 0.065, 0.025)), elbow, "PB_Forearm_L")
-    part(f"PB_Hand_{L}", "U", box((x(0.28), 0.745, -0.005), (0.10, 0.10, 0.11)), wrist, f"PB_Forearm_{L}", 0.012)
-    part(f"PB_Thumb_{L}", "U", box((x(0.235), 0.765, -0.05), (0.035, 0.055, 0.04)), wrist, f"PB_Hand_{L}")
+    part(f"PB_Hand_{L}", "U", box((x(0.28), 0.745, -0.005), (0.11, 0.11, 0.115)), wrist, f"PB_Forearm_{L}", 0.012)
+    part(f"PB_Thumb_{L}", "U", box((x(0.23), 0.765, -0.052), (0.035, 0.055, 0.04)), wrist, f"PB_Hand_{L}")
     # Leg chain (child of pelvis). Bulk-up v2: thicker thighs and shins.
     part(f"PB_Thigh_{L}", "A", hexa((x(0.11), 0.56, -0.01), 0.16, 0.17, (x(0.11), 0.87, 0.0), 0.18, 0.20), hip, "PB_Pelvis", 0.025)
     part(f"PB_Shin_{L}", "A", hexa((x(0.11), 0.15, 0.0), 0.12, 0.14, (x(0.11), 0.47, -0.005), 0.14, 0.16), knee, f"PB_Thigh_{L}", 0.02)
     part(f"PB_KneeJoint_{L}", "U", cyl((x(0.11), 0.45, 0), (x(0.11), 0.59, 0), 0.06, 0.06, 8), knee, f"PB_Shin_{L}")
     part(f"PB_Knee_{L}", "A", box((x(0.11), 0.51, -0.085), (0.14, 0.10, 0.09)), knee, f"PB_Shin_{L}", 0.018)
-    part(f"PB_Boot_{L}", "A", box((x(0.11), 0.09, -0.02), (0.14, 0.10, 0.23)), ankle, f"PB_Shin_{L}", 0.015)
-    part(f"PB_Sole_{L}", "U", box((x(0.11), 0.02, -0.03), (0.15, 0.04, 0.29)), ankle, f"PB_Boot_{L}")
-    part(f"PB_Toe_{L}", "A", hexa((x(0.11), 0.04, -0.13), 0.14, 0.07, (x(0.11), 0.10, -0.115), 0.13, 0.03), ankle, f"PB_Boot_{L}")
+    # v3: ankle cuff to 0.17, thicker sole, wider and longer toe: the silhouette ends in weight.
+    part(f"PB_Boot_{L}", "A", box((x(0.11), 0.11, -0.015), (0.15, 0.12, 0.23)), ankle, f"PB_Shin_{L}", 0.015)
+    part(f"PB_Sole_{L}", "U", box((x(0.11), 0.025, -0.03), (0.16, 0.05, 0.31)), ankle, f"PB_Boot_{L}")
+    part(f"PB_Toe_{L}", "A", hexa((x(0.11), 0.05, -0.14), 0.155, 0.09, (x(0.11), 0.12, -0.125), 0.145, 0.04), ankle, f"PB_Boot_{L}", 0.01)
 
 
 PELVIS, WAIST, CHEST, NECK = (0, 0.93, 0), (0, 1.00, 0), (0, 1.12, 0), (0, 1.47, 0)
@@ -196,10 +208,12 @@ part("PB_Neck", "U", cyl((0, 1.40, 0), (0, 1.54, 0), 0.075, 0.075, 10), NECK, "N
 # Neck seal: a fat undersuit ring between collar and helmet so no thin stalk reads.
 part("PB_NeckSeal", "U", cyl((0, 1.44, -0.005), (0, 1.495, -0.005), 0.11, 0.10, 10), NECK, "PB_Neck")
 # HelmetMesh: every helmet piece is a child of PB_Helmet, which pivots at the neck joint.
-part("PB_Helmet", "A", box((0, 1.665, -0.02), (0.28, 0.29, 0.31)), NECK, "HelmetMesh", 0.05)
-part("PB_HelmetChin", "A", hexa((0, 1.51, -0.13), 0.14, 0.08, (0, 1.545, -0.15), 0.20, 0.07), NECK, "PB_Helmet")
-part("PB_HelmetEar_L", "A", box((-0.15, 1.62, 0.0), (0.04, 0.10, 0.12)), NECK, "PB_Helmet", 0.01)
-part("PB_HelmetEar_R", "A", box((0.15, 1.62, 0.0), (0.04, 0.10, 0.12)), NECK, "PB_Helmet", 0.01)
+part("PB_Helmet", "A", box((0, 1.66, -0.02), (0.28, 0.30, 0.31)), NECK, "HelmetMesh", 0.05)
+# v3 Mk VI read: brow ridge over the visor, jaw/cheek mass below it, comms blocks moved low.
+part("PB_HelmetBrow", "A", brow(), NECK, "PB_Helmet")
+part("PB_HelmetJaw", "A", hexa((0, 1.48, -0.10), 0.17, 0.16, (0, 1.54, -0.105), 0.25, 0.17), NECK, "PB_Helmet", 0.015)
+part("PB_HelmetEar_L", "A", box((-0.15, 1.555, 0.01), (0.04, 0.09, 0.12)), NECK, "PB_Helmet", 0.01)
+part("PB_HelmetEar_R", "A", box((0.15, 1.555, 0.01), (0.04, 0.09, 0.12)), NECK, "PB_Helmet", 0.01)
 part("PB_HelmetSensor_R", "U", box((0.155, 1.72, -0.03), (0.03, 0.04, 0.10)), NECK, "PB_Helmet")
 part("PB_HelmetStripe_L", "X", box((-0.142, 1.70, -0.02), (0.01, 0.03, 0.22)), NECK, "PB_Helmet")
 part("PB_HelmetFlap", "A", hexa((0, 1.49, 0.13), 0.16, 0.03, (0, 1.56, 0.12), 0.20, 0.04), NECK, "PB_Helmet")
