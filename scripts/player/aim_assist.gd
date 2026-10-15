@@ -88,6 +88,11 @@ func bend_scale() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	if _player.is_dead():
+		reticle_on_target = false
+		_player.aim_slowdown_scale = 1.0
+		_tracked = null
+		return
 	var active := _active_data()
 	reticle_on_target = active != null and _camera != null and _reticle_on_target(active)
 	if not using_controller:

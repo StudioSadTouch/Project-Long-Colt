@@ -12,6 +12,22 @@ extends CharacterBody3D
 ## Crouch lowers the Rig and shortens the Hurtbox with the eye. The player's own weapons and
 ## AimAssist exclude all of these (get_own_colliders()). take_damage stays on the root, so
 ## Weapon's receiver (nearest ancestor with take_damage) is the Player for every zone.
+## Death and respawn (for game modes, e.g. SpawnManager):
+##   died(player, killer, info) fires once when health hits 0. Input, movement, collision
+##   (capsule, Hurtbox, heads) and weapons are off while dead; the camera stays put. Carried
+##   weapons with ammo drop as pickups (WeaponHolder.drop_weapons_on_death; not for
+##   kill_volume deaths). After respawn_delay, respawn_requested(player) fires: answer it (or
+##   any time while dead) with respawn_at(spawn). If nothing has respawned the player one frame
+##   later and auto_respawn is on, it respawns at its scene spawn. A mode with its own timer
+##   just calls respawn_at(); that cancels the pending fallback. respawn_at() on a live player
+##   is a full reset + teleport.
+
+## Health reached 0. killer = info.source when it is a live Node (may be self or null).
+## Can fire inside a physics flush (KillVolume): defer tree or physics changes in listeners.
+signal died(player: Player, killer: Node, info: Dictionary)
+## respawn_delay elapsed while dead. Call respawn_at(spawn) from here to pick the spawn point.
+signal respawn_requested(player: Player)
+signal respawned(player: Player)
 
 const STAND_HEIGHT := 1.8
 const CROUCH_HEIGHT := 1.15
@@ -48,6 +64,11 @@ const BODY_AIM_HEIGHT := 0.7
 @export var stick_curve_exponent: float = 2.0
 ## Radial stick deadzone, shared by look here and AimAssist's device detection.
 @export_range(0.0, 0.9) var stick_deadzone: float = 0.2
+@export_group("Respawn")
+## Seconds dead before respawn_requested (~Halo 2 default).
+@export var respawn_delay: float = 5.0
+## Respawn at the scene spawn if respawn_requested goes unanswered for a frame.
+@export var auto_respawn: bool = true
 @export_group("")
 
 ## Refreshed every physics tick from get_gravity() so Area3D overrides apply.
@@ -60,6 +81,9 @@ var aim_slowdown_scale: float = 1.0
 var view_kick: Vector2 = Vector2.ZERO
 var crouched: bool = false
 var sliding: bool = false
+var dead: bool = false
+## Info of the last hit taken (kill credit: "source").
+var last_damage_info: Dictionary = {}
 
 var _eye_height: float = STAND_EYE
 var _landing_dip: float = 0.0
@@ -74,6 +98,11 @@ var _lunge_dir: Vector3 = Vector3.ZERO
 var _lunge_speed: float = 0.0
 var _lunge_left: float = 0.0
 var _spawn_transform: Transform3D
+## Collision layers of get_own_colliders() bodies, restored on respawn.
+var _layers: Dictionary = {}
+## Bumped on every death and respawn, so stale respawn timers do nothing.
+var _life_id: int = 0
+var _respawn_timer: SceneTreeTimer
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -106,6 +135,8 @@ func _ready() -> void:
 	if hurtbox != null:
 		# Rays hit the Hurtbox and Rig heads instead of the capsule.
 		add_to_group(Weapon.PASSTHROUGH_GROUP)
+	for body in get_own_colliders():
+		_layers[body] = body.collision_layer
 	if DisplayServer.get_name() != "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -126,6 +157,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()
 		return
+	if dead:
+		return
 	if event.is_action_pressed("action_jump"):
 		_jump_buffer_left = jump_buffer_time
 	if event.is_action_pressed("action_crouch"):
@@ -135,6 +168,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if dead:
+		return
 	_apply_stick_look(delta)
 	gravity = get_gravity().length()
 	var on_floor_before := is_on_floor()
@@ -210,20 +245,103 @@ func _physics_process(delta: float) -> void:
 
 ## Damage contract shared with enemies; HealthShield applies the shield and zone rules.
 func take_damage(amount: float, info: Dictionary) -> void:
-	if health_shield != null:
-		health_shield.apply_damage(amount, info)
-
-
-## Phase 0 placeholder death: instant respawn at the spawn point with full shield and health.
-func _on_died() -> void:
-	cancel_lunge()
-	velocity = Vector3.ZERO
-	global_transform = _spawn_transform
-	health_shield.reset()
+	if dead or health_shield == null:
+		return
+	last_damage_info = info
+	health_shield.apply_damage(amount, info)
 
 
 func is_dead() -> bool:
-	return health_shield != null and health_shield.dead
+	return dead
+
+
+## Seconds until respawn_requested, 0 when alive or already requested.
+func get_respawn_time_left() -> float:
+	if not dead or _respawn_timer == null:
+		return 0.0
+	return maxf(_respawn_timer.time_left, 0.0)
+
+
+## Respawn (or, if alive, reset and teleport) at xform: its origin and the yaw of its -Z.
+## Full shield and health, starting loadout, collision and input back on.
+func respawn_at(xform: Transform3D) -> void:
+	_life_id += 1
+	_respawn_timer = null
+	var forward := -xform.basis.z
+	forward.y = 0.0
+	var yaw := rotation.y
+	if forward.length_squared() > 0.0001:
+		yaw = atan2(-forward.x, -forward.z)
+	global_transform = Transform3D(Basis(Vector3.UP, yaw), xform.origin)
+	head.rotation.x = 0.0
+	velocity = Vector3.ZERO
+	cancel_lunge()
+	sliding = false
+	crouched = false
+	_eye_height = STAND_EYE
+	_landing_dip = 0.0
+	_coyote_left = 0.0
+	_jump_buffer_left = 0.0
+	_crouch_edge = false
+	view_kick = Vector2.ZERO
+	aim_slowdown_scale = 1.0
+	_apply_capsule()
+	_update_head(0.0)
+	for body: CollisionObject3D in _layers:
+		if is_instance_valid(body):
+			body.collision_layer = _layers[body]
+	collision_shape.disabled = false
+	last_damage_info = {}
+	if health_shield != null:
+		health_shield.reset()
+	var holder := get_weapon_holder()
+	if holder != null:
+		holder.reset_loadout()
+	dead = false
+	respawned.emit(self)
+
+
+func get_weapon_holder() -> WeaponHolder:
+	return get_node_or_null(^"Head/Camera3D/WeaponHolder") as WeaponHolder
+
+
+func _on_died() -> void:
+	if dead:
+		return
+	dead = true
+	cancel_lunge()
+	sliding = false
+	velocity = Vector3.ZERO
+	# Deferred: death can come from a KillVolume body_entered during the physics flush.
+	for body: CollisionObject3D in _layers:
+		if is_instance_valid(body):
+			body.set_deferred(&"collision_layer", 0)
+	collision_shape.set_deferred(&"disabled", true)
+	var info := last_damage_info
+	var holder := get_weapon_holder()
+	if holder != null:
+		holder.on_owner_died(not info.get("kill_volume", false))
+	var killer: Node = null
+	var source: Variant = info.get("source")
+	if is_instance_valid(source) and source is Node:
+		killer = source
+	_life_id += 1
+	var life := _life_id
+	_respawn_timer = get_tree().create_timer(maxf(respawn_delay, 0.0), false)
+	_respawn_timer.timeout.connect(_on_respawn_timeout.bind(life))
+	died.emit(self, killer, info)
+
+
+func _on_respawn_timeout(life: int) -> void:
+	if life != _life_id or not dead:
+		return
+	respawn_requested.emit(self)
+	if not auto_respawn or life != _life_id:
+		return
+	# One frame for a game mode on its own respawn timer to call respawn_at first.
+	await get_tree().process_frame
+	if life == _life_id and dead:
+		respawn_at(_spawn_transform)
 
 
 ## Every collider the player's own weapons, melee and AimAssist must ignore.
