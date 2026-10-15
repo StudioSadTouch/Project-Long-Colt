@@ -63,7 +63,7 @@ func try_pickup(carrier: Object) -> bool:
 func _physics_process(_delta: float) -> void:
 	if not available:
 		return
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: a freed carrier fails a typed cast
 		if is_instance_valid(carrier) and give(carrier):
 			return
 

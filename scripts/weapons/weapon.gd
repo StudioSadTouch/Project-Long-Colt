@@ -807,7 +807,8 @@ func _cast_ray(from: Vector3, to: Vector3, exclude: Array[RID], from_inside: boo
 	var query := PhysicsRayQueryParameters3D.create(from, to, get_hit_mask())
 	query.collide_with_areas = true
 	query.hit_from_inside = from_inside
-	var skip: Array[RID] = exclude.duplicate()
+	var skip: Array[RID] = []
+	skip.assign(exclude)  # typed copy; no duplicate() into a typed var
 	skip.append_array(_excluded_rids())
 	var space := get_world_3d().direct_space_state
 	for _i in MAX_AREA_SKIPS:

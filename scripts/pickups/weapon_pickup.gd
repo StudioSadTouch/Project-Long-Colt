@@ -220,7 +220,7 @@ func _physics_process(delta: float) -> void:
 	pivot.rotation.y += SPIN_SPEED * delta
 	if not available:
 		return
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: a freed carrier fails a typed cast
 		if not available:
 			return
 		if is_instance_valid(carrier):
@@ -250,7 +250,7 @@ func _ammo_offered() -> int:
 func _consume() -> void:
 	available = false
 	pivot.visible = false
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: a freed carrier fails a typed cast
 		if is_instance_valid(carrier) and carrier.has_method(&"unregister_pickup"):
 			carrier.call(&"unregister_pickup", self)
 	if dropped or weapon_scene == null:
@@ -266,7 +266,7 @@ func _respawn() -> void:
 	weapon = weapon_scene.instantiate() as Weapon
 	available = true
 	pivot.visible = true
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: a freed carrier fails a typed cast
 		if is_instance_valid(carrier) and carrier.has_method(&"register_pickup"):
 			carrier.call(&"register_pickup", self)
 
