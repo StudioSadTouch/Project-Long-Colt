@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn" id="1_level"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -10,6 +10,9 @@
 [ext_resource type="Script" path="res://scripts/ai/arena_navigation.gd" id="8_nav"]
 [ext_resource type="Script" path="res://scripts/ai/spawn_manager.gd" id="9_spawns"]
 [ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="10_diff"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/marksman_carbine.tscn" id="11_carbine"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/combat_shotgun.tscn" id="12_shotgun"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/directed_energy_rifle.tscn" id="13_energy"]
 
 [sub_resource type="Environment" id="Environment_arena"]
 background_mode = 1
@@ -38,9 +41,10 @@ script = ExtResource("7_events")
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -18, 4.55, 4)
 
-[node name="RiflePickup_BotMid" parent="." instance=ExtResource("3_pickup")]
+[node name="ShotgunPickup_BotMid" parent="." instance=ExtResource("3_pickup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-weapon_scene = ExtResource("4_rifle")
+weapon_scene = ExtResource("12_shotgun")
+respawn_delay = 90.0
 
 [node name="PistolPickup_S3" parent="." instance=ExtResource("3_pickup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 10.5, -6)
@@ -58,13 +62,14 @@ weapon_scene = ExtResource("5_pistol")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 9, 16)
 weapon_scene = ExtResource("5_pistol")
 
-[node name="RiflePickup_BR3" parent="." instance=ExtResource("3_pickup")]
+[node name="CarbinePickup_BR3" parent="." instance=ExtResource("3_pickup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 10.5, -3)
-weapon_scene = ExtResource("4_rifle")
+weapon_scene = ExtResource("11_carbine")
 
-[node name="RiflePickup_Green" parent="." instance=ExtResource("3_pickup")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
-weapon_scene = ExtResource("4_rifle")
+[node name="EnergyRiflePickup_Green" parent="." instance=ExtResource("3_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 17)
+weapon_scene = ExtResource("13_energy")
+respawn_delay = 90.0
 
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 script = ExtResource("8_nav")
