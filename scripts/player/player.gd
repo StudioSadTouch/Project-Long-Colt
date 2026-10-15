@@ -2,6 +2,16 @@ class_name Player
 extends CharacterBody3D
 ## First-person body for the Phase 0 pad.
 ## Yaw lives on this node. Pitch lives on Head. Movement reads this body's -Z.
+## Hit layout, same scheme and sizes as the dummies and bots (dummy_rig.tscn), so TTK matches
+## both ways:
+##   root capsule  layer 2 (Player), movement, pickups, lifts, kill volumes. In group
+##                 Weapon.PASSTHROUGH_GROUP, so hitscan and melee pass through it (a 0.35 m
+##                 capsule would cover the visor and turn head shots into body shots).
+##   Hurtbox       AnimatableBody3D on layer 2, box 0.7 x 1.4 x 0.4: body hits.
+##   Rig heads     HeadArmored (helmet) / HeadUnarmored (visor + neck) on Hitbox (32).
+## Crouch lowers the Rig and shortens the Hurtbox with the eye. The player's own weapons and
+## AimAssist exclude all of these (get_own_colliders()). take_damage stays on the root, so
+## Weapon's receiver (nearest ancestor with take_damage) is the Player for every zone.
 
 const STAND_HEIGHT := 1.8
 const CROUCH_HEIGHT := 1.15
@@ -9,6 +19,10 @@ const CAPSULE_RADIUS := 0.35
 const STAND_EYE := 1.62
 const CROUCH_EYE := 0.95
 const PITCH_LIMIT := 89.0
+const HURTBOX_HEIGHT := 1.4
+const HURTBOX_MIN_HEIGHT := 0.7
+## get_aim_points().body height above the Rig origin, as DummyCore and Bot.
+const BODY_AIM_HEIGHT := 0.7
 
 @export var stand_speed: float = 7.5
 @export var crouch_speed: float = 3.2
@@ -65,6 +79,10 @@ var _spawn_transform: Transform3D
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var health_shield: HealthShield = get_node_or_null("HealthShield")
+## Optional (older scenes without them keep the capsule as the hit body).
+@onready var hurtbox: AnimatableBody3D = get_node_or_null(^"Hurtbox") as AnimatableBody3D
+@onready var hurtbox_shape := get_node_or_null(^"Hurtbox/Shape") as CollisionShape3D
+@onready var rig: Node3D = get_node_or_null(^"Rig") as Node3D
 
 
 func _ready() -> void:
@@ -85,6 +103,9 @@ func _ready() -> void:
 	camera.fov = fov
 	camera.current = true
 	add_to_group("player")
+	if hurtbox != null:
+		# Rays hit the Hurtbox and Rig heads instead of the capsule.
+		add_to_group(Weapon.PASSTHROUGH_GROUP)
 	if DisplayServer.get_name() != "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -199,6 +220,40 @@ func _on_died() -> void:
 	velocity = Vector3.ZERO
 	global_transform = _spawn_transform
 	health_shield.reset()
+
+
+func is_dead() -> bool:
+	return health_shield != null and health_shield.dead
+
+
+## Every collider the player's own weapons, melee and AimAssist must ignore.
+func get_own_colliders() -> Array[CollisionObject3D]:
+	var bodies: Array[CollisionObject3D] = [self]
+	for path: NodePath in [^"Hurtbox", ^"Rig/HeadArmored", ^"Rig/HeadUnarmored"]:
+		var body := get_node_or_null(path) as CollisionObject3D
+		if body != null:
+			bodies.append(body)
+	return bodies
+
+
+## Aim points in DummyCore's format (body, helmet "head", visor "face"), for bots. Empty while
+## dead. The player is not in group aim_target, so its own AimAssist never sees these.
+func get_aim_points() -> Dictionary:
+	if is_dead():
+		return {}
+	var base := rig.global_position if rig != null else global_position
+	var points := {"body": base + Vector3.UP * BODY_AIM_HEIGHT}
+	var helmet := get_node_or_null(^"Rig/HeadArmored") as Node3D
+	if helmet != null:
+		points["head"] = helmet.global_position
+	var visor := get_node_or_null(^"Rig/HeadUnarmored/VisorShape") as Node3D
+	if visor != null:
+		points["face"] = visor.global_position
+	return points
+
+
+func get_eye_position() -> Vector3:
+	return camera.global_position
 
 
 ## Melee lunge: drive horizontal velocity along direction for up to duration seconds.
@@ -374,3 +429,19 @@ func _update_head(delta: float) -> void:
 	_landing_dip = move_toward(_landing_dip, 0.0, 0.45 * delta)
 	head.position.y = _eye_height - _landing_dip
 	camera.rotation = Vector3(view_kick.x, view_kick.y, 0.0)
+	_apply_hit_pose()
+
+
+## Crouch lowers the Rig (head hitboxes ride with it) and shortens the Hurtbox, like Bot.
+func _apply_hit_pose() -> void:
+	var drop := STAND_EYE - _eye_height
+	if rig != null:
+		rig.position.y = -drop
+	if hurtbox_shape == null:
+		return
+	var box := hurtbox_shape.shape as BoxShape3D
+	var height := maxf(HURTBOX_HEIGHT - drop, HURTBOX_MIN_HEIGHT)
+	if box == null or is_equal_approx(box.size.y, height):
+		return
+	box.size = Vector3(box.size.x, height, box.size.z)
+	hurtbox_shape.position = Vector3(0.0, height * 0.5, 0.0)
