@@ -1,0 +1,145 @@
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="Resource" path="res://resources/weapons/directed_energy_rifle.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_fx.gd" id="3_fx"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/der_fire.wav" id="4_fire_sound"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/der_charged_fire.wav" id="5_charged_fire_sound"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/der_charge.wav" id="6_charge_sound"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/der_overheat.wav" id="7_overheat_sound"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
+albedo_color = Color(0.42, 0.46, 0.52, 1)
+metallic = 0.6
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dark"]
+albedo_color = Color(0.09, 0.1, 0.12, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_coil"]
+albedo_color = Color(0.2, 0.85, 1, 1)
+roughness = 0.75
+emission_enabled = true
+emission = Color(0.2, 0.85, 1, 1)
+emission_energy_multiplier = 0.4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cell"]
+albedo_color = Color(0.2, 0.85, 1, 1)
+roughness = 0.75
+emission_enabled = true
+emission = Color(0.2, 0.85, 1, 1)
+emission_energy_multiplier = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
+albedo_color = Color(0.72, 0.55, 0.42, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_housing"]
+material = SubResource("StandardMaterial3D_body")
+size = Vector3(0.08, 0.09, 0.36)
+
+[sub_resource type="BoxMesh" id="BoxMesh_prong"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.015, 0.022, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_coil"]
+material = SubResource("StandardMaterial3D_coil")
+size = Vector3(0.095, 0.1, 0.014)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cell"]
+material = SubResource("StandardMaterial3D_cell")
+size = Vector3(0.012, 0.045, 0.11)
+
+[sub_resource type="BoxMesh" id="BoxMesh_grip"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.032, 0.09, 0.042)
+
+[sub_resource type="BoxMesh" id="BoxMesh_heatsink"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.06, 0.018, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hand"]
+material = SubResource("StandardMaterial3D_skin")
+size = Vector3(0.05, 0.05, 0.09)
+
+[node name="DirectedEnergyRifle" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, -0.19, -0.37)
+script = ExtResource("1_weapon")
+data = ExtResource("2_data")
+
+[node name="Housing" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("BoxMesh_housing")
+
+[node name="ProngL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.028, 0.012, -0.27)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_prong")
+
+[node name="ProngR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.028, 0.012, -0.27)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_prong")
+
+[node name="Coil1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.06)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_coil")
+
+[node name="Coil2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.11)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_coil")
+
+[node name="Coil3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.16)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_coil")
+
+[node name="BatteryCell" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.046, -0.005, 0.06)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_cell")
+
+[node name="HeatSink" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.054, 0.05)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_heatsink")
+
+[node name="Grip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0, -0.07, 0.1)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_grip")
+
+[node name="RightHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0.01, -0.08, 0.13)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="LeftHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, -0.06, -0.12)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, -0.38)
+
+[node name="MuzzleLight" type="OmniLight3D" parent="Muzzle" groups=["viewmodel_only"]]
+visible = false
+light_color = Color(0.3, 0.85, 1, 1)
+light_energy = 2.0
+omni_range = 2.5
+
+[node name="WeaponFx" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("muzzle_light", "glow_meshes")]
+script = ExtResource("3_fx")
+fire_sound = ExtResource("4_fire_sound")
+charged_fire_sound = ExtResource("5_charged_fire_sound")
+charge_sound = ExtResource("6_charge_sound")
+overheat_sound = ExtResource("7_overheat_sound")
+muzzle_light = NodePath("../Muzzle/MuzzleLight")
+glow_meshes = [NodePath("../Coil1"), NodePath("../Coil2"), NodePath("../Coil3")]
+pitch_jitter = 0.06
+flash_energy = 1.5
+glow_idle_energy = 0.4
+glow_max_energy = 6.0

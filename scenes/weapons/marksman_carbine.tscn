@@ -1,0 +1,132 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="Resource" path="res://resources/weapons/marksman_carbine.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_fx.gd" id="3_fx"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/marksman_carbine_fire.wav" id="4_fire_sound"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
+albedo_color = Color(0.36, 0.33, 0.26, 1)
+metallic = 0.3
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dark"]
+albedo_color = Color(0.1, 0.1, 0.1, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lens"]
+albedo_color = Color(0.9, 0.45, 0.1, 1)
+roughness = 0.75
+emission_enabled = true
+emission = Color(1, 0.5, 0.1, 1)
+emission_energy_multiplier = 1.2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
+albedo_color = Color(0.72, 0.55, 0.42, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_receiver"]
+material = SubResource("StandardMaterial3D_body")
+size = Vector3(0.055, 0.075, 0.42)
+
+[sub_resource type="BoxMesh" id="BoxMesh_barrel"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.022, 0.022, 0.3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_scope"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.036, 0.036, 0.17)
+
+[sub_resource type="BoxMesh" id="BoxMesh_scope_mount"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.02, 0.025, 0.05)
+
+[sub_resource type="BoxMesh" id="BoxMesh_lens"]
+material = SubResource("StandardMaterial3D_lens")
+size = Vector3(0.028, 0.028, 0.004)
+
+[sub_resource type="BoxMesh" id="BoxMesh_mag"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.03, 0.09, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_grip"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.03, 0.09, 0.04)
+
+[sub_resource type="BoxMesh" id="BoxMesh_stock"]
+material = SubResource("StandardMaterial3D_body")
+size = Vector3(0.045, 0.07, 0.14)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hand"]
+material = SubResource("StandardMaterial3D_skin")
+size = Vector3(0.05, 0.05, 0.09)
+
+[node name="MarksmanCarbine" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, -0.18, -0.38)
+script = ExtResource("1_weapon")
+data = ExtResource("2_data")
+
+[node name="Receiver" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("BoxMesh_receiver")
+
+[node name="Barrel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, -0.36)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_barrel")
+
+[node name="Scope" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.068, -0.02)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_scope")
+
+[node name="ScopeMount" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, -0.02)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_scope_mount")
+
+[node name="ScopeLens" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.068, -0.107)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_lens")
+
+[node name="Magazine" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.985, 0.174, 0, -0.174, 0.985, 0, -0.075, -0.05)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_mag")
+
+[node name="Grip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0, -0.07, 0.1)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_grip")
+
+[node name="Stock" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0.27)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_stock")
+
+[node name="RightHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0.01, -0.08, 0.13)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="LeftHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, -0.05, -0.18)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, -0.52)
+
+[node name="MuzzleLight" type="OmniLight3D" parent="Muzzle" groups=["viewmodel_only"]]
+visible = false
+light_color = Color(1, 0.8, 0.55, 1)
+light_energy = 2.0
+omni_range = 2.5
+
+[node name="WeaponFx" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("muzzle_light")]
+script = ExtResource("3_fx")
+fire_sound = ExtResource("4_fire_sound")
+muzzle_light = NodePath("../Muzzle/MuzzleLight")
+pitch_jitter = 0.03
+flash_energy = 2.5

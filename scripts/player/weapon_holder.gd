@@ -171,7 +171,7 @@ func get_pickup_candidate() -> WeaponPickup:
 	for pickup in _pickups:
 		if not is_instance_valid(pickup) or not pickup.available:
 			continue
-		if find_weapon(pickup.get_weapon_id()) != null:
+		if find_weapon(pickup.get_weapon_id()) != null and not pickup.is_battery_upgrade_for(self):
 			continue
 		var target := (
 			pickup.pivot.global_position if pickup.pivot != null else pickup.global_position
@@ -307,7 +307,8 @@ func _update_pickup_hold(delta: float) -> void:
 		take_pickup(candidate)
 
 
-## Empty slot: fill it and switch to it. Otherwise swap with the active weapon and drop it.
+## Same weapon carried (battery swap): replace that copy. Else an empty slot: fill it and
+## switch to it. Otherwise swap with the active weapon and drop it.
 ## Pickup-carrier API (WeaponPickup.try_pickup); also the hold-to-take path. True if taken.
 func take_pickup(pickup: WeaponPickup) -> bool:
 	var blocked := pickup == null or (_player != null and _player.is_dead())
@@ -318,12 +319,17 @@ func take_pickup(pickup: WeaponPickup) -> bool:
 	var weapon := pickup.take()
 	if weapon == null:
 		return false
-	var empty := slots.find(null)
-	if empty >= 0:
-		_install(weapon, empty)
-		_equip(empty)
-		return true
-	var old := give_weapon(weapon, active_index)
+	var same := find_weapon(WeaponPickup.weapon_id_of(weapon))
+	var slot := slots.find(same) if same != null else -1
+	if slot < 0:
+		var empty := slots.find(null)
+		if empty >= 0:
+			_install(weapon, empty)
+			_equip(empty)
+			return true
+		slot = active_index
+	var old := _install(weapon, slot)
+	_equip(slot)
 	if old == null:
 		return true
 	var parent: Node = get_tree().current_scene if is_inside_tree() else null

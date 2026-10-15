@@ -14,7 +14,8 @@ extends Node3D
 ## PASSTHROUGH_GROUP are skipped too (movement capsules whose owner has its own Hurtbox and
 ## head hitboxes, e.g. the Player).
 ## Zone colliders forward to the nearest ancestor that has take_damage.
-## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
+## info carries hit_zone (HitZone), hit_zone_name, headshot (true for both head zones), and dir
+## (= direction: world-space unit ray direction, shooter -> victim).
 ## Audio and VFX: connect to fired, dry_fired, reload_started, melee_started, hit_confirmed.
 ## Melee animation contract: melee_started(weapon, time_to_hit) fires the frame the swing begins
 ## (before any reload is cancelled); melee_hit(target, info) fires on the damage tick, the same
@@ -41,6 +42,9 @@ extends Node3D
 ## the usual zone groups, and rays pass through its capsule (PASSTHROUGH_GROUP), so a mask of
 ## HIT_MASK | LAYER_PLAYER scores body, helmet and face on the player exactly as on bots.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
+## WeaponData-driven extras, off by default: pellets (_emit_pellets, seeded _spread_rng),
+## battery (no reload/ammo), heat/overheat and FireMode.CHARGE (state machine in heat_charge,
+## a WeaponHeatCharge; charged shots all go through heat_charge.fire_charged).
 
 ## Net / FX hook: every hitscan ray (to = hit point, or max_range out on a miss).
 signal ray_fired(from: Vector3, to: Vector3, hit: Dictionary)
@@ -71,6 +75,10 @@ signal melee_whiffed(weapon: Weapon)
 ## weapon, source, direction.
 signal melee_hit_surface(position: Vector3, normal: Vector3, collider: Object, info: Dictionary)
 signal hit_confirmed(target: Object, info: Dictionary)
+signal heat_changed(heat: float, overheated: bool)
+## FireMode.CHARGE. charge_released(charged): charged shot fired, else a tap shot or nothing.
+signal charge_started
+signal charge_released(charged: bool)
 
 enum HitZone { BODY, HEAD_ARMORED, HEAD_UNARMORED }
 
@@ -115,6 +123,26 @@ var hit_mask_override: int = -1
 var aim_source: Node3D
 var exclude_bodies: Array[CollisionObject3D] = []
 var shooter: Node
+## Heat 0..1 (data.heat_per_shot > 0 only) and the overheat lockout.
+var heat: float = 0.0
+var overheated: bool = false
+## FireMode.CHARGE: a charge is building or held; charge is its 0..1 progress.
+var charging: bool = false
+var charge: float = 0.0
+## Heat / charge timers and transitions (WeaponHeatCharge), incl. netcode get/apply_net_state.
+var heat_charge: WeaponHeatCharge
+## Every shot (single ray, pellets, charged) reseeds _spread_rng once: next_shot_seed if one
+## was written since the last shot (netcode replay), else randi(). last_shot_seed is the seed
+## the last shot used. next_shot_spread >= 0 overrides get_spread() for the next shot only.
+## Draw order per shot: 2 randf for a single ray (radius, angle); a blast 2 for pellet 0 (the
+## centre, aimed and assisted like a single ray), then 2 per further pellet (2 x pellet_count);
+## then 1 for the recoil yaw (_kick). Nothing in the shot path reads the global RNG.
+var last_shot_seed: int = 0
+var next_shot_seed: int = 0:
+	set(value):
+		next_shot_seed = value
+		_has_next_seed = true
+var next_shot_spread: float = -1.0
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
@@ -133,6 +161,12 @@ var _trigger_held: bool = false
 var _burst_left: int = 0
 var _bloom: float = 0.0
 var _recoil: Vector2 = Vector2.ZERO
+var _spread_rng := RandomNumberGenerator.new()
+var _has_next_seed: bool = false
+
+
+func _init() -> void:
+	heat_charge = WeaponHeatCharge.new(self)
 
 
 func _ready() -> void:
@@ -152,6 +186,7 @@ func _ready() -> void:
 	add_child(_melee_cast)
 	reserve = mini(data.reserve_start, data.reserve_max)
 	fire_mode = data.fire_mode
+	_spread_rng.randomize()
 
 
 func equip() -> void:
@@ -163,11 +198,14 @@ func equip() -> void:
 	set_zoom(false)
 	ammo_changed.emit(magazine, reserve)
 	fire_mode_changed.emit(fire_mode)
+	if data.heat_per_shot > 0.0:
+		heat_changed.emit(heat, overheated)
 
 
 func holster() -> void:
 	visible = false
 	_cancel_reload()
+	heat_charge.release(false)
 	_trigger_buffer_left = 0.0
 	_burst_left = 0
 	if _melee_target != null:
@@ -185,6 +223,9 @@ func trigger(pressed: bool, held: bool) -> void:
 	if data == null:
 		return
 	_trigger_held = held
+	if fire_mode == WeaponData.FireMode.CHARGE:
+		heat_charge.trigger(pressed, held)
+		return
 	if fire_mode == WeaponData.FireMode.AUTO:
 		var shots := 0
 		while held and shots < MAX_SHOTS_PER_TICK and _try_fire():
@@ -201,12 +242,13 @@ func release_trigger() -> void:
 		return
 	_trigger_held = false
 	trigger_released.emit()
+	heat_charge.release()
 	_on_trigger_released()
 
 
 ## Adds to reserve, capped at reserve_max. Returns how much was taken.
 func add_ammo(amount: int) -> int:
-	if data == null or amount <= 0:
+	if data == null or amount <= 0 or data.battery:
 		return 0
 	var taken := mini(amount, data.reserve_max - reserve)
 	if taken <= 0:
@@ -241,6 +283,7 @@ func fire_select() -> void:
 func toggle_fire_mode() -> void:
 	if data == null or _burst_left > 0:
 		return
+	heat_charge.release(false)
 	alt_mode = not alt_mode
 	fire_mode = data.alt_fire_mode if alt_mode else data.fire_mode
 	_trigger_buffer_left = 0.0
@@ -274,6 +317,8 @@ func get_fire_mode_name() -> String:
 func reload() -> void:
 	if (
 		data == null
+		or data.battery
+		or charging
 		or reloading
 		or _burst_left > 0
 		or magazine >= data.magazine_size
@@ -303,6 +348,7 @@ func melee() -> void:
 	melee_swung.emit()
 	# Melee cancels a reload and any burst in progress, Halo style.
 	_cancel_reload()
+	heat_charge.release(false)
 	_burst_left = 0
 	set_zoom(false)
 	_cooldown = maxf(_cooldown, 0.25)
@@ -347,10 +393,13 @@ func get_spread() -> float:
 
 
 func is_ready_to_fire() -> bool:
-	return data != null and _cooldown <= 0.0 and _equip_left <= 0.0 and not reloading
+	var idle := data != null and _cooldown <= 0.0 and _equip_left <= 0.0 and not reloading
+	return idle and not overheated
 
 
 func _physics_process(delta: float) -> void:
+	if data != null:
+		heat_charge.tick_heat(delta)  # heat vents even while holstered
 	if not visible or data == null:
 		return
 	# Carry at most one tick of remainder so fire rate holds at any tick rate without
@@ -366,6 +415,8 @@ func _physics_process(delta: float) -> void:
 			_insert_magazine()
 		if _reload_left <= 0.0:
 			_finish_reload()
+	if charging:
+		heat_charge.tick_charge(delta)
 	if _burst_left > 0:
 		_continue_burst()
 	elif _trigger_buffer_left > 0.0:
@@ -416,6 +467,7 @@ func _try_fire(interval: float = -1.0) -> bool:
 		reload()
 		return false
 	_emit_shots()
+	heat_charge.add_heat(data.heat_per_shot)
 	var bloom_add := data.bloom_per_shot * (data.alt_bloom_multiplier if alt_mode else 1.0)
 	_bloom = minf(_bloom + bloom_add, data.spread_max - data.spread_base)
 	_kick()
@@ -437,9 +489,65 @@ func _consume_ammo() -> bool:
 	return true
 
 
-## Override for pellets or bursts. Default: one hitscan ray through the spread cone.
-func _emit_shots() -> void:
-	_fire_ray(_assisted_direction(_spread_direction(get_spread())))
+## Override for bursts. Default: one seeded hitscan ray through the spread cone (bent by aim
+## assist), or data.pellet_count pellets. damage_scale: charged shots (1.0 otherwise).
+func _emit_shots(damage_scale: float = 1.0) -> void:
+	_seed_shot()
+	if data.pellet_count > 1:
+		_emit_pellets(damage_scale)
+		return
+	_fire_ray(_assisted_direction(_spread_direction(_shot_spread())), damage_scale)
+
+
+func _seed_shot() -> void:
+	_spread_rng.seed = next_shot_seed if _has_next_seed else randi()
+	_has_next_seed = false
+	last_shot_seed = _spread_rng.seed
+
+
+## Spread for this shot: next_shot_spread if set (then cleared), else get_spread().
+func _shot_spread() -> float:
+	var spread := next_shot_spread if next_shot_spread >= 0.0 else get_spread()
+	next_shot_spread = -1.0
+	return spread
+
+
+## A blast. Pellet 0 is the exact aim ray (shot spread + aim assist / bend, as a single shot);
+## pellets 1.. scatter within data.pellet_spread around it. Seeded from _spread_rng: 2 draws for
+## pellet 0, then 2 per further pellet (2 x pellet_count). Pellets on the same victim are summed
+## (each with its own falloff) into ONE take_damage per victim per blast, so no-bleedthrough
+## holds per blast. Zone = pellet 0's: head only if the centre ray hit that victim's head zone,
+## otherwise body. info is the first pellet's on that victim, plus pellet_hits.
+func _emit_pellets(damage_scale: float = 1.0) -> void:
+	var centre := _assisted_direction(_spread_direction(_shot_spread())).normalized()
+	var basis := _aim().global_transform.basis
+	basis = Basis(Quaternion(-basis.z.normalized(), centre)) * basis
+	var blasts := {}  # victim -> {target, amount, info}, in first-hit order
+	for i in data.pellet_count:
+		var direction := centre
+		if i > 0:
+			var offset := _cone_offset(data.pellet_spread, _spread_rng)
+			direction = (basis * Vector3(offset.x, offset.y, -1.0)).normalized()
+		var shot := _trace_ray(direction, damage_scale)
+		if shot.is_empty():
+			continue
+		if not blasts.has(shot.target):
+			if i > 0:
+				_set_zone(shot.info, HitZone.BODY)
+			shot.info["pellet_hits"] = 0
+			blasts[shot.target] = shot
+		else:
+			blasts[shot.target].amount += shot.amount
+		blasts[shot.target].info.pellet_hits += 1
+	for blast in blasts.values():
+		_apply_hit(blast.target, blast.amount, blast.info)
+
+
+## Uniform point in a cone (half-angle in degrees) as a tangent-plane offset at z = -1.
+static func _cone_offset(spread_degrees: float, rng: RandomNumberGenerator) -> Vector2:
+	var radius := tan(deg_to_rad(spread_degrees)) * sqrt(rng.randf())
+	var angle := rng.randf() * TAU
+	return Vector2(cos(angle) * radius, sin(angle) * radius)
 
 
 ## Bullet bend: only rays that wouldn't already hit something damageable get bent. With
@@ -607,30 +715,51 @@ func _apply_melee(hit: Dictionary) -> void:
 	hit_confirmed.emit(hit.target, info)
 
 
-func _fire_ray(direction: Vector3) -> void:
+## damage_scale: charged shots (1.0 for everything else).
+func _fire_ray(direction: Vector3, damage_scale: float = 1.0) -> void:
+	var shot := _trace_ray(direction, damage_scale)
+	if not shot.is_empty():
+		_apply_hit(shot.target, shot.amount, shot.info)
+
+
+## One ray, resolved but not applied: {target, amount, info}, or {} if nothing damageable.
+func _trace_ray(direction: Vector3, damage_scale: float) -> Dictionary:
 	var hit := _raycast(direction, data.max_range)
 	var from := _aim().global_position
 	ray_fired.emit(from, hit.get("position", from + direction * data.max_range), hit)
 	if hit.is_empty():
-		return
+		return {}
 	var target := _damage_receiver(hit.collider)
 	if target == null:
-		return
+		return {}
 	# Body-only bend mode: bent rays never score a head zone (visor probe skipped too).
 	var zone := HitZone.BODY if _bent else _resolve_zone(hit, direction, target)
 	_bent = false
 	var distance: float = _aim().global_position.distance_to(hit.position)
-	var amount := data.damage * _falloff(distance)
+	var info := _hit_info(hit, direction, zone)
+	_set_zone(info, zone)
+	info["shield_multiplier"] = data.shield_damage_multiplier
+	info["bleedthrough"] = data.bleedthrough
+	return {
+		"target": target, "amount": data.damage * _falloff(distance) * damage_scale, "info": info
+	}
+
+
+## Zone fields and the health multiplier for that zone (head multipliers x health multiplier).
+func _set_zone(info: Dictionary, zone: HitZone) -> void:
 	var zone_multiplier := 1.0
 	match zone:
 		HitZone.HEAD_ARMORED:
 			zone_multiplier = data.headshot_armored_multiplier
 		HitZone.HEAD_UNARMORED:
 			zone_multiplier = data.headshot_unarmored_multiplier
-	var info := _hit_info(hit, direction, zone)
-	info["zone_multiplier"] = zone_multiplier
-	info["shield_multiplier"] = data.shield_damage_multiplier
-	info["bleedthrough"] = data.bleedthrough
+	info["hit_zone"] = zone
+	info["hit_zone_name"] = ZONE_NAMES[zone]
+	info["headshot"] = zone != HitZone.BODY
+	info["zone_multiplier"] = zone_multiplier * data.health_damage_multiplier
+
+
+func _apply_hit(target: Object, amount: float, info: Dictionary) -> void:
 	target.take_damage(amount, info)
 	hit_confirmed.emit(target, info)
 
@@ -682,7 +811,8 @@ func _cast_ray(from: Vector3, to: Vector3, exclude: Array[RID], from_inside: boo
 	var query := PhysicsRayQueryParameters3D.create(from, to, get_hit_mask())
 	query.collide_with_areas = true
 	query.hit_from_inside = from_inside
-	var skip: Array[RID] = exclude.duplicate()
+	var skip: Array[RID] = []
+	skip.assign(exclude)  # typed copy; no duplicate() into a typed var
 	skip.append_array(_excluded_rids())
 	var space := get_world_3d().direct_space_state
 	for _i in MAX_AREA_SKIPS:
@@ -744,6 +874,7 @@ func _hit_info(hit: Dictionary, direction: Vector3, zone: HitZone) -> Dictionary
 		"position": hit.position,
 		"normal": hit.normal,
 		"direction": direction,
+		"dir": direction,
 		"hit_zone": zone,
 		"hit_zone_name": ZONE_NAMES[zone],
 		"headshot": zone != HitZone.BODY,
@@ -767,13 +898,10 @@ func _falloff(distance: float) -> float:
 	return lerpf(1.0, floor_mult, t)
 
 
+## Seeded (_spread_rng, see _seed_shot): 2 draws, radius then angle (sqrt keeps it even).
 func _spread_direction(spread_degrees: float) -> Vector3:
-	var basis := _aim().global_transform.basis
-	# sqrt keeps the distribution even across the cone's area.
-	var radius := tan(deg_to_rad(spread_degrees)) * sqrt(randf())
-	var angle := randf() * TAU
-	var local := Vector3(cos(angle) * radius, sin(angle) * radius, -1.0)
-	return (basis * local).normalized()
+	var offset := _cone_offset(spread_degrees, _spread_rng)
+	return (_aim().global_transform.basis * Vector3(offset.x, offset.y, -1.0)).normalized()
 
 
 func _finish_reload() -> void:
@@ -811,7 +939,8 @@ func add_view_kick(pitch_deg: float) -> void:
 
 func _kick() -> void:
 	_recoil.x += deg_to_rad(data.recoil_pitch)
-	_recoil.y += deg_to_rad(randf_range(-data.recoil_yaw, data.recoil_yaw))
+	# Seeded: the shot's last _spread_rng draw (after its rays), so replays kick the same way.
+	_recoil.y += deg_to_rad(_spread_rng.randf_range(-data.recoil_yaw, data.recoil_yaw))
 
 
 func _update_recoil(delta: float) -> void:

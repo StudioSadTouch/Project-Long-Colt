@@ -164,24 +164,37 @@ for name, kind, a, b, lip, layer, _ry in LINKS:
 ROAM_PTS = [(c, on_floor(f"roam {c}", x, z, f), wgt) for c, x, z, f, wgt in ROAM]
 SPAWN_PTS = [(c, on_floor(f"spawn {c}", x, z, f)) for c, x, z, f in EXTRA_SPAWNS]
 
-# Pickups: same mapping as emit_lockout_tscn.py (rifle for BR/SMG/Shotgun, pistol for Magnum
-# and Sniper, sword spot empty), so arena and main_lockout match.
+# Pickups: same mapping as emit_lockout_tscn.py, so arena and main_lockout match. Five-gun
+# roster (docs/weapons/roster_balance.md): the BotMid "Shotgun?" spot gets the Combat Shotgun
+# (open centre floor, contested from Top Mid and both halls, 7.4 m from the nearest spawn);
+# the Green hall shotgun/SMG spot gets the Directed Energy Rifle, moved 2 m south to z = 17 so it
+# sits 7.5 m from the GreenHallN spawn (under the Bottom Blue ledge, 4 m short of the lift pad);
+# the BR tower roof gets the Marksman Carbine (BR role, 33 m overwatch of S3). Pistols stay on
+# S3 and Top Blue, the rifle on Top Blue. Power weapons respawn after 90 s. None of these spots
+# is gated by a lip or step: all are open floor (fine with auto step-up).
+# (name, kind, x, y, z, respawn_delay or None)
+POWER_RESPAWN = 90.0
+DER_Z = 17.0
 PICKUPS = []
 for x, z, label, _m in W:
     if "Sword" in label:
         continue
     if "Sniper" in label:
-        PICKUPS.append(("PistolPickup_S3", "pistol", x, top("S3_SnipeDeck"), z))
+        PICKUPS.append(("PistolPickup_S3", "pistol", x, top("S3_SnipeDeck"), z, None))
     elif "Top Blue" in label:
         y = top("TopBlue_Deck")
-        PICKUPS += [("RiflePickup_TopBlue", "rifle", x, y, z), ("PistolPickup_TopBlueW", "pistol", x - 2, y, z),
-                    ("PistolPickup_TopBlueE", "pistol", x + 2, y, z)]
+        PICKUPS += [("RiflePickup_TopBlue", "rifle", x, y, z, None), ("PistolPickup_TopBlueW", "pistol", x - 2, y, z, None),
+                    ("PistolPickup_TopBlueE", "pistol", x + 2, y, z, None)]
     elif "BR tower" in label:
-        PICKUPS.append(("RiflePickup_BR3", "rifle", x, top("BR3_Roof"), z))
+        PICKUPS.append(("CarbinePickup_BR3", "carbine", x, top("BR3_Roof"), z, None))
     elif "BotMid" in label:
-        PICKUPS.append(("RiflePickup_BotMid", "rifle", x, top("BotMid_Floor"), z))
+        PICKUPS.append(("ShotgunPickup_BotMid", "shotgun", x, top("BotMid_Floor"), z, POWER_RESPAWN))
     elif "Green" in label:
-        PICKUPS.append(("RiflePickup_Green", "rifle", x, top("GreenHall_Floor"), z))
+        PICKUPS.append(("EnergyRiflePickup_Green", "energy", x, top("GreenHall_Floor"), DER_Z, POWER_RESPAWN))
+for name, _kind, x, y, z, _delay in PICKUPS:
+    check_point(f"pickup {name}", x, y, z, margin=0.0)
+WEAPON_RES = {"rifle": "4_rifle", "pistol": "5_pistol", "carbine": "11_carbine", "shotgun": "12_shotgun",
+              "energy": "13_energy"}
 
 # ------------------------------------------------------------------ scene text
 ext = [
@@ -197,6 +210,9 @@ ext = [
     ("Script", "res://scripts/ai/spawn_manager.gd", "9_spawns"),
     ("Resource", "res://resources/ai/bot_difficulty_normal.tres", "10_diff"),
     ("PackedScene", "res://scenes/levels/lockout_lighting.tscn", "11_lighting"),
+    ("PackedScene", "res://scenes/weapons/marksman_carbine.tscn", "11_carbine"),
+    ("PackedScene", "res://scenes/weapons/combat_shotgun.tscn", "12_shotgun"),
+    ("PackedScene", "res://scenes/weapons/directed_energy_rifle.tscn", "13_energy"),
 ]
 subs = []
 nodes = [
@@ -213,11 +229,11 @@ nodes = [
 sx, sz = S[1]
 nodes.append('[node name="Player" parent="." instance=ExtResource("2_player")]\n'
              f'transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, {fmt(sx)}, {fmt(top("BR1_Floor") + 0.05)}, {fmt(sz)})\n')
-for name, kind, x, y, z in PICKUPS:
-    res = "4_rifle" if kind == "rifle" else "5_pistol"
+for name, kind, x, y, z, delay in PICKUPS:
     nodes.append(f'[node name="{name}" parent="." instance=ExtResource("3_pickup")]\n'
                  f'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {fmt(x)}, {fmt(y)}, {fmt(z)})\n'
-                 f'weapon_scene = ExtResource("{res}")\n')
+                 f'weapon_scene = ExtResource("{WEAPON_RES[kind]}")\n'
+                 + (f"respawn_delay = {delay}\n" if delay is not None else ""))
 nodes.append('[node name="Navigation" type="NavigationRegion3D" parent="."]\nscript = ExtResource("8_nav")\n'
              'geometry_root = NodePath("../Lockout")\n')
 for name, kind, a, b, lip, layer, release_y in LINKS:

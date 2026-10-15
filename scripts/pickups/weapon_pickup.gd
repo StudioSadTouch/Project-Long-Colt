@@ -9,7 +9,10 @@ extends Node3D
 ## and despawn after despawn_time.
 ##
 ## Walk-over ammo: a placed pickup gives ammo_amount rounds (default one magazine) and is
-## consumed only if any ammo was actually added. A dropped pickup hands over its own
+## consumed only if any ammo was actually added. Battery weapons (WeaponData.battery) take no
+## ammo; instead a same-id pickup holding more charge than the carried copy can be taken as a
+## swap (is_battery_upgrade_for): the carrier's take_pickup replaces the carried copy, which
+## drops as a pickup like any swap. A dropped pickup hands over its own
 ## reserve then magazine and disappears only once it's empty (Halo behavior).
 ##
 ## The Area3D sits on the Pickup layer (7), masks Player (2) and Enemy (4), and is not
@@ -169,7 +172,24 @@ func give_ammo(carrier: Object) -> int:
 func is_useful_to(carrier: Object) -> bool:
 	if not can_take() or carrier == null:
 		return false
-	return _find(carrier, get_weapon_id()) == null or ammo_for(carrier) > 0
+	if _find(carrier, get_weapon_id()) == null or ammo_for(carrier) > 0:
+		return true
+	return is_battery_upgrade_for(carrier)
+
+
+## A battery weapon with more charge than the carrier's copy of the same weapon (swap, not ammo).
+func is_battery_upgrade_for(carrier: Object) -> bool:
+	return battery_gain_for(carrier) > 0
+
+
+## Battery this pickup holds over the carrier's copy of the same battery weapon (0 if none).
+func battery_gain_for(carrier: Object) -> int:
+	if not can_take() or weapon.data == null or not weapon.data.battery:
+		return 0
+	var carried := _find(carrier, get_weapon_id())
+	# Placed pickups hold a fresh, never-readied weapon: full charge.
+	var offered := weapon.magazine if dropped else weapon.data.magazine_size
+	return maxi(offered - carried.magazine, 0) if carried != null else 0
 
 
 ## carrier has a body inside the trigger.
@@ -177,12 +197,12 @@ func is_in_reach(carrier: Object) -> bool:
 	return carrier != null and _carriers.has(carrier)
 
 
-## In reach: top up if carried (true if any ammo moved), else hand the weapon to
-## carrier.take_pickup(self) when it has one. False otherwise.
+## In reach: top up if carried (true if any ammo moved), else (or for a battery upgrade) hand
+## the weapon to carrier.take_pickup(self) when it has one. False otherwise.
 func try_pickup(carrier: Object) -> bool:
 	if not can_take() or not is_in_reach(carrier):
 		return false
-	if _find(carrier, get_weapon_id()) != null:
+	if _find(carrier, get_weapon_id()) != null and not is_battery_upgrade_for(carrier):
 		return give_ammo(carrier) > 0
 	if carrier.has_method(&"take_pickup"):
 		return bool(carrier.call(&"take_pickup", self))

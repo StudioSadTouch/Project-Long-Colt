@@ -180,25 +180,31 @@ level = (f"[gd_scene load_steps={len(subs) + 3} format=3]\n\n{ext}\n" + "\n".joi
 # ---------------------------------------------------------------- launcher scene
 # CHOICE: player starts at spawn 1 (BR1) facing east toward Top Mid; other spawns are markers.
 PLAYER_SPAWN = 1
-# CHOICE: map the source's weapon spots (W labels) onto floors and our two weapons.
-# Rifle replaces BR/SMG/Shotgun; pistol replaces Magnum and Sniper; sword spot stays empty.
-PICKUPS = []
+# CHOICE: map the source's weapon spots (W labels) onto floors and the five-gun roster (same
+# mapping as emit_arena_tscn.py, see the reasoning there): Shotgun at BotMid, Directed Energy
+# Rifle in Green hall (z = 17), Marksman Carbine on the BR tower roof, pistols on S3 and Top
+# Blue, rifle on Top Blue; sword spot stays empty. Power weapons respawn after 90 s.
+POWER_RESPAWN = 90.0
+PICKUPS = []  # (name, kind, x, y, z, respawn_delay or None)
 for x, z, label, _marker in W:
     if "Sword" in label:
         continue
     if "Sniper" in label:
-        PICKUPS.append(("PistolPickup_S3", "pistol", x, floor_top_at(x, z, "S3_SnipeDeck"), z))
+        PICKUPS.append(("PistolPickup_S3", "pistol", x, floor_top_at(x, z, "S3_SnipeDeck"), z, None))
     elif "Top Blue" in label:  # BR + 2 Magnums on top of lift
         y = floor_top_at(x, z, "TopBlue_Deck")
-        PICKUPS.append(("RiflePickup_TopBlue", "rifle", x, y, z))
-        PICKUPS.append(("PistolPickup_TopBlueW", "pistol", x - 2, y, z))
-        PICKUPS.append(("PistolPickup_TopBlueE", "pistol", x + 2, y, z))
+        PICKUPS.append(("RiflePickup_TopBlue", "rifle", x, y, z, None))
+        PICKUPS.append(("PistolPickup_TopBlueW", "pistol", x - 2, y, z, None))
+        PICKUPS.append(("PistolPickup_TopBlueE", "pistol", x + 2, y, z, None))
     elif "BR tower" in label:
-        PICKUPS.append(("RiflePickup_BR3", "rifle", x, floor_top_at(x, z, "BR3_Roof"), z))
+        PICKUPS.append(("CarbinePickup_BR3", "carbine", x, floor_top_at(x, z, "BR3_Roof"), z, None))
     elif "BotMid" in label:
-        PICKUPS.append(("RiflePickup_BotMid", "rifle", x, floor_top_at(x, z, "BotMid_Floor"), z))
+        PICKUPS.append(("ShotgunPickup_BotMid", "shotgun", x, floor_top_at(x, z, "BotMid_Floor"), z, POWER_RESPAWN))
     elif "Green" in label:
-        PICKUPS.append(("RiflePickup_Green", "rifle", x, floor_top_at(x, z, "GreenHall_Floor"), z))
+        PICKUPS.append(("EnergyRiflePickup_Green", "energy", x, floor_top_at(x, 17.0, "GreenHall_Floor"), 17.0,
+                        POWER_RESPAWN))
+WEAPON_RES = {"rifle": "4_rifle", "pistol": "5_pistol", "carbine": "8_carbine", "shotgun": "9_shotgun",
+              "energy": "10_energy"}
 SWORD = next((x, z) for x, z, label, _m in W if "Sword" in label)
 SWORD_Y = floor_top_at(*SWORD, prefer="Sword_Room")
 
@@ -246,7 +252,10 @@ ext = ['[ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn"
        '[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="4_rifle"]',
        '[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="5_pistol"]',
        '[ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="6_moving"]',
-       '[ext_resource type="PackedScene" path="res://scenes/levels/lockout_lighting.tscn" id="8_lighting"]']
+       '[ext_resource type="PackedScene" path="res://scenes/levels/lockout_lighting.tscn" id="8_lighting"]',
+       '[ext_resource type="PackedScene" path="res://scenes/weapons/marksman_carbine.tscn" id="8_carbine"]',
+       '[ext_resource type="PackedScene" path="res://scenes/weapons/combat_shotgun.tscn" id="9_shotgun"]',
+       '[ext_resource type="PackedScene" path="res://scenes/weapons/directed_energy_rifle.tscn" id="10_energy"]']
 subs = []
 for pname, pts in PATHS:
     flat = ", ".join(f"0, 0, 0, 0, 0, 0, {fmt(x)}, {fmt(y + 0.05)}, {fmt(z)}" for x, y, z in pts)
@@ -261,10 +270,10 @@ nodes = ['[node name="MainLockout" type="Node3D"]\n',
 px, py, pz = SPAWNS[PLAYER_SPAWN]
 nodes.append(f'[node name="Player" parent="." instance=ExtResource("2_player")]\n'
              f'transform = {xform(rot_y(-math.pi / 2), (px, py, pz))}\n')
-for name, kind, x, y, z in PICKUPS:
-    res = "4_rifle" if kind == "rifle" else "5_pistol"
+for name, kind, x, y, z, delay in PICKUPS:
     nodes.append(f'[node name="{name}" parent="." instance=ExtResource("3_pickup")]\n'
-                 f'transform = {xform(IDENT, (x, y, z))}\nweapon_scene = ExtResource("{res}")\n')
+                 f'transform = {xform(IDENT, (x, y, z))}\nweapon_scene = ExtResource("{WEAPON_RES[kind]}")\n'
+                 + (f"respawn_delay = {delay}\n" if delay is not None else ""))
 nodes.append(f'[node name="SwordSpot" type="Marker3D" parent="."]\ntransform = {xform(IDENT, (SWORD[0], SWORD_Y, SWORD[1]))}\n')
 nodes.append('[node name="Label" type="Label3D" parent="SwordSpot"]\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)\n'
              'billboard = 1\nfont_size = 48\noutline_size = 8\nmodulate = Color(1, 0.3, 1, 1)\n'

@@ -297,7 +297,8 @@ func take_damage(amount: float, info: Dictionary) -> void:
 ## Pickup carrier API (WeaponPickup's duck-typed contract, as WeaponHolder): the brain calls
 ## pickup.is_useful_to(self) / is_in_reach(self) / try_pickup(self); walk-over ammo from weapon
 ## pickups is applied by the pickup itself (it uses find_weapon). Installs a weapon the pickup
-## hands over: an empty slot first, else it replaces the active weapon and drops that one.
+## hands over: the slot holding the same weapon (battery swap), then an empty slot, then a slot
+## holding a dry weapon, else it replaces the active weapon and drops that one.
 func take_pickup(pickup: WeaponPickup) -> bool:
 	if dead or pickup == null:
 		return false
@@ -307,13 +308,20 @@ func take_pickup(pickup: WeaponPickup) -> bool:
 	var w := _weapon_from_taken(taken)
 	if w == null:
 		return false
+	var same := find_weapon(WeaponPickup.weapon_id_of(w))
+	var slot := slots.find(same) if same != null else -1
 	var empty := slots.find(null)
-	if empty >= 0:
+	if slot < 0 and empty >= 0:
 		_install(w, empty)
 		_equip(empty)
 		return true
-	var old := _install(w, active_index)
-	_equip(active_index)
+	for i in SLOT_COUNT:
+		if slot < 0 and total_ammo(slots[i]) <= 0:
+			slot = i
+	if slot < 0:
+		slot = active_index
+	var old := _install(w, slot)
+	_equip(slot)
 	if old != null:
 		_drop(old)
 	return true
