@@ -239,10 +239,10 @@ def set_spine(pose, ab, ch):
     pose.rot["Chest"] = ch
 
 
-def look(pose, head_world):
+def look(pose, head_world, neck_share=0.5):
     W = pose.world()
     rel = W["Chest"][0].T @ head_world
-    neck = slerp_m(I3, rel, 0.5)
+    neck = slerp_m(I3, rel, neck_share)
     pose.rot["Neck"] = neck
     pose.rot["Head"] = neck.T @ rel
 
@@ -283,17 +283,26 @@ HOLDS = {
 POUCH_W = np.array([-0.17, 0.98, -0.12])  # left front belt pouch, model space (stand)
 
 
+# Share of the aim pitch taken by abdomen / chest (rest: neck + head + arms). v1.2: was
+# 0.25 / 0.40; at +-70 deg that tilted the spine 45 deg and moved PB_Head 14 cm off the
+# stance-only head hitbox. Now about 11 deg of spine at the extremes, inside +-3 cm.
+AIM_SPINE = (0.03, 0.05)
+# Share of the remaining look pitch on the neck (the rest on PB_Head, which pitches about its
+# own pivot and so doesn't move it). Only the pitched aim poses use it.
+AIM_NECK_SHARE = 0.15
+
+
 def upper_aim(pose, weapon, pitch, hold_rot=None, hold_pos=(0, 0, 0), r_override=None,
               l_target=None, l_weight=0.0, head_extra=None, spine_extra=(I3, I3), lower=0.0):
     """Aim pose. pitch degrees (+ up). hold_rot/hold_pos move the weapon in the aim frame.
     r_override: (attach_world, hand_world, weight) blend for the right hand (holster).
     l_target: off-hand world point (blended in with l_weight; None = stay on the weapon)."""
-    ab = rx(0.25 * pitch) @ spine_extra[0]
-    ch = rx(0.40 * pitch) @ spine_extra[1]
+    ab = rx(AIM_SPINE[0] * pitch) @ spine_extra[0]
+    ch = rx(AIM_SPINE[1] * pitch) @ spine_extra[1]
     set_spine(pose, ab, ch)
     A = rx(pitch)
     hw = head_extra if head_extra is not None else I3
-    look(pose, A @ hw)
+    look(pose, A @ hw, AIM_NECK_SHARE if pitch != 0.0 else 0.5)
     if weapon == "none":
         relax_arms(pose)
         return
@@ -326,7 +335,7 @@ def weapon_point(pose, weapon, pitch, local, hold_rot=None, hold_pos=(0, 0, 0)):
 
 
 # ---------------------------------------------------------------- stances
-STAND_H = 0.91
+STAND_H = 0.915  # v1.2: was 0.91; PB_Head 1.525 standing (rest 1.54), knees still soft
 FEET_STAND = (np.array([-0.13, 0.12, -0.05]), np.array([0.13, 0.12, 0.07]))
 FEET_LOCO = (np.array([-0.12, 0.12, 0.0]), np.array([0.12, 0.12, 0.0]))
 CROUCH_PELVIS = np.array([0.0, 0.30, 0.22])
@@ -391,11 +400,19 @@ CYCLE = 0.6  # walk, run and crouch-walk share one cycle length so blendspaces s
 # scale playback to the real velocity, so keep them in sync with its exports.
 WALK_SPEED, RUN_SPEED, CROUCH_SPEED = 3.5, 7.5, 3.2
 LATERAL_STRIDE_CUT = 0.45
+CROUCH_BETA = 0.31
 # Run v1.1 (polish): heavy and driven, not springy. Contact 17 % of the cycle per foot (was
 # 12 %), pelvis 0.80 (was 0.84) for the reach that needs, 3.5 cm pelvis travel with the low
 # point at mid-stance (loading) instead of the high point at contact, 8 cm foot clearance.
-RUN = {"speed": RUN_SPEED, "beta": 0.17, "lift": 0.08, "h": 0.80, "bob": 0.0175, "lean": 6.0,
-       "low_at": 0.085, "foot_pitch": 8.0}
+# v1.2 (head-hitbox rule): PB_Head must stay within +-3 cm of standing in every non-crouch
+# clip, so the hip can't drop for reach. Run: pelvis 0.91-0.93 (was 0.80, travel 2 cm),
+# with a heel-toe roll (gait_roll) for the contact phase: 15 % of the cycle per foot
+# (v1.1 17 %, v1 12 %), hard 55 deg toe-off, 25 deg toes-up strike; heavier read from an
+# 8 deg pelvis pitch, the toe-off drive and low foot recovery (5 cm swing lift, ~10 cm sole clearance with the roll).
+RUN = {"speed": RUN_SPEED, "beta": 0.15, "lift": 0.05, "h": 0.92, "bob": 0.01, "lean": 8.0,
+       "low_at": 0.075, "roll": {"strike": 25.0, "off": 55.0, "center": -0.02}}
+WALK = {"speed": WALK_SPEED, "beta": 0.24, "lift": 0.07, "h": 0.912, "bob": 0.006, "lean": 2.0,
+        "roll": {"strike": 15.0, "off": 30.0, "center": -0.02}}
 
 
 def move_dir(deg):
@@ -423,6 +440,80 @@ def gait(t, d, speed, beta, lift, feet, pelvis_fn, foot_pitch=12.0):
     return pose
 
 
+HEEL_Z, TOE_Z, SOLE_Y = 0.115, -0.175, -0.12  # boot-local heel / toe contact edges (PB_Sole box)
+
+
+def on_floor(ankle, R):
+    """Raise an ankle target so no sole corner is below the floor (toe push-offs, rolls)."""
+    low = min(q[1] for q in sole_points(np.asarray(ankle, float), R))
+    return np.asarray(ankle, float) + np.array([0, max(0.0, -low), 0])
+
+
+def sole_points(ankle, R):
+    """The four bottom corners of the PB_Sole box (world), for floor checks."""
+    return [ankle + R @ np.array([x, SOLE_Y, z]) for z in (HEEL_Z, TOE_Z) for x in (-0.075, 0.075)]
+
+
+SOLE_HALF_W = 0.075
+
+
+def sole_support(v):
+    """Sole point furthest along ground direction v (a heel/toe edge or corner)."""
+    x = math.copysign(SOLE_HALF_W, v[0]) if abs(v[0]) > 1e-6 else 0.0
+    z = (TOE_Z if v[2] < 0 else HEEL_Z) if abs(v[2]) > 1e-6 else 0.0
+    return np.array([x, SOLE_Y, z])
+
+
+def gait_roll(t, d, speed, beta, lift, feet, pelvis_fn, strike=15.0, off=30.0, a=0.2, b=0.5,
+              center=0.0, side_scale=0.6):
+    """Stance with a heel-toe roll (v1.2). The foot is rigid and fixed in ground space for the
+    whole stance. After strike it pivots on its trailing edge with the leading edge up
+    (`strike` deg, until a), lies flat, then pivots on its leading edge with the trailing edge
+    up (`off` deg, from b). Forward travel rolls heel to toe, backward travel toe to heel and
+    strafes roll edge to edge at side_scale of the angles. Rolling keeps the contact phase long
+    with the hip high, so the head stays at standing height. `center` shifts the stance along
+    the travel direction."""
+    lateral = abs(d[0])
+    stride = speed * beta * CYCLE * (1.0 - LATERAL_STRIDE_CUT * lateral)
+    w = min(1.0, abs(d[2]) + side_scale * abs(d[0]))
+    axis = np.cross(d, np.array([0.0, 1.0, 0.0]))
+    p_strike, p_off = sole_support(-d), sole_support(d)
+    R_strike, R_off = axis_angle(axis, strike * w), axis_angle(axis, -off * w)
+
+    def stance(base, s):
+        F = base + d * (0.5 * stride + center) - d * stride * s
+        if s < a:
+            R, pz = slerp_m(R_strike, I3, smooth(s / a)), p_strike
+        elif s > b:
+            R, pz = slerp_m(I3, R_off, smooth((s - b) / (1.0 - b))), p_off
+        else:
+            R, pz = I3, p_off
+        return F + pz - R @ pz, R
+
+    ankles, rots = [], []
+    for i, off_ph in enumerate((0.0, 0.5)):
+        ph = (t / CYCLE + off_ph) % 1.0
+        base = feet[i] + np.array([(-1 if i == 0 else 1) * 0.04 * lateral, 0, 0])
+        if ph < beta:
+            A, R = stance(base, ph / beta)
+        else:
+            u = (ph - beta) / (1 - beta)
+            A1, R1 = stance(base, 1.0)
+            A0, R0 = stance(base, 0.0)
+            k = smooth(u)
+            A = A1 + (A0 - A1) * k + np.array([0, lift * math.sin(math.pi * u), 0])
+            R = slerp_m(R1, R0, k)
+            low = min(q[1] for q in sole_points(A, R))
+            if low < 0.0:  # never drag a toe or heel through the floor
+                A = A + np.array([0, -low, 0])
+        ankles.append(A)
+        rots.append(R)
+    pose = Pose()
+    pelvis_fn(pose, t)
+    solve_legs(pose, ankles, rots)
+    return pose
+
+
 def stand_gait_pelvis(d, bob, sway, yaw, lean, h, low_at=None):
     """low_at: phase (0..1 of the cycle) of the pelvis low point after each contact; None keeps
     the original walk phasing (high at contact)."""
@@ -436,12 +527,13 @@ def stand_gait_pelvis(d, bob, sway, yaw, lean, h, low_at=None):
     return fn
 
 
-def loco_clip(name, deg, speed, beta, lift, h, bob, sway, yaw, lean, low_at=None, foot_pitch=12.0):
+def loco_clip(name, deg, speed, beta, lift, h, bob, sway, yaw, lean, low_at=None, roll=None):
     d = move_dir(deg)
+    roll = roll or {}
 
     def fn(t):
-        p = gait(t, d, speed, beta, lift, FEET_LOCO,
-                 stand_gait_pelvis(d, bob, sway, yaw, lean, h, low_at), foot_pitch=foot_pitch)
+        p = gait_roll(t, d, speed, beta, lift, FEET_LOCO,
+                      stand_gait_pelvis(d, bob, sway, yaw, lean, h, low_at), **roll)
         upper_aim(p, "rifle", 0.0)
         return p
     return clip_from(name, CYCLE, fn, loop=True)
@@ -456,7 +548,7 @@ def crouch_loco_clip(name, deg):
         pose.rot["Pelvis"] = rx(CROUCH_LEAN) @ ry(3 * math.sin(w))
 
     def fn(t):
-        p = gait(t, d, CROUCH_SPEED, 0.31, 0.06, FEET_CROUCH, pel, foot_pitch=8.0)
+        p = gait(t, d, CROUCH_SPEED, CROUCH_BETA, 0.06, FEET_CROUCH, pel, foot_pitch=8.0)
         upper_aim(p, "rifle", 0.0, spine_extra=CROUCH_SPINE, lower=0.03)
         return p
     return clip_from(name, CYCLE, fn, loop=True)
@@ -481,7 +573,7 @@ def crouch_idle_fn(t):
 
 def stop_fn(t):
     p = Pose()
-    dy = curve([(0, -0.03), (0.12, -0.035), (0.3, 0.0)], t)
+    dy = curve([(0, -0.008), (0.12, -0.01), (0.3, 0.0)], t)  # v1.2: was -0.035 (head rule)
     tilt = curve([(0, -4.0), (0.12, 2.0), (0.22, -0.5), (0.3, 0.0)], t)
     stand_lower(p, dy=dy, dz=curve([(0, -0.03), (0.12, 0.01), (0.3, 0.0)], t), tilt=rx(tilt))
     upper_aim(p, "rifle", 0.0)
@@ -490,12 +582,13 @@ def stop_fn(t):
 
 def jump_fn(t):
     p = Pose()
-    h = curve([(0, STAND_H), (0.06, 0.84), (0.2, 0.95)], t)
+    h = curve([(0, STAND_H), (0.06, STAND_H - 0.008), (0.2, 0.945)], t)  # v1.2: dip was 0.84
     p.pelvis = np.array([0, h, 0]); p.rot["Pelvis"] = rx(curve([(0, 0.0), (0.06, -6.0), (0.2, 2.0)], t))
     lift = curve([(0, 0.0), (0.12, 0.0), (0.2, 0.18)], t)
     tuck = curve([(0.12, 0.0), (0.2, 0.06)], t)
     feet = (FEET_STAND[0] + np.array([0, lift, -tuck]), FEET_STAND[1] + np.array([0, lift * 0.8, 0.02]))
-    solve_legs(p, feet, (rx(-25 * min(1, t / 0.12)) if t < 0.14 else rx(10), None))
+    rots = (rx(-25 * min(1, t / 0.12)) if t < 0.14 else rx(10), I3)
+    solve_legs(p, tuple(on_floor(feet[i], rots[i]) for i in range(2)), rots)
     upper_aim(p, "rifle", 0.0)
     return p
 
@@ -513,21 +606,27 @@ def fall_fn(t):
 
 def land_fn(t):
     p = Pose()
-    stand_lower(p, dy=curve([(0, -0.04), (0.08, -0.12), (0.25, 0.0)], t),
-                tilt=rx(curve([(0, -3.0), (0.08, -7.0), (0.25, 0.0)], t)))
+    # v1.2: the knee absorb was 12 cm (head rule); the weight now reads through a short
+    # 1 cm dip and a pelvis pitch forward that recovers past neutral.
+    stand_lower(p, dy=curve([(0, -0.006), (0.07, -0.01), (0.25, 0.0)], t),
+                tilt=rx(curve([(0, -4.0), (0.07, -7.0), (0.17, 1.5), (0.25, 0.0)], t)))
     upper_aim(p, "rifle", 0.0, spine_extra=(rx(curve([(0, -2.0), (0.08, 3.0), (0.25, 0.0)], t)), I3))
     return p
 
 
 def slide_fn(t):
+    """v1.2: sliding sets crouched (crouch hitbox), so the slide stays at crouch head height
+    for the whole clip (PB_Head ~0.87): low seat, lead leg out front, trailing knee up."""
     p = Pose()
     e = smooth(t / 0.13)
-    pel = np.array([0, STAND_H, 0]) + (np.array([0.0, 0.44, 0.06]) - np.array([0, STAND_H, 0])) * e
-    p.pelvis = pel; p.rot["Pelvis"] = rx(16 * e) @ ry(-12 * e)
-    feet_a = FEET_STAND
-    feet_b = (np.array([-0.08, 0.14, -0.58]), np.array([0.17, 0.13, 0.22]))
+    start, end = np.array([0.0, 0.27, 0.10]), np.array([0.0, 0.28, 0.06])
+    p.pelvis = start + (end - start) * e
+    p.rot["Pelvis"] = rx(16 * e) @ ry(-12 * e)
+    feet_a = (np.array([-0.15, 0.12, -0.30]), np.array([0.18, 0.12, -0.12]))
+    feet_b = (np.array([-0.08, 0.17, -0.66]), np.array([0.21, 0.12, -0.15]))
     feet = tuple(feet_a[i] + (feet_b[i] - feet_a[i]) * e for i in range(2))
-    solve_legs(p, feet, (rx(28 * e), rx(-40 * e)), knee_out=0.35)
+    rots = (rx(28 * e), I3)
+    solve_legs(p, tuple(on_floor(feet[i], rots[i]) for i in range(2)), rots, knee_out=0.35)
     upper_aim(p, "rifle", 0.0, spine_extra=(rx(-10 * e) @ ry(8 * e), rx(-6 * e)))
     return p
 
@@ -595,7 +694,7 @@ def death_clip(key):
 def lift_clear(p, clearance=0.03):
     """Raise the pelvis so no joint (boots: soles) dips below the floor."""
     W = p.world()
-    low = min((pos + R @ np.array([0, -0.12, 0]))[1] if j.startswith("Boot") else pos[1]
+    low = min(min(q[1] for q in sole_points(pos, R)) if j.startswith("Boot") else pos[1]
               for j, (R, pos) in W.items())
     if low < clearance:
         p.pelvis = p.pelvis + np.array([0, clearance - low, 0])
@@ -844,11 +943,12 @@ def build():
     clips = [clip_from("RESET", 1.0 / FPS, lambda t: Pose())]
     clips.append(clip_from("idle", 2.0, idle_fn, loop=True))
     for k, deg in DIRS.items():
-        clips.append(loco_clip("walk_" + k, deg, WALK_SPEED, 0.24, 0.09, 0.88, 0.008, 0.02, 4.0, 2.0))
+        clips.append(loco_clip("walk_" + k, deg, WALK["speed"], WALK["beta"], WALK["lift"], WALK["h"],
+                               WALK["bob"], 0.02, 4.0, WALK["lean"], roll=WALK["roll"]))
     for k, deg in DIRS.items():
         clips.append(loco_clip("run_" + k, deg, RUN["speed"], RUN["beta"], RUN["lift"], RUN["h"],
                                RUN["bob"], 0.015, 6.0, RUN["lean"], low_at=RUN["low_at"],
-                               foot_pitch=RUN["foot_pitch"]))
+                               roll=RUN["roll"]))
     clips.append(clip_from("stop_settle", 0.3, stop_fn))
     clips.append(clip_from("crouch_idle", 2.0, crouch_idle_fn, loop=True))
     for k, deg in DIRS.items():
@@ -896,38 +996,141 @@ def check():
     print("crouch torso lean (deg fwd):", round(math.degrees(math.atan2(-v[2], v[1])), 1), "stand:", round(lean, 1))
 
 
+HEAD_STAND = 1.54   # PB_Head world height standing (rest pose)
+HEAD_CROUCH = 0.868  # PB_Head under the approved crouch helmet (0.968)
+HEAD_TOL = 0.03
+
+
+def head_class(name):
+    """'crouch' (crouch hitbox: crouch_* and slide, which sets crouched), 'exempt' or 'stand'."""
+    if name.startswith("death_") or name == "RESET":
+        return "exempt"
+    if name.startswith("crouch_") or name == "slide":
+        return "crouch"
+    return "stand"
+
+
+def _apply_additive(base, delta):
+    p = Pose(); p.pelvis = base.pelvis.copy(); p.rot = dict(base.rot)
+    for j, m in delta.rot.items():
+        p.rot[j] = base.rot[j] @ m
+    return p
+
+
+def head_report(clips):
+    """PB_Head world height per clip as the game shows it. Upper-only clips carry their stand
+    lower body; additive clips are applied on the stand (fire, flinch) or crouch (crouch_upper)
+    rifle/pistol mid aim. Full-body clips are measured with their own upper body and with the
+    in-game upper layer (mid aim) on top; min/max cover both. Returns the failing clips."""
+    fails = []
+    stand_up = ref_stand(); upper_aim(stand_up, "rifle", 0.0)
+    crouch_up = ref_crouch(); upper_aim(crouch_up, "rifle", 0.0, spine_extra=CROUCH_SPINE, lower=0.03)
+    runtime_upper = {"stand": stand_up, "crouch": crouch_up}
+    print("head height (PB_Head world y), stand %.3f / crouch %.3f, tolerance +-%.2f m:"
+          % (HEAD_STAND, HEAD_CROUCH, HEAD_TOL))
+    for c in clips:
+        cls = head_class(c.name)
+        if cls == "exempt":
+            continue
+        ys = []
+        if c.additive:
+            weapon = "pistol" if "pistol" in c.name else "rifle"
+            if c.name.startswith("crouch_upper_"):
+                weapon = c.name[len("crouch_upper_"):]
+                base = ref_crouch()
+            else:
+                base = ref_stand()
+            upper_aim(base, weapon, 0.0)
+            for _, d in c.frames:
+                ys.append(_apply_additive(base, d).world()["Head"][1][1])
+        else:
+            ys = [p.world()["Head"][1][1] for _, p in c.frames]
+            if c.tracks is not UPPER:
+                # In game the upper-body layer replaces this clip's spine/arms with the mid aim
+                # pose (plus the crouch additive in crouch/slide): count that version too.
+                up = runtime_upper[cls]
+                for _, p in c.frames:
+                    q = Pose(); q.pelvis = p.pelvis; q.rot = dict(p.rot)
+                    q.rot.update({j: up.rot[j] for j in UPPER})
+                    ys.append(q.world()["Head"][1][1])
+        ref = HEAD_CROUCH if cls == "crouch" else HEAD_STAND
+        lo, hi = min(ys), max(ys)
+        ok = lo >= ref - HEAD_TOL - 1e-4 and hi <= ref + HEAD_TOL + 1e-4
+        if not ok:
+            fails.append(c.name)
+        print("  %-20s %-6s min %.3f  max %.3f  %s" % (c.name, cls, lo, hi, "ok" if ok else "FAIL"))
+    return fails
+
+
+def floor_report(clips, tol=0.001):
+    """Lowest point per full-body clip (joint pivots; boots: the four sole corners). Returns
+    the clips that go through the floor."""
+    bad = []
+    for c in clips:
+        if c.additive or c.tracks is UPPER or c.name == "RESET":
+            continue
+        low = min(min(min(q[1] for q in sole_points(pos, R)) if j.startswith("Boot") else pos[1]
+                      for j, (R, pos) in p.world().items()) for _, p in c.frames)
+        if low < -tol:
+            bad.append("%s (%.3f m)" % (c.name, low))
+    print("floor check:", "ok" if not bad else "BELOW FLOOR " + ", ".join(bad))
+    return bad
+
+
+def combo_report(clips):
+    """In game the aim layer rides on locomotion: worst head = loco min/max + aim up/down offset
+    from aim mid (rifle). Informational, same tolerance."""
+    by = {c.name: c for c in clips}
+    mid = by["aim_rifle_mid"].frames[0][1].world()["Head"][1][1]
+    offs = [by["aim_rifle_" + k].frames[0][1].world()["Head"][1][1] - mid for k in ("up", "down")]
+    worst = []
+    for fam in ("idle", "walk_f", "walk_r", "run_f", "run_r", "run_fr", "stop_settle", "land"):
+        ys = [p.world()["Head"][1][1] for _, p in by[fam].frames]
+        lo, hi = min(ys) + min(0.0, *offs), max(ys) + max(0.0, *offs)
+        worst.append((fam, lo, hi))
+    print("aim pitch on top of locomotion (offset up %+.3f / down %+.3f):" % tuple(offs),
+          ", ".join("%s %.3f-%.3f" % w for w in worst))
+
+
 def gait_report(clips):
-    """Per locomotion family: pelvis vertical travel, per-foot contact fraction, worst foot slip
-    while in contact (vs. the clip's authored ground speed incl. the strafe cut), lowest sole."""
+    """Per locomotion family: pelvis height and vertical travel; per-foot ground contact (any
+    sole corner on the floor, so heel/toe rolls count) as a share of the cycle; worst slip of
+    the lowest sole corner while in contact against the clip's authored ground speed (incl. the
+    strafe cut); lowest sole; highest swing clearance of the sole."""
     fam = {"walk": WALK_SPEED, "run": RUN_SPEED, "crouch_walk": CROUCH_SPEED}
     by_name = {c.name: c for c in clips}
+    eps = 0.003
     for f, speed in fam.items():
-        travel, contact, slip, sole, lift, helm = [], [], 0.0, 9.0, 0.0, []
+        travel, contact, pel, slip, sole, lift = [], [], [], 0.0, 9.0, 0.0
         for k, deg in DIRS.items():
             c = by_name[f + "_" + k]
             d = move_dir(deg)
             ground = -d * speed * (1.0 - LATERAL_STRIDE_CUT * abs(d[0]))
             ys = [p.pelvis[1] for _, p in c.frames]
+            pel += ys
             travel.append(max(ys) - min(ys))
             n = hits = 0
             worlds = [(t, p.world()) for t, p in c.frames]
-            for _, w in worlds:
-                helm.append((w["Head"][1] + w["Head"][0] @ HELMET_FROM_HEAD)[1])
             for (t0, w0), (t1, w1) in zip(worlds, worlds[1:]):
                 for s in "LR":
-                    a0, a1 = w0["Boot_" + s][1], w1["Boot_" + s][1]
-                    sole = min(sole, (a0 + w0["Boot_" + s][0] @ np.array([0, -0.12, 0]))[1])
-                    lift = max(lift, a0[1] - 0.12)
+                    q0 = sole_points(w0["Boot_" + s][1], w0["Boot_" + s][0])
+                    q1 = sole_points(w1["Boot_" + s][1], w1["Boot_" + s][0])
+                    i0 = min(range(4), key=lambda i: q0[i][1])
+                    low0, low1 = q0[i0][1], min(q[1] for q in q1)
+                    sole = min(sole, low0)
+                    lift = max(lift, low0)
                     n += 1
-                    if a0[1] < 0.1205 and a1[1] < 0.1205:
+                    if low0 < eps and low1 < eps:
                         hits += 1
-                        slip = max(slip, float(np.linalg.norm(a1 - a0 - ground * (t1 - t0))))
+                        if q1[i0][1] < eps:  # same corner still down: it must ride the ground
+                            slip = max(slip, float(np.linalg.norm(q1[i0] - q0[i0] - ground * (t1 - t0))))
             contact.append(hits / n)
-        print("%-11s pelvis travel %.1f-%.1f cm | foot contact %.0f%% of cycle (%.3f s/step) | "
-              "max contact slip %.1f mm/frame | lowest sole %.3f m | max foot lift %.1f cm | "
-              "helmet %.2f-%.2f m"
-              % (f, 100 * min(travel), 100 * max(travel), 100 * np.mean(contact),
-                 np.mean(contact) * CYCLE, 1000 * slip, sole, 100 * lift, min(helm), max(helm)))
+        design = {"walk": WALK["beta"], "run": RUN["beta"], "crouch_walk": CROUCH_BETA}[f]
+        print("%-11s pelvis %.3f-%.3f (travel %.1f cm) | foot contact %.0f%% of cycle by design "
+              "(%.3f s/step), %.0f%% of sampled frame pairs | "
+              "max contact slip %.1f mm/frame | lowest sole %.3f m | max sole clearance %.1f cm"
+              % (f, min(pel), max(pel), 100 * max(travel), 100 * design, design * CYCLE,
+                 100 * np.mean(contact), 1000 * slip, sole, 100 * lift))
 
 
 def main():
@@ -936,6 +1139,9 @@ def main():
     clips = build()
     check()
     gait_report(clips)
+    fails = head_report(clips)
+    combo_report(clips)
+    fails += floor_report(clips)
     print("max IK reach error %.3f m at %s" % (REPORT["ik_err"], REPORT["ik_where"]))
     print("max IK solve error %.4f m at %s" % (REPORT.get("solve_err", 0.0), REPORT.get("solve_where", "")))
     for w, m in sorted(HOLSTER_META.items()):
@@ -945,6 +1151,10 @@ def main():
                                                  REPORT["holster_err_" + w]))
     for k, v in sorted(REPORT["per_clip"].items()):
         print("  IK clamp %.3f m  %s" % (v, k))
+    if fails:
+        print("CHECK FAILED: %s" % ", ".join(fails))
+        sys.exit(1)
+    print("head and floor checks passed")
     if "--check" in sys.argv:
         return
     path = os.path.join(repo, "assets/characters/player/anims/character_anims.tres")
