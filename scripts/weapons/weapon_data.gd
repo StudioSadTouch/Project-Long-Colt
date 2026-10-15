@@ -9,6 +9,9 @@ extends Resource
 ## charge_time fires one normal shot (Halo 2 plasma pistol rules).
 enum FireMode { SEMI, AUTO, BURST, CHARGE }
 enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
+## HUD scope overlay drawn while zoomed (ScopeOverlay). FIELD is the generic fallback so any
+## new zoomer gets an overlay; NONE keeps the hip crosshair and viewmodel while zoomed.
+enum ScopeStyle { NONE, FIELD, SIDEARM, SERVICE_RIFLE, MARKSMAN }
 
 @export var display_name: String = "Weapon"
 ## Viewmodel / third-person animation set: &"pistol", &"rifle", &"carbine", &"shotgun", &"der".
@@ -124,8 +127,8 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 @export var zoom_magnification: float = 0.0
 ## Zoom only allowed in this FireMode (e.g. BURST); -1 = any mode. Leaving it de-zooms.
 @export var zoom_only_in_mode: int = -1
-## Draw the HUD scope overlay (vignette + reticle) while zoomed.
-@export var zoom_overlay: bool = false
+## Scope overlay while zoomed (mask, reticle, readout); hides the viewmodel and crosshair.
+@export var scope_style: ScopeStyle = ScopeStyle.FIELD
 ## action_fire_select toggles between fire_mode and alt_fire_mode (the alt_* fields apply).
 ## Independent of secondary, so a weapon can fire-select on F and zoom on right-click.
 @export var fire_select: bool = false

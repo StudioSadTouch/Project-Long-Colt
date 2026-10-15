@@ -1,7 +1,8 @@
 extends CanvasLayer
 ## Combat HUD, Bungie-era: chunky shield meter top centre with segmented health under it,
 ## low-shield flash + beep hook, ammo and fire mode bottom right, a bloom-tracking crosshair,
-## and a Halo CE-style scope overlay for weapons with data.zoom_overlay.
+## and a per-weapon scope overlay (ScopeOverlay, data.scope_style) that fades with the zoom
+## blend and hides the crosshair while up (the holder hides the viewmodel).
 ## No audio here: listen to sfx_event(name) (names: "low_shield_beep", "shield_broken",
 ## "shield_recharge", "shield_full") or low_shield_warning(active).
 ## While the owning Player (the HUD's parent) is dead: no crosshair or scope, and the prompt
@@ -26,11 +27,7 @@ const SHIELD_BAR_HEIGHT := 18.0
 const HEALTH_BAR_HEIGHT := 7.0
 const HEALTH_BAR_WIDTH_FRACTION := 0.6
 const BAR_GAP := 6.0
-## Scope overlay.
-const SCOPE_RADIUS_FRACTION := 0.44
-const SCOPE_SEGMENTS := 64
-const SCOPE_COLOR := Color(0.0, 0.0, 0.0, 1.0)
-const SCOPE_RETICLE := Color(0.85, 0.95, 0.85, 0.9)
+## Crosshair.
 const RETICLE_COLOR := Color(0.92, 0.93, 0.9, 0.9)
 const RETICLE_TARGET_COLOR := Color(1.0, 0.18, 0.15, 0.95)
 
@@ -64,14 +61,13 @@ var _player: Player
 @onready var prompt_bar: ProgressBar = $Prompt/Hold
 @onready var crosshair: Control = $Crosshair
 @onready var shield_meter: Control = $ShieldMeter
-@onready var scope: Control = $Scope
+@onready var scope: ScopeOverlay = $Scope
 
 
 func _ready() -> void:
 	_player = get_parent() as Player
 	crosshair.draw.connect(_draw_crosshair)
 	shield_meter.draw.connect(_draw_shield_meter)
-	scope.draw.connect(_draw_scope)
 	_health = get_node_or_null(health_path) as HealthShield
 	if _health != null:
 		_health.changed.connect(_on_health_changed)
@@ -94,24 +90,48 @@ func _process(delta: float) -> void:
 	_hit_flash = maxf(_hit_flash - delta, 0.0)
 	_update_low_shield(delta)
 	var dead := _player != null and _player.is_dead()
-	var scoped := _is_scoped() and not dead
-	scope.visible = scoped
-	crosshair.visible = not scoped and not dead
-	if scoped:
-		scope.queue_redraw()
-	else:
+	_update_scope(dead)
+	crosshair.visible = not dead and not _scope_covers_crosshair()
+	if crosshair.visible:
 		crosshair.queue_redraw()
 	shield_meter.queue_redraw()
 	_update_prompt()
 	_update_energy_label()
 
 
-func _is_scoped() -> bool:
-	return (
-		is_instance_valid(_weapon)
-		and _weapon.data != null
-		and _weapon.data.zoom_overlay
-		and _weapon.zoomed
+## Overlay style for the active weapon; NONE if it doesn't zoom (or opted out).
+func _scope_style() -> WeaponData.ScopeStyle:
+	if (
+		not is_instance_valid(_weapon)
+		or _weapon.data == null
+		or _weapon.data.secondary != WeaponData.Secondary.ZOOM
+	):
+		return WeaponData.ScopeStyle.NONE
+	return _weapon.data.scope_style
+
+
+func _scope_blend() -> float:
+	return _holder.get_zoom_blend() if is_instance_valid(_holder) else 0.0
+
+
+## The crosshair hands over to the overlay at the half-way point of the fade.
+func _scope_covers_crosshair() -> bool:
+	return _scope_style() != WeaponData.ScopeStyle.NONE and _scope_blend() >= 0.5
+
+
+func _update_scope(dead: bool) -> void:
+	var style := _scope_style()
+	if dead or style == WeaponData.ScopeStyle.NONE:
+		scope.show_scope(WeaponData.ScopeStyle.NONE, 0.0, 75.0, 1.0, "", false)
+		return
+	var base_fov := _player.fov if _player != null else 75.0
+	var view_fov := _weapon.camera.fov if _weapon.camera != null else _weapon.get_zoom_fov(base_fov)
+	var zoom_fov := _weapon.get_zoom_fov(base_fov)
+	var mag := tan(deg_to_rad(base_fov) * 0.5) / maxf(tan(deg_to_rad(zoom_fov) * 0.5), 0.0001)
+	if _weapon.data.zoom_magnification > 0.0:
+		mag = _weapon.data.zoom_magnification
+	scope.show_scope(
+		style, _scope_blend(), view_fov, mag, _weapon.get_fire_mode_name(), _reticle_on_target()
 	)
 
 
@@ -206,30 +226,6 @@ func _draw_shield_meter() -> void:
 			shield_meter.draw_rect(
 				Rect2(seg.position, Vector2(seg_w * lit, HEALTH_BAR_HEIGHT)), HEALTH_FILL
 			)
-
-
-## Halo CE-style scope: black outside a circle, thin ring, crosshair with a centre gap.
-func _draw_scope() -> void:
-	var size := scope.size
-	var center := size * 0.5
-	var radius := minf(size.x, size.y) * SCOPE_RADIUS_FRACTION
-	var far := size.length()
-	for i in SCOPE_SEGMENTS:
-		var a0 := TAU * i / SCOPE_SEGMENTS
-		var a1 := TAU * (i + 1) / SCOPE_SEGMENTS
-		var d0 := Vector2(cos(a0), sin(a0))
-		var d1 := Vector2(cos(a1), sin(a1))
-		scope.draw_colored_polygon(
-			PackedVector2Array(
-				[center + d0 * radius, center + d1 * radius, center + d1 * far, center + d0 * far]
-			),
-			SCOPE_COLOR
-		)
-	scope.draw_arc(center, radius, 0.0, TAU, SCOPE_SEGMENTS, SCOPE_RETICLE, 2.0)
-	var gap := radius * 0.06
-	for dir in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
-		scope.draw_line(center + dir * gap, center + dir * radius * 0.9, SCOPE_RETICLE, 1.5)
-	scope.draw_rect(Rect2(center - Vector2.ONE, Vector2(2.0, 2.0)), SCOPE_RETICLE)
 
 
 func _on_fire_mode_changed(_mode: int) -> void:
