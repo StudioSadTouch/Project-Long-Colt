@@ -14,7 +14,8 @@ extends Node3D
 ## PASSTHROUGH_GROUP are skipped too (movement capsules whose owner has its own Hurtbox and
 ## head hitboxes, e.g. the Player).
 ## Zone colliders forward to the nearest ancestor that has take_damage.
-## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
+## info carries hit_zone (HitZone), hit_zone_name, headshot (true for both head zones), and dir
+## (= direction: world-space unit ray direction, shooter -> victim).
 ## Audio and VFX: connect to fired, dry_fired, reload_started, melee_started, hit_confirmed.
 ## Melee animation contract: melee_started(weapon, time_to_hit) fires the frame the swing begins
 ## (before any reload is cancelled); melee_hit(target, info) fires on the damage tick, the same
@@ -827,6 +828,7 @@ func _hit_info(hit: Dictionary, direction: Vector3, zone: HitZone) -> Dictionary
 		"position": hit.position,
 		"normal": hit.normal,
 		"direction": direction,
+		"dir": direction,
 		"hit_zone": zone,
 		"hit_zone_name": ZONE_NAMES[zone],
 		"headshot": zone != HitZone.BODY,
