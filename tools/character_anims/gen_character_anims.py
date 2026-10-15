@@ -362,25 +362,40 @@ class Clip:
         self.tracks = tracks if tracks is not None else ALL
         self.additive = additive
         self.frames = []  # (t, Pose)
+        self.events = []  # (t, node path relative to PlayerModel, method): method-call track
+        self.extra_times = []  # exact key times besides the 30 fps grid (event frames)
 
     def sample(self, fn):
         REPORT["clip"] = self.name
         n = max(1, int(round(self.length * FPS)))
-        for i in range(n + 1):
-            t = min(i / FPS, self.length)
+        times = sorted(set([min(i / FPS, self.length) for i in range(n + 1)]
+                           + [t for t in self.extra_times if 0.0 < t < self.length]))
+        for t in times:
             self.frames.append((t, fn(t)))
         if self.loop:  # exact wrap
             self.frames[-1] = (self.length, self.frames[0][1])
         return self
 
 
-def clip_from(name, length, fn, loop=False, tracks=None, additive=False):
-    return Clip(name, length, loop, tracks, additive).sample(fn)
+def clip_from(name, length, fn, loop=False, tracks=None, additive=False, extra_times=()):
+    c = Clip(name, length, loop, tracks, additive)
+    c.extra_times = list(extra_times)
+    return c.sample(fn)
 
 
 # ---------------------------------------------------------------- locomotion
 DIRS = {"f": 0, "fr": 45, "r": 90, "br": 135, "b": 180, "bl": -135, "l": -90, "fl": -45}
 CYCLE = 0.6  # walk, run and crouch-walk share one cycle length so blendspaces stay in phase
+# Speeds the clips are authored for, and the sideways stride reduction (strafes take a shorter
+# stride: 1 - LATERAL_STRIDE_CUT * |sideways component|). CharacterAnimDriver mirrors these to
+# scale playback to the real velocity, so keep them in sync with its exports.
+WALK_SPEED, RUN_SPEED, CROUCH_SPEED = 3.5, 7.5, 3.2
+LATERAL_STRIDE_CUT = 0.45
+# Run v1.1 (polish): heavy and driven, not springy. Contact 17 % of the cycle per foot (was
+# 12 %), pelvis 0.80 (was 0.84) for the reach that needs, 3.5 cm pelvis travel with the low
+# point at mid-stance (loading) instead of the high point at contact, 8 cm foot clearance.
+RUN = {"speed": RUN_SPEED, "beta": 0.17, "lift": 0.08, "h": 0.80, "bob": 0.0175, "lean": 6.0,
+       "low_at": 0.085, "foot_pitch": 8.0}
 
 
 def move_dir(deg):
@@ -390,7 +405,7 @@ def move_dir(deg):
 
 def gait(t, d, speed, beta, lift, feet, pelvis_fn, foot_pitch=12.0):
     lateral = abs(d[0])
-    stride = speed * beta * CYCLE * (1.0 - 0.45 * lateral)
+    stride = speed * beta * CYCLE * (1.0 - LATERAL_STRIDE_CUT * lateral)
     ankles, rots = [], []
     for i, off in enumerate((0.0, 0.5)):
         ph = (t / CYCLE + off) % 1.0
@@ -408,21 +423,25 @@ def gait(t, d, speed, beta, lift, feet, pelvis_fn, foot_pitch=12.0):
     return pose
 
 
-def stand_gait_pelvis(d, bob, sway, yaw, lean, h):
+def stand_gait_pelvis(d, bob, sway, yaw, lean, h, low_at=None):
+    """low_at: phase (0..1 of the cycle) of the pelvis low point after each contact; None keeps
+    the original walk phasing (high at contact)."""
     k = np.array([-d[2], 0, d[0]])
+    phase = 0.0 if low_at is None else math.pi + 4 * math.pi * low_at
 
     def fn(pose, t):
         w = 2 * math.pi * t / CYCLE
-        pose.pelvis = np.array([sway * math.cos(w), h + bob * math.cos(2 * w), 0.0])
+        pose.pelvis = np.array([sway * math.cos(w), h + bob * math.cos(2 * w - phase), 0.0])
         pose.rot["Pelvis"] = ry(yaw * math.sin(w)) @ axis_angle(k, -lean) @ rz(1.5 * math.cos(w))
     return fn
 
 
-def loco_clip(name, deg, speed, beta, lift, h, bob, sway, yaw, lean):
+def loco_clip(name, deg, speed, beta, lift, h, bob, sway, yaw, lean, low_at=None, foot_pitch=12.0):
     d = move_dir(deg)
 
     def fn(t):
-        p = gait(t, d, speed, beta, lift, FEET_LOCO, stand_gait_pelvis(d, bob, sway, yaw, lean, h))
+        p = gait(t, d, speed, beta, lift, FEET_LOCO,
+                 stand_gait_pelvis(d, bob, sway, yaw, lean, h, low_at), foot_pitch=foot_pitch)
         upper_aim(p, "rifle", 0.0)
         return p
     return clip_from(name, CYCLE, fn, loop=True)
@@ -437,7 +456,7 @@ def crouch_loco_clip(name, deg):
         pose.rot["Pelvis"] = rx(CROUCH_LEAN) @ ry(3 * math.sin(w))
 
     def fn(t):
-        p = gait(t, d, 3.2, 0.31, 0.06, FEET_CROUCH, pel, foot_pitch=8.0)
+        p = gait(t, d, CROUCH_SPEED, 0.31, 0.06, FEET_CROUCH, pel, foot_pitch=8.0)
         upper_aim(p, "rifle", 0.0, spine_extra=CROUCH_SPINE, lower=0.03)
         return p
     return clip_from(name, CYCLE, fn, loop=True)
@@ -706,16 +725,25 @@ def melee_clip(weapon):
 
 
 HOLSTER = {
-    # attach point and hand orientation at the holster (model space, stand)
-    "rifle": (np.array([0.14, 1.66, 0.06]), rx(80) @ rz(-25)),
+    # attach point and hand orientation at the holster (model space, stand). v1.1: the rifle
+    # grab point moved back behind the helmet (was 0.14, 1.66, 0.06) so the prop swap happens
+    # out of sight from the front, and onto the holstered rifle's real position.
+    "rifle": (np.array([0.10, 1.68, 0.18]), rx(80) @ rz(-25)),
     "pistol": (np.array([0.22, 0.86, 0.02]), rx(-75)),
 }
+
+
+SWAP_FRACTION = 0.5  # switch clips: the hand reaches the holster here; props swap on this key
+HOLSTER_PARENT = {"rifle": "Chest", "pistol": "Thigh_R"}
+HOLSTER_PROPS = "CharacterWeaponProps"  # node (relative to PlayerModel) that gets the swap call
+HOLSTER_META = {}  # weapon -> 4x4 grip transform in its holster parent's space (library metadata)
 
 
 def switch_clip(weapon):
     L = 0.5 if weapon == "rifle" else 0.3
     att, rot = HOLSTER[weapon]
-    w = [(0, 0.0), (0.5 * L, 1.0), (0.55 * L, 1.0), (L, 0.0)]
+    ts = SWAP_FRACTION * L
+    w = [(0, 0.0), (ts, 1.0), (ts + 0.05 * L, 1.0), (L, 0.0)]
     lw = [(0, 0.0), (0.2 * L, 1.0), (0.8 * L, 1.0), (L, 0.0)]
 
     def fn(t):
@@ -724,11 +752,26 @@ def switch_clip(weapon):
                   l_target=np.array([-0.2, 1.05, -0.12]), l_weight=curve(lw, t),
                   head_extra=rx(-10 * curve(w, t)))
         return p
-    return clip_from("switch_" + weapon, L, fn, tracks=UPPER)
+    c = clip_from("switch_" + weapon, L, fn, tracks=UPPER, extra_times=[ts])
+    c.events.append((ts, HOLSTER_PROPS, "anim_swap_weapon"))
+    # Holstered prop = exactly where the hand's WeaponAttach_R is on the swap key, in the
+    # holster parent's space, so the drawn weapon leaves the holster without a jump.
+    pose = dict(c.frames)[ts]
+    W = pose.world()
+    Rh, ph = W["Hand_R"]
+    Rp, pp = W[HOLSTER_PARENT[weapon]]
+    m = np.eye(4)
+    m[:3, :3] = Rp.T @ Rh
+    m[:3, 3] = Rp.T @ (ph + Rh @ MARK["R"] - pp)
+    HOLSTER_META[weapon] = m
+    REPORT["holster_err_" + weapon] = float(np.linalg.norm(ph + Rh @ MARK["R"] - att))
+    return c
 
 
 # ---------------------------------------------------------------- writer
 def fmt(x):
+    if abs(x) < 1e-9:
+        return "0"
     s = "%.5g" % x
     return "0" if s in ("-0", "0") else s
 
@@ -765,11 +808,23 @@ def write(clips, path):
             for t, q in qs:
                 flat += [fmt(t), "1"] + [fmt(x) for x in q]
             out += _track(ti, "rotation_3d", P[j], flat); ti += 1
+        for t, node, method in c.events:
+            out += ['tracks/%d/type = "method"' % ti, "tracks/%d/imported = false" % ti,
+                    "tracks/%d/enabled = true" % ti, 'tracks/%d/path = NodePath("%s")' % (ti, node),
+                    "tracks/%d/interp = 1" % ti, "tracks/%d/loop_wrap = true" % ti,
+                    "tracks/%d/keys = {" % ti, '"times": PackedFloat32Array(%s),' % fmt(t),
+                    '"transitions": PackedFloat32Array(1),',
+                    '"values": [{', '"args": [],', '"method": &"%s"' % method, "}]", "}"]
+            ti += 1
         out.append("")
     out.append("[resource]")
     out.append("_data = {")
     out.append(",\n".join('&"%s": SubResource("%s")' % (n, i) for n, i in ids))
     out.append("}")
+    for w, m in sorted(HOLSTER_META.items()):
+        # Godot Transform3D text order: basis rows, then origin.
+        vals = [m[r, k] for r in range(3) for k in range(3)] + list(m[:3, 3])
+        out.append("metadata/holster_%s = Transform3D(%s)" % (w, ", ".join(fmt(v) for v in vals)))
     head = '[gd_resource type="AnimationLibrary" load_steps=%d format=3]\n\n' % (len(clips) + 1)
     text = head + "\n".join(out) + "\n"
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -789,9 +844,11 @@ def build():
     clips = [clip_from("RESET", 1.0 / FPS, lambda t: Pose())]
     clips.append(clip_from("idle", 2.0, idle_fn, loop=True))
     for k, deg in DIRS.items():
-        clips.append(loco_clip("walk_" + k, deg, 3.5, 0.24, 0.09, 0.88, 0.008, 0.02, 4.0, 2.0))
+        clips.append(loco_clip("walk_" + k, deg, WALK_SPEED, 0.24, 0.09, 0.88, 0.008, 0.02, 4.0, 2.0))
     for k, deg in DIRS.items():
-        clips.append(loco_clip("run_" + k, deg, 7.5, 0.12, 0.16, 0.84, 0.015, 0.015, 6.0, 5.0))
+        clips.append(loco_clip("run_" + k, deg, RUN["speed"], RUN["beta"], RUN["lift"], RUN["h"],
+                               RUN["bob"], 0.015, 6.0, RUN["lean"], low_at=RUN["low_at"],
+                               foot_pitch=RUN["foot_pitch"]))
     clips.append(clip_from("stop_settle", 0.3, stop_fn))
     clips.append(clip_from("crouch_idle", 2.0, crouch_idle_fn, loop=True))
     for k, deg in DIRS.items():
@@ -839,13 +896,53 @@ def check():
     print("crouch torso lean (deg fwd):", round(math.degrees(math.atan2(-v[2], v[1])), 1), "stand:", round(lean, 1))
 
 
+def gait_report(clips):
+    """Per locomotion family: pelvis vertical travel, per-foot contact fraction, worst foot slip
+    while in contact (vs. the clip's authored ground speed incl. the strafe cut), lowest sole."""
+    fam = {"walk": WALK_SPEED, "run": RUN_SPEED, "crouch_walk": CROUCH_SPEED}
+    by_name = {c.name: c for c in clips}
+    for f, speed in fam.items():
+        travel, contact, slip, sole, lift, helm = [], [], 0.0, 9.0, 0.0, []
+        for k, deg in DIRS.items():
+            c = by_name[f + "_" + k]
+            d = move_dir(deg)
+            ground = -d * speed * (1.0 - LATERAL_STRIDE_CUT * abs(d[0]))
+            ys = [p.pelvis[1] for _, p in c.frames]
+            travel.append(max(ys) - min(ys))
+            n = hits = 0
+            worlds = [(t, p.world()) for t, p in c.frames]
+            for _, w in worlds:
+                helm.append((w["Head"][1] + w["Head"][0] @ HELMET_FROM_HEAD)[1])
+            for (t0, w0), (t1, w1) in zip(worlds, worlds[1:]):
+                for s in "LR":
+                    a0, a1 = w0["Boot_" + s][1], w1["Boot_" + s][1]
+                    sole = min(sole, (a0 + w0["Boot_" + s][0] @ np.array([0, -0.12, 0]))[1])
+                    lift = max(lift, a0[1] - 0.12)
+                    n += 1
+                    if a0[1] < 0.1205 and a1[1] < 0.1205:
+                        hits += 1
+                        slip = max(slip, float(np.linalg.norm(a1 - a0 - ground * (t1 - t0))))
+            contact.append(hits / n)
+        print("%-11s pelvis travel %.1f-%.1f cm | foot contact %.0f%% of cycle (%.3f s/step) | "
+              "max contact slip %.1f mm/frame | lowest sole %.3f m | max foot lift %.1f cm | "
+              "helmet %.2f-%.2f m"
+              % (f, 100 * min(travel), 100 * max(travel), 100 * np.mean(contact),
+                 np.mean(contact) * CYCLE, 1000 * slip, sole, 100 * lift, min(helm), max(helm)))
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.normpath(os.path.join(here, "..", ".."))
     clips = build()
     check()
+    gait_report(clips)
     print("max IK reach error %.3f m at %s" % (REPORT["ik_err"], REPORT["ik_where"]))
     print("max IK solve error %.4f m at %s" % (REPORT.get("solve_err", 0.0), REPORT.get("solve_where", "")))
+    for w, m in sorted(HOLSTER_META.items()):
+        print("holster_%s (grip in %s space, swap key %.3f of switch): origin %s basis rows %s | "
+              "hand-to-holster error %.4f m" % (w, HOLSTER_PARENT[w], SWAP_FRACTION,
+                                                 np.round(m[:3, 3], 4), np.round(m[:3, :3], 4).tolist(),
+                                                 REPORT["holster_err_" + w]))
     for k, v in sorted(REPORT["per_clip"].items()):
         print("  IK clamp %.3f m  %s" % (v, k))
     if "--check" in sys.argv:

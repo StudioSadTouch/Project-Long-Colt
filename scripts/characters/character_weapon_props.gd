@@ -4,8 +4,13 @@ extends Node
 ## the other slot holstered (rifle on the back, pistol on the right thigh). Driven only by the
 ## synced CharacterAnimState (via CharacterAnimDriver.state_applied), so remote proxies match.
 ## Visuals are script-less copies of the first-person weapon scenes with viewmodel_only nodes
-## removed (same approach as WeaponPickup). On a switch the hand prop swaps at
-## swap_fraction of the switch, when the switch clip has the hand at the holster.
+## removed (same approach as WeaponPickup).
+## Switch: the old weapon stays in hand and the new one holstered until the switch clip's
+## method key calls anim_swap_weapon() on the exact frame the hand reaches the holster (behind
+## the helmet for the rifle, at the hip for the pistol). Holster transforms come from the
+## AnimationLibrary metadata (holster_rifle / holster_pistol, written by the generator from that
+## frame), so the drawn weapon leaves the holster without a jump. If the key never arrives
+## (clip missing, action aborted), the swap happens when the switch would have ended.
 
 const CHEST := "Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest"
 
@@ -24,15 +29,22 @@ var hand_path: NodePath = NodePath(CHEST + "/PB_UpperArm_R/PB_Forearm_R/PB_Hand_
 ## Grip centre in each weapon scene's own space (put on WeaponAttach_R).
 @export var rifle_grip: Vector3 = Vector3(0, -0.05, 0.09)
 @export var pistol_grip: Vector3 = Vector3(0, -0.045, 0.06)
-## Holster transforms of the grip point, in PB_Chest / PB_Thigh_R space (rest pose).
+## Fallback holster transforms of the grip point, in PB_Chest / PB_Thigh_R space, used only if
+## the library has no holster_* metadata (values match the generator's v1.1 output).
 @export var rifle_holster: Transform3D = Transform3D(
 	Basis(Vector3.RIGHT, deg_to_rad(80)) * Basis(Vector3.BACK, deg_to_rad(-25)),
-	Vector3(0.14, 0.54, 0.2)
+	Vector3(0.10, 0.58, 0.18)
 )
 @export var pistol_holster: Transform3D = Transform3D(
-	Basis(Vector3.RIGHT, deg_to_rad(-75)), Vector3(0.13, -0.02, 0.02)
+	Basis(
+		Vector3(0.9884, -0.058, -0.1403),
+		Vector3(-0.1309, 0.1435, -0.981),
+		Vector3(0.0771, 0.9879, 0.1343)
+	),
+	Vector3(0.1117, -0.004, 0.0042)
 )
-@export_range(0.0, 1.0) var swap_fraction: float = 0.5
+## Extra time after the switch's end before the fallback swap, seconds.
+@export var swap_fallback_margin: float = 0.05
 
 var _model: Node3D
 var _hand: Node3D
@@ -62,6 +74,28 @@ func _ready() -> void:
 		push_warning("%s: no weapon attach at %s" % [name, hand_path])
 	if driver != null:
 		driver.state_applied.connect(_on_state)
+		_read_holster_meta()
+
+
+## Holster transforms written by tools/character_anims/gen_character_anims.py.
+func _read_holster_meta() -> void:
+	var player := driver.animation_player
+	if player == null or not player.has_animation_library(&""):
+		return
+	var lib := player.get_animation_library(&"")
+	var rifle: Variant = lib.get_meta(&"holster_rifle", null)
+	var pistol: Variant = lib.get_meta(&"holster_pistol", null)
+	if rifle is Transform3D:
+		rifle_holster = rifle
+	if pistol is Transform3D:
+		pistol_holster = pistol
+
+
+## Called by the switch clips' method track on the frame the hand reaches the holster.
+func anim_swap_weapon() -> void:
+	if _pending_hand >= 0:
+		_show(_pending_hand, _pending_holster)
+		_pending_hand = -1
 
 
 func _process(delta: float) -> void:
@@ -86,12 +120,14 @@ func _on_state(state: CharacterAnimState) -> void:
 	_last_action_seq = state.action_seq
 	var hand := state.weapon_type
 	var holster := state.holster_type
+	if state.dead and _pending_hand >= 0:
+		anim_swap_weapon()
 	if switching and _shown_hand != hand and _shown_hand != CharacterAnimState.WeaponType.NONE:
-		# First half of the switch: old weapon in hand, the new one still holstered.
+		# Until the swap key: old weapon in hand, the new one still holstered.
 		_show(_shown_hand, hand)
 		_pending_hand = hand
 		_pending_holster = holster
-		_swap_left = maxf(state.action_duration, 0.0) * swap_fraction
+		_swap_left = maxf(state.action_duration, 0.0) + swap_fallback_margin
 		return
 	if _pending_hand >= 0:
 		_pending_hand = hand

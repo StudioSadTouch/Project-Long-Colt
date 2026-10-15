@@ -5,7 +5,8 @@ extends Node
 ## local, remote and AI bodies animate identically. See /workspace/anims/thirdperson_plan.md.
 ##
 ## Tree (parameters/<name>):
-##   Locomotion (StateMachine: Ground BS2D, Crouch BS2D, StopSettle, JumpStart -> Fall,
+##   Locomotion (StateMachine: Ground and Crouch = BS2D -> TimeScale "rate" (playback follows
+##     the synced velocity, see loco_rate), StopSettle, JumpStart -> Fall,
 ##     Land -> Ground, Slide)                                                  full body
 ##   weapon (Transition none/rifle/pistol of aim_<w> BS1D down/mid/up)          upper only
 ##   -> action_shot (OneShot, reload/melee/switch, scaled by action_scale)
@@ -48,10 +49,27 @@ const DIRS := {
 @export var animation_player: AnimationPlayer
 ## Node paths (relative to the AnimationPlayer's root node) that take the upper-body layer.
 @export var upper_body_paths: Array[NodePath] = []
+## Method-track paths (relative to the AnimationPlayer root) that must pass the upper-body
+## filters, e.g. the switch clips' swap call on CharacterWeaponProps.
+@export var event_track_paths: Array[NodePath] = [^"CharacterWeaponProps"]
 ## Authored speeds of the walk / run / crouch-walk clips, m/s.
 @export var walk_speed: float = 3.5
 @export var run_speed: float = 7.5
 @export var crouch_walk_speed: float = 3.2
+## Sideways stride cut the walk/run/crouch clips were authored with (generator
+## LATERAL_STRIDE_CUT): a pure strafe covers (1 - cut) of the forward stride per cycle.
+@export var lateral_stride_cut: float = 0.45
+## Locomotion playback rate = actual speed / blended clip speed, clamped to this range
+## (covers velocity above/below the authored speeds and blend-position smoothing lag) ...
+@export var loco_rate_min: float = 0.6
+@export var loco_rate_max: float = 1.4
+## ... times the strafe stride compensation 1 / (1 - cut * |sideways|) (up to 1.82 for a pure
+## strafe), with the product capped here.
+@export var loco_rate_cap: float = 1.9
+## Below this speed (m/s) the idle pose dominates and the rate eases back to 1.
+@export var loco_rate_min_speed: float = 0.5
+## Rate smoothing (1/s). 0 = snap.
+@export var loco_rate_smoothing: float = 10.0
 ## Pitch that maps to the aim_*_up / aim_*_down poses, degrees.
 @export var aim_pitch_limit_deg: float = 70.0
 ## Blend-position smoothing rate (1/s). 0 = snap.
@@ -79,6 +97,7 @@ var _move_blend: Vector2 = Vector2.ZERO
 var _crouch_amount: float = 0.0
 var _was_on_floor: bool = true
 var _prev_speed: float = 0.0
+var _loco_rate: float = 1.0
 
 
 func _ready() -> void:
@@ -102,6 +121,7 @@ func apply_state(state: CharacterAnimState) -> void:
 		_was_on_floor = state.on_floor
 		_crouch_amount = 1.0 if state.crouched or state.sliding else 0.0
 		_move_blend = Vector2.ZERO
+		_loco_rate = 1.0
 		_set_life(state, false)
 		if not state.dead:
 			_playback.start(ST_CROUCH if state.crouched else ST_GROUND)
@@ -148,9 +168,17 @@ func _update_locomotion(state: CharacterAnimState, delta: float) -> void:
 		_move_blend = _move_blend.lerp(target, 1.0 - exp(-blend_smoothing * delta))
 	else:
 		_move_blend = target
-	tree.set(&"parameters/Locomotion/Ground/blend_position", _move_blend)
-	tree.set(&"parameters/Locomotion/Crouch/blend_position", _move_blend)
+	tree.set(&"parameters/Locomotion/Ground/bs/blend_position", _move_blend)
+	tree.set(&"parameters/Locomotion/Crouch/bs/blend_position", _move_blend)
 	var speed := target.length()
+	var top := crouch_walk_speed if state.crouched else run_speed
+	var rate := loco_rate(speed, _move_blend, top)
+	if loco_rate_smoothing > 0.0:
+		_loco_rate = lerpf(_loco_rate, rate, 1.0 - exp(-loco_rate_smoothing * delta))
+	else:
+		_loco_rate = rate
+	tree.set(&"parameters/Locomotion/Ground/rate/scale", _loco_rate)
+	tree.set(&"parameters/Locomotion/Crouch/rate/scale", _loco_rate)
 	var current := _playback.get_current_node()
 	var wanted := current
 	if state.sliding:
@@ -182,6 +210,22 @@ func _update_locomotion(state: CharacterAnimState, delta: float) -> void:
 	if wanted != current:
 		_playback.start(wanted)
 	_prev_speed = speed
+
+
+## Playback rate that makes the blended locomotion clips' feet move at `speed` (m/s, actual
+## horizontal velocity) for blend position `blend` (m/s, right/forward). `top`: outermost
+## authored speed of the active blendspace.
+func loco_rate(speed: float, blend: Vector2, top: float) -> float:
+	var mag := blend.length()
+	if mag < 0.001:
+		return 1.0
+	var lateral := absf(blend.x) / mag
+	var strafe := 1.0 / maxf(1.0 - lateral_stride_cut * lateral, 0.1)
+	var ratio := clampf(speed / minf(mag, top), loco_rate_min, loco_rate_max)
+	var rate := minf(ratio * strafe, loco_rate_cap)
+	# Ease to 1 near standstill, where the blend is mostly idle.
+	var w := clampf(speed / maxf(loco_rate_min_speed, 0.001), 0.0, 1.0)
+	return lerpf(1.0, rate, w)
 
 
 func _update_upper(state: CharacterAnimState, delta: float) -> void:
@@ -369,7 +413,7 @@ func _build_locomotion() -> AnimationNodeStateMachine:
 	for d: String in DIRS:
 		ground.add_blend_point(_anim(StringName("walk_%s" % d)), DIRS[d] * walk_speed)
 		ground.add_blend_point(_anim(StringName("run_%s" % d)), DIRS[d] * run_speed)
-	sm.add_node(ST_GROUND, ground, Vector2(0, 0))
+	sm.add_node(ST_GROUND, _rated(ground), Vector2(0, 0))
 
 	var crouch := AnimationNodeBlendSpace2D.new()
 	crouch.min_space = Vector2(-crouch_walk_speed, -crouch_walk_speed)
@@ -378,7 +422,7 @@ func _build_locomotion() -> AnimationNodeStateMachine:
 	crouch.add_blend_point(_anim(&"crouch_idle"), Vector2.ZERO)
 	for d: String in DIRS:
 		crouch.add_blend_point(_anim(StringName("crouch_walk_%s" % d)), DIRS[d] * crouch_walk_speed)
-	sm.add_node(ST_CROUCH, crouch, Vector2(0, 150))
+	sm.add_node(ST_CROUCH, _rated(crouch), Vector2(0, 150))
 
 	sm.add_node(ST_SETTLE, _anim(&"stop_settle"), Vector2(-250, 0))
 	sm.add_node(ST_JUMP, _anim(&"jump_start"), Vector2(250, -100))
@@ -390,6 +434,16 @@ func _build_locomotion() -> AnimationNodeStateMachine:
 	sm.add_transition(ST_LAND, ST_GROUND, _auto_at_end(0.1))
 	sm.add_transition(ST_SETTLE, ST_GROUND, _auto_at_end(0.1))
 	return sm
+
+
+## Wraps a blendspace as bs -> rate (TimeScale) so locomotion speed can follow velocity.
+func _rated(space: AnimationRootNode) -> AnimationNodeBlendTree:
+	var bt := AnimationNodeBlendTree.new()
+	bt.add_node(&"bs", space, Vector2(0, 0))
+	bt.add_node(&"rate", AnimationNodeTimeScale.new(), Vector2(200, 0))
+	bt.connect_node(&"rate", 0, &"bs")
+	bt.connect_node(&"output", 0, &"rate")
+	return bt
 
 
 func _auto_at_end(xfade: float) -> AnimationNodeStateMachineTransition:
@@ -405,4 +459,6 @@ func _apply_filter(node: AnimationNode) -> void:
 		return
 	node.filter_enabled = true
 	for path: NodePath in upper_body_paths:
+		node.set_filter_path(path, true)
+	for path: NodePath in event_track_paths:
 		node.set_filter_path(path, true)
