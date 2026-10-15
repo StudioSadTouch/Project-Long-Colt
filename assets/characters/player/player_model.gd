@@ -24,8 +24,12 @@ extends Node3D
 ## first-person camera can drop layer 2 from its cull_mask. cast_shadow is SHADOW_CASTING_SETTING_ON
 ## in both states, so the local player still casts its own shadow.
 
-const PRIMARY_MATERIAL := preload("res://assets/characters/player/materials/player_armor_primary.tres")
-const SECONDARY_MATERIAL := preload("res://assets/characters/player/materials/player_armor_secondary.tres")
+const PRIMARY_MATERIAL := preload(
+	"res://assets/characters/player/materials/player_armor_primary.tres"
+)
+const SECONDARY_MATERIAL := preload(
+	"res://assets/characters/player/materials/player_armor_secondary.tres"
+)
 const VISOR_MATERIAL := preload("res://assets/characters/player/materials/player_visor.tres")
 const ACCENT_MATERIAL := preload("res://assets/characters/player/materials/player_accent.tres")
 ## glb material name -> project material. Primary parts are the ones using mat_armor.
