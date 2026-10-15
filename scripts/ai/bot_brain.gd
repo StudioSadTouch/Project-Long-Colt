@@ -862,8 +862,11 @@ func _check_stuck(delta: float, wish: Vector3) -> void:
 
 
 func _on_damaged(_amount: float, info: Dictionary) -> void:
-	var source := info.get("source") as Node3D
-	if source == null or not is_instance_valid(source) or not ArenaEvents.is_hostile(_bot, source):
+	var value: Variant = info.get("source")  # may be freed: check before the cast
+	if not is_instance_valid(value):
+		return
+	var source := value as Node3D
+	if source == null or not ArenaEvents.is_hostile(_bot, source):
 		return
 	_threat = source
 	# Damage reveals the attacker's position (not a sighting: no reaction-delay skip).

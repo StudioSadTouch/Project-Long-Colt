@@ -193,8 +193,8 @@ func _client_tick(delta: float) -> void:
 		_send_state()
 	var render := _host_tick_now() - INTERP_DELAY * Engine.physics_ticks_per_second
 	for id: int in _buffers:
-		var body := entities.get(id) as Player
-		if body != null and is_instance_valid(body) and not body.dead:
+		var body := _player(id)
+		if body != null and not body.dead:
 			_interpolate(body, _buffers[id], render)
 
 
@@ -203,6 +203,15 @@ func _host_tick_now() -> float:
 
 
 # ------------------------------------------------------------------ entities
+
+
+## entities[id] as a live Player, or null. The value may be freed, so it is checked as a
+## Variant before the cast (casting a freed object errors).
+func _player(id: int) -> Player:
+	var value: Variant = entities.get(id)
+	if not is_instance_valid(value):
+		return null
+	return value as Player
 
 
 func _make_puppet(id: int, info: Dictionary, host_side: bool) -> Player:
@@ -430,7 +439,7 @@ func _rpc_state(
 	wstate: PackedFloat32Array
 ) -> void:
 	var peer := multiplayer.get_remote_sender_id()
-	var puppet := entities.get(peer) as Player
+	var puppet := _player(peer)
 	if not _host or puppet == null or not _net_host.has_client(peer) or puppet.dead:
 		return
 	if seq != int(_net_host.remote[peer].seq):
@@ -447,7 +456,7 @@ func _rpc_state(
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_fire(render_tick: int, request: Array) -> void:
 	var peer := multiplayer.get_remote_sender_id()
-	var puppet := entities.get(peer) as Player
+	var puppet := _player(peer)
 	if not _host or puppet == null or not _net_host.has_client(peer) or puppet.dead:
 		return
 	var result := _net_host.fire(peer, puppet, render_tick, request)
@@ -461,7 +470,7 @@ func _rpc_fire(render_tick: int, request: Array) -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_melee() -> void:
 	var peer := multiplayer.get_remote_sender_id()
-	var puppet := entities.get(peer) as Player
+	var puppet := _player(peer)
 	if _host and puppet != null and _net_host.has_client(peer) and not puppet.dead:
 		_net_host.melee(peer, puppet)
 
@@ -469,7 +478,7 @@ func _rpc_melee() -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_pickup(key: String) -> void:
 	var peer := multiplayer.get_remote_sender_id()
-	var puppet := entities.get(peer) as Player
+	var puppet := _player(peer)
 	if not _host or puppet == null or puppet.dead:
 		return
 	var node := _pickups.find(key)
@@ -667,7 +676,7 @@ func _refill_bots(count: int) -> void:
 
 func _poll_loadouts() -> void:
 	for peer: int in _net_host.remote:
-		var puppet := entities.get(peer) as Player
+		var puppet := _player(peer)
 		if puppet == null:
 			continue
 		var change := _net_host.poll_loadout(peer, puppet)
@@ -742,7 +751,7 @@ func _on_authority_died(body: Node3D, killer: Node, info: Dictionary) -> void:
 func _rpc_died(
 	id: int, killer_id: int, weapon_name: String, headshot: bool, melee: bool, dir_q: int
 ) -> void:
-	var body := entities.get(id) as Player
+	var body := _player(id)
 	if body == null or body.dead:
 		return
 	var dir := _unquant_dir(dir_q)
@@ -768,7 +777,7 @@ func _on_authority_damaged(amount: float, info: Dictionary, id: int) -> void:
 
 @rpc("authority", "call_remote", "unreliable_ordered")
 func _rpc_damaged(id: int, amount: float, dir_q: int) -> void:
-	var body := entities.get(id) as Player
+	var body := _player(id)
 	if body != null and not body.dead:
 		var dir := _unquant_dir(dir_q)
 		body.damaged.emit(amount, {"dir": dir, "direction": dir, "net": true})
@@ -785,7 +794,7 @@ func _on_authority_respawned(body: Node3D) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _rpc_respawned(id: int, pos: Vector3, yaw: float, seq: int) -> void:
-	var body := entities.get(id) as Player
+	var body := _player(id)
 	if body == null:
 		return
 	if body == local_player:
