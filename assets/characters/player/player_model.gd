@@ -10,8 +10,12 @@ extends Node3D
 ## set_accent_color() does the same for the team accent (`accent_color` on the shared
 ## player_accent.tres): PB_Pauldron_L and PB_HelmetStripe_L.
 ##
-## The meshes come from res://assets/models/characters/player_blockout.glb (parts PB_*,
-## grouped BodyMesh / NeckMesh / HelmetMesh / VisorMesh like dummy_rig.tscn). On _ready the
+## The meshes come from res://assets/models/characters/player_blockout.glb (parts PB_*). The
+## head is real hierarchy: BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_Neck/PB_Head, with the
+## dummy_rig slot groups NeckMesh (under PB_Neck), HelmetMesh and VisorMesh (under PB_Head), so
+## posing the chest or neck carries the head. Mesh lookup is a recursive walk, so the tint and
+## layer setters reach every mesh wherever it sits. Markers: .../PB_Hand_R/WeaponAttach_R and
+## .../PB_Hand_L/OffHand_L (Node3D, -Z along the barrel / forward, +Y up). On _ready the
 ## glb's four imported materials are swapped, by material name, for the project materials
 ## below.
 ##

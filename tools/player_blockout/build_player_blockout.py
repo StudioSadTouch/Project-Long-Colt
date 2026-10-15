@@ -137,13 +137,14 @@ def arc_strip(zf, radius, half_deg, y_bot, y_top, thick, segs):
 def visor():
     """One-piece Mk VI-style visor centred on the eye line (y 1.600 at the centreline): 0.24 wide,
     0.13 tall, ends wrapped back 28 deg onto the helmet's front corners."""
-    return arc_strip(-0.20, 0.256, 28.0, lambda u: 1.535 - 0.004 * u * u,
+    return arc_strip(-0.185, 0.256, 28.0, lambda u: 1.535 - 0.004 * u * u,
                      lambda u: 1.665 - 0.004 * u * u, 0.025, 8)
 
 
 def brow():
-    """Armour brow ridge: overhangs the visor face by 1.5 cm and laps 0.5 cm over its top edge."""
-    return arc_strip(-0.215, 0.28, 30.0, lambda u: 1.660, lambda u: 1.705, 0.05, 6)
+    """v4 armour brow: a tight, thick ridge (3.5 cm tall, 5.5 cm deep), front at z -0.19 (0.5 cm
+    proud of the visor face), laps 1 cm down over the visor top; top at 1.69."""
+    return arc_strip(-0.19, 0.27, 30.0, lambda u: 1.655, lambda u: 1.69, 0.055, 6)
 
 
 # ---- part table ----------------------------------------------------------------------------
@@ -153,6 +154,11 @@ PARTS = []
 
 def part(name, mat, geo, pivot, parent, chamfer=0.0):
     PARTS.append((name, mat, geo, pivot, parent, chamfer))
+
+
+def empty(name, pos, parent):
+    """Pivot, slot group or marker: exported as a plain glTF node (Node3D in Godot)."""
+    PARTS.append((name, None, None, pos, parent, 0.0))
 
 
 def side_parts(s):
@@ -203,24 +209,34 @@ part("PB_Pack", "A", box((0, 1.23, 0.155), (0.30, 0.30, 0.09)), CHEST, "PB_Chest
 part("PB_Antenna", "U", box((-0.10, 1.45, 0.17), (0.02, 0.14, 0.02)), CHEST, "PB_Chest")
 side_parts(-1)
 side_parts(1)
-# NeckMesh
-part("PB_Neck", "U", cyl((0, 1.40, 0), (0, 1.54, 0), 0.075, 0.075, 10), NECK, "NeckMesh")
+# Third-person markers (v4): -Z along the barrel / forward, +Y up, at the fist centre.
+empty("WeaponAttach_R", (0.28, 0.745, -0.01), "PB_Hand_R")
+empty("OffHand_L", (-0.28, 0.745, -0.01), "PB_Hand_L")
+# v4 head chain: PB_Chest > PB_Neck (neck base, y 1.49) > PB_Head (skull base, y 1.54).
+# The dummy_rig slot groups keep their names and global transforms but now nest in the chain.
+NECK_BASE, HEAD = (0, 1.49, 0), (0, 1.54, 0)
+empty("PB_Neck", NECK_BASE, "PB_Chest")
+empty("NeckMesh", (0, 0, 0), "PB_Neck")
+part("PB_NeckCore", "U", cyl((0, 1.40, 0), (0, 1.54, 0), 0.075, 0.075, 10), NECK_BASE, "NeckMesh")
 # Neck seal: a fat undersuit ring between collar and helmet so no thin stalk reads.
-part("PB_NeckSeal", "U", cyl((0, 1.44, -0.005), (0, 1.495, -0.005), 0.11, 0.10, 10), NECK, "PB_Neck")
-# HelmetMesh: every helmet piece is a child of PB_Helmet, which pivots at the neck joint.
-part("PB_Helmet", "A", box((0, 1.66, -0.02), (0.28, 0.30, 0.31)), NECK, "HelmetMesh", 0.05)
-# v3 Mk VI read: brow ridge over the visor, jaw/cheek mass below it, comms blocks moved low.
-part("PB_HelmetBrow", "A", brow(), NECK, "PB_Helmet")
-part("PB_HelmetJaw", "A", hexa((0, 1.48, -0.10), 0.17, 0.16, (0, 1.54, -0.105), 0.25, 0.17), NECK, "PB_Helmet", 0.015)
-part("PB_HelmetEar_L", "A", box((-0.15, 1.555, 0.01), (0.04, 0.09, 0.12)), NECK, "PB_Helmet", 0.01)
-part("PB_HelmetEar_R", "A", box((0.15, 1.555, 0.01), (0.04, 0.09, 0.12)), NECK, "PB_Helmet", 0.01)
-part("PB_HelmetSensor_R", "U", box((0.155, 1.72, -0.03), (0.03, 0.04, 0.10)), NECK, "PB_Helmet")
-part("PB_HelmetStripe_L", "X", box((-0.142, 1.70, -0.02), (0.01, 0.03, 0.22)), NECK, "PB_Helmet")
-part("PB_HelmetFlap", "A", hexa((0, 1.49, 0.13), 0.16, 0.03, (0, 1.56, 0.12), 0.20, 0.04), NECK, "PB_Helmet")
-# VisorMesh: pivots at the same neck joint as PB_Helmet, so posing both identically keeps them seated.
-part("PB_Visor", "V", visor(), NECK, "VisorMesh")
+part("PB_NeckSeal", "U", cyl((0, 1.44, -0.005), (0, 1.495, -0.005), 0.11, 0.10, 10), NECK_BASE, "NeckMesh")
+empty("PB_Head", HEAD, "PB_Neck")
+empty("HelmetMesh", (0, 1.64, 0), "PB_Head")
+# v4: shell front pulled back to z -0.155 (depth 0.29) so the visor, now proud to -0.185, wraps
+# its ends over the shell instead of the shell's face showing through them.
+part("PB_Helmet", "A", box((0, 1.66, -0.01), (0.28, 0.30, 0.29)), HEAD, "HelmetMesh", 0.05)
+# Mk VI read: brow ridge over the visor, jaw/cheek mass below it, comms blocks low.
+part("PB_HelmetBrow", "A", brow(), HEAD, "PB_Helmet")
+part("PB_HelmetJaw", "A", hexa((0, 1.48, -0.10), 0.17, 0.16, (0, 1.54, -0.105), 0.25, 0.17), HEAD, "PB_Helmet", 0.015)
+part("PB_HelmetEar_L", "A", box((-0.15, 1.555, 0.01), (0.04, 0.09, 0.12)), HEAD, "PB_Helmet", 0.01)
+part("PB_HelmetEar_R", "A", box((0.15, 1.555, 0.01), (0.04, 0.09, 0.12)), HEAD, "PB_Helmet", 0.01)
+part("PB_HelmetSensor_R", "U", box((0.155, 1.72, -0.03), (0.03, 0.04, 0.10)), HEAD, "PB_Helmet")
+part("PB_HelmetStripe_L", "X", box((-0.142, 1.70, -0.02), (0.01, 0.03, 0.22)), HEAD, "PB_Helmet")
+part("PB_HelmetFlap", "A", hexa((0, 1.49, 0.13), 0.16, 0.03, (0, 1.56, 0.12), 0.20, 0.04), HEAD, "PB_Helmet")
+empty("VisorMesh", (0, 0, 0), "PB_Head")
+part("PB_Visor", "V", visor(), HEAD, "VisorMesh")
 
-GROUPS = {"BodyMesh": (0, 0, 0), "NeckMesh": (0, 0, 0), "HelmetMesh": (0, 1.64, 0), "VisorMesh": (0, 0, 0)}
+GROUPS = {"BodyMesh": (0, 0, 0)}
 
 # ---- build ----------------------------------------------------------------------------------
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -237,7 +253,16 @@ for gname, gpos in GROUPS.items():
     model_col.objects.link(e)
     objs[gname], world_pivot[gname] = e, gpos
 
-for name, mk, (vs, faces), pivot, parent, chamfer in PARTS:
+for name, mk, geo, pivot, parent, chamfer in PARTS:
+    if geo is None:
+        e = bpy.data.objects.new(name, None)
+        e.empty_display_size = 0.03
+        model_col.objects.link(e)
+        e.parent = objs[parent]
+        e.location = g2b(Vector(pivot) - Vector(world_pivot[parent]))
+        objs[name], world_pivot[name] = e, pivot
+        continue
+    vs, faces = geo
     me = bpy.data.meshes.new(name)
     bm = bmesh.new()
     bverts = [bm.verts.new(g2b(Vector(v) - Vector(pivot))) for v in vs]
@@ -304,6 +329,17 @@ mats_used = sorted({o.data.materials[0].name for o in mesh_objs})
 print("STAT materials", mats_used)
 for o in mesh_objs:
     print("PART %-20s %-14s parent=%s" % (o.name, o.data.materials[0].name, o.parent.name))
+
+def print_tree(ob, depth=0):
+    gp = ob.matrix_world.translation
+    kind = "mesh" if ob.type == "MESH" else "node"
+    print("TREE " + "  " * depth + "%s [%s] pivot(%.3f, %.3f, %.3f)" % (ob.name, kind, gp.x, gp.z, -gp.y))
+    for c in sorted(ob.children, key=lambda o: o.name):
+        print_tree(c, depth + 1)
+
+
+for root in [o for o in model_col.objects if o.parent is None]:
+    print_tree(root)
 
 # ---- export ---------------------------------------------------------------------------------
 os.makedirs(os.path.dirname(os.path.abspath(GLB)), exist_ok=True)
@@ -483,20 +519,14 @@ world.node_tree.nodes["Background"].inputs[0].default_value = (0.21, 0.21, 0.21,
 world.node_tree.nodes["Background"].inputs[1].default_value = 0.6
 scene.cycles.samples = 24
 
-# ---- simple crouch pose at eye 0.95 (preview only, not exported) ---------------------------------
+# ---- crouch clip check: pelvis 0.62, visor centre (eye) 0.95 (preview only, not exported) ----
+from mathutils.bvhtree import BVHTree  # noqa: E402
+
 L1, L2 = 0.37, 0.39  # hip->knee, knee->ankle
-for g in ("NeckMesh", "HelmetMesh", "VisorMesh"):
-    ob = objs[g]
-    mw = ob.matrix_world.copy()
-    ob.parent = objs["PB_Chest"]
-    ob.matrix_parent_inverse = objs["PB_Chest"].matrix_world.inverted()
-    ob.matrix_world = mw
-LEAN = math.radians(-25)
-objs["PB_Abdomen"].rotation_euler.x = LEAN
-# Neck counter-rotation keeps the head level (helmet and visor share the neck pivot).
-objs["PB_Helmet"].rotation_euler.x = -LEAN
-objs["PB_Visor"].rotation_euler.x = -LEAN
-bpy.context.view_layer.update()
+PELVIS_Y, EYE_Y, FACE_Z = 0.62, 0.95, -0.19
+DROP = 1.62 - EYE_Y  # player.gd lowers the Rig by STAND_EYE - eye
+HURT_H = max(1.4 - DROP, 0.7)
+CAP_H = 1.15
 
 
 def visor_centre():
@@ -505,40 +535,141 @@ def visor_centre():
     return Vector((c.x, c.z, -c.y))  # Godot space
 
 
-# Iterate: pose legs for the current pelvis, then move the pelvis so the visor sits at eye 0.95
-# with the face over the feet (the lowered head hitboxes only move straight down).
-for _ in range(6):
-    bpy.context.view_layer.update()
-    vc = visor_centre()
-    objs["PB_Pelvis"].location += g2b((0, 0.95 - vc.y, -0.19 - vc.z))
-    bpy.context.view_layer.update()
-    pw = objs["PB_Pelvis"].matrix_world.translation
-    hip_y, hip_z = pw.z - 0.05, -pw.y
-    best = None
-    for i in range(300, 1000):
-        t1 = math.radians(i / 10.0)
-        c2 = (hip_y - 0.12 - L1 * math.cos(t1)) / L2
-        if abs(c2) > 1:
-            continue
-        t2 = math.acos(c2)
-        az = hip_z - L1 * math.sin(t1) + L2 * math.sin(t2)
-        err = abs(az - (hip_z - 0.12))  # feet a little ahead of the hips
-        if best is None or err < best[3]:
-            best = (t1, t2, az, err)
-    t1, t2, az, _e = best
-    for s in ("L", "R"):
-        objs[f"PB_Thigh_{s}"].rotation_euler.x = t1
-        objs[f"PB_Shin_{s}"].rotation_euler.x = -t2 - t1
-        objs[f"PB_Boot_{s}"].rotation_euler.x = t2
-        objs[f"PB_UpperArm_{s}"].rotation_euler.x = math.radians(35)
-        objs[f"PB_Forearm_{s}"].rotation_euler.x = math.radians(45)
+def gverts(ob):
+    return [Vector((v.x, v.z, -v.y)) for v in world_verts(ob)]
+
+
+def penetrations():
+    """Pairs of meshes that intersect, with the max depth of either's vertices inside the other
+    (closest-point + normal test; exact for the convex parts, approximate for the arcs)."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    trees = {}
+    for o in mesh_objs:
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bm.transform(o.matrix_world)
+        trees[o.name] = (BVHTree.FromBMesh(bm), [v.co.copy() for v in bm.verts])
+        bm.free()
+    out = {}
+    names = [o.name for o in mesh_objs]
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            ta, va = trees[a]
+            tb, vb = trees[b]
+            if not ta.overlap(tb):
+                continue
+            depth = 0.0
+            for src, tgt in ((va, tb), (vb, ta)):
+                for v in src:
+                    loc, nrm, _idx, dist = tgt.find_nearest(v)
+                    if loc is not None and (v - loc).dot(nrm) < 0:
+                        depth = max(depth, dist)
+            out[(a, b)] = depth
+    return out
+
+
+rest_pen = penetrations()
+
+# 1. pelvis down to 0.62
+objs["PB_Pelvis"].location.z += PELVIS_Y - 0.93
 bpy.context.view_layer.update()
+
+
+def set_lean(lean):
+    objs["PB_Abdomen"].rotation_euler.x = lean * 0.5
+    objs["PB_Chest"].rotation_euler.x = lean * 0.5
+    objs["PB_Neck"].rotation_euler.x = -lean * 0.5   # keep the head level
+    objs["PB_Head"].rotation_euler.x = -lean * 0.5
+    bpy.context.view_layer.update()
+
+
+# 2. bisection on the spine lean so the visor centre lands on the eye height
+lo, hi = math.radians(-89), 0.0
+for _ in range(40):
+    mid = (lo + hi) / 2
+    set_lean(mid)
+    if visor_centre().y > EYE_Y:
+        hi = mid
+    else:
+        lo = mid
+LEAN = (lo + hi) / 2
+set_lean(LEAN)
+# 3. slide the body back so the face is over the feet / inside the lowered head hitbox
 vc = visor_centre()
-soles = [(o.matrix_world @ v.co).z for s in ("L", "R") for o in (objs[f"PB_Sole_{s}"],) for v in o.data.vertices]
-print("CROUCH lean %.0f deg, hip y %.3f z %.3f, thigh %.1f deg, shin %.1f deg, ankle z %.3f, visor y %.3f z %.3f, sole min y %.3f" % (
-    math.degrees(LEAN), hip_y, hip_z, math.degrees(t1), -math.degrees(t2), az, vc.y, vc.z, min(soles)))
-drop = 1.62 - 0.95
-build_overlay(drop=drop, cap_h=1.15, hurt_h=max(1.4 - drop, 0.7))
+objs["PB_Pelvis"].location += g2b((0, 0, FACE_Z - vc.z))
+bpy.context.view_layer.update()
+pw = objs["PB_Pelvis"].matrix_world.translation
+hip_y, hip_z = pw.z - 0.05, -pw.y
+# 4. two-bone leg IK, knees forward, ankles at y 0.12 under the body centre, feet flat
+ankle_y, ankle_z = 0.12, 0.0
+dy, dz = hip_y - ankle_y, hip_z - ankle_z
+D = min(math.hypot(dy, dz), L1 + L2 - 1e-4)
+phi = math.atan2(dz, dy)  # >0 when the ankle is forward (-Z) of the hip
+alpha = math.acos((L1 * L1 + D * D - L2 * L2) / (2 * L1 * D))
+t1 = phi + alpha
+ky, kz = hip_y - L1 * math.cos(t1), hip_z - L1 * math.sin(t1)
+t2 = math.atan2(kz - ankle_z, ky - ankle_y)
+for sd in ("L", "R"):
+    objs[f"PB_Thigh_{sd}"].rotation_euler.x = t1
+    objs[f"PB_Shin_{sd}"].rotation_euler.x = t2 - t1
+    objs[f"PB_Boot_{sd}"].rotation_euler.x = -t2
+    objs[f"PB_UpperArm_{sd}"].rotation_euler.x = math.radians(35)
+    objs[f"PB_Forearm_{sd}"].rotation_euler.x = math.radians(45)
+bpy.context.view_layer.update()
+
+vc = visor_centre()
+soles = min(v.y for sd in ("L", "R") for v in gverts(objs[f"PB_Sole_{sd}"]))
+print("CROUCH pelvis y %.3f, spine lean %.1f deg (abdomen + chest halves), head counter %.1f deg, "
+      "hip (%.3f, %.3f), thigh %.1f deg, shin %.1f deg (from vertical), visor centre y %.3f z %.3f, "
+      "sole min y %.3f" % (objs["PB_Pelvis"].matrix_world.translation.z, math.degrees(LEAN),
+                           -math.degrees(LEAN), hip_y, hip_z, math.degrees(t1), math.degrees(t2),
+                           vc.y, vc.z, soles))
+
+# capsule (crouched) and lowered hitboxes
+for o in mesh_objs:
+    worst = 0.0
+    for v in gverts(o):
+        r = math.hypot(v.x, v.z)
+        lo_c, hi_c = 0.35, CAP_H - 0.35
+        if lo_c <= v.y <= hi_c:
+            d = r - 0.35
+        else:
+            cy = lo_c if v.y < lo_c else hi_c
+            d = math.sqrt(r * r + (v.y - cy) ** 2) - 0.35
+        worst = max(worst, d)
+    if worst > 0.005:
+        print("CROUCH_CAPSULE_OUT %-22s %.3f m" % (o.name, worst))
+
+
+def out_of_box(o, c, size):
+    worst = 0.0
+    for v in gverts(o):
+        for k in range(3):
+            worst = max(worst, abs(v[k] - c[k]) - size[k] / 2)
+    return worst
+
+
+helm_c, helm_s = (0, 1.64 - DROP, 0), (0.36, 0.34, 0.36)
+for o in helmet_objs:
+    print("CROUCH_HEAD %-20s outside lowered helmet hitbox by %.3f m" % (o.name, max(0, out_of_box(o, helm_c, helm_s))))
+print("CROUCH_VISOR outside lowered visor hitbox by %.3f m" % max(0, out_of_box(objs["PB_Visor"], (0, 1.60 - DROP, -0.2), (0.24, 0.14, 0.04))))
+body_out = []
+for o in mesh_objs:
+    if o in helmet_objs:
+        continue
+    d = out_of_box(o, (0, HURT_H / 2, 0), (0.7, HURT_H, 0.4))
+    if d > 0.005:
+        body_out.append((o.name, d))
+for n, d in sorted(body_out, key=lambda t: -t[1]):
+    print("CROUCH_HURTBOX_OUT %-22s %.3f m (hurtbox %.2f tall)" % (n, d, HURT_H))
+
+crouch_pen = penetrations()
+for (a, b), d in sorted(crouch_pen.items(), key=lambda t: -t[1]):
+    base = rest_pen.get((a, b), 0.0)
+    if d > 0.01 and d > base + 0.005:
+        print("CROUCH_CLIP %-20s x %-20s %.3f m (rest %.3f)" % (a, b, d, base))
+
+build_overlay(drop=DROP, cap_h=CAP_H, hurt_h=HURT_H)
 model_alpha(0.45)
 for v in ("side", "three_quarter"):
     set_view(v)
