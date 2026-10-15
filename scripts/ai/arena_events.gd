@@ -68,7 +68,12 @@ func report_gunfire(source: Node3D) -> void:
 
 
 func get_pickups() -> Array[WeaponPickup]:
-	_pickups = _pickups.filter(func(p: WeaponPickup) -> bool: return is_instance_valid(p))
+	# filter() returns an untyped Array, and a typed callback cannot cast a freed pickup.
+	var live: Array[WeaponPickup] = []
+	for pickup in _pickups:
+		if is_instance_valid(pickup):
+			live.append(pickup)
+	_pickups = live
 	return _pickups
 
 

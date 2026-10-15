@@ -103,6 +103,7 @@ func _process(delta: float) -> void:
 		crosshair.queue_redraw()
 	shield_meter.queue_redraw()
 	_update_prompt()
+	_update_energy_label()
 
 
 func _is_scoped() -> bool:
@@ -239,7 +240,28 @@ func _on_fire_mode_changed(_mode: int) -> void:
 
 
 func _on_ammo_changed(magazine: int, reserve: int) -> void:
+	if is_instance_valid(_weapon) and _weapon.data != null and _weapon.data.battery:
+		var full := maxi(_weapon.data.magazine_size, 1)
+		ammo_label.text = "BATTERY %d%%" % roundi(100.0 * magazine / full)
+		return
 	ammo_label.text = "%d / %d" % [magazine, reserve]
+
+
+## Heat / charge readout next to the fire mode, for weapons that have them.
+func _update_energy_label() -> void:
+	if not is_instance_valid(_weapon) or _weapon.data == null:
+		return
+	var data := _weapon.data
+	if data.heat_per_shot <= 0.0 and _weapon.fire_mode != WeaponData.FireMode.CHARGE:
+		return
+	var text := _weapon.get_fire_mode_name()
+	if _weapon.overheated:
+		text += "  OVERHEAT"
+	elif data.heat_per_shot > 0.0:
+		text += "  HEAT %d%%" % roundi(_weapon.heat * 100.0)
+	if _weapon.charging:
+		text += "  CHARGE %d%%" % roundi(_weapon.charge * 100.0)
+	mode_label.text = text
 
 
 func _on_hit(_target: Object, info: Dictionary) -> void:
@@ -260,7 +282,8 @@ func _draw_crosshair() -> void:
 	if is_instance_valid(_weapon) and _weapon.camera != null:
 		# Spread cone edge projected to screen pixels at the current FOV.
 		var half_fov := deg_to_rad(_weapon.camera.fov * 0.5)
-		var spread := deg_to_rad(_weapon.get_spread())
+		var pellets := _weapon.data.pellet_spread if _weapon.data != null else 0.0
+		var spread := deg_to_rad(_weapon.get_spread() + pellets)
 		gap = maxf(MIN_GAP, tan(spread) / tan(half_fov) * crosshair.size.y * 0.5)
 	var color := RETICLE_COLOR
 	if _hit_flash > 0.0:

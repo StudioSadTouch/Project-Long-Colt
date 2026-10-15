@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_data")
 display_name = "Standard Issue Rifle"
+anim_type = &"rifle"
 damage = 9.0
 headshot_armored_multiplier = 2.0
 headshot_unarmored_multiplier = 2.0

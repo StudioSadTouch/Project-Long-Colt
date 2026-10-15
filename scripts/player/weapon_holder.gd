@@ -34,6 +34,9 @@ const PAD_BUTTON_NAMES := {0: "A", 1: "B", 2: "X", 3: "Y", 4: "Back", 6: "Start"
 
 var slots: Array[Weapon] = []
 var active_index: int = 0
+## Net client hook: when valid, take_pickup(p) calls this with p and returns false instead of
+## taking it locally (the host decides and sends the new loadout; see apply_loadout).
+var pickup_request_hook: Callable
 
 var _player: Player
 var _melee_left: float = 0.0
@@ -168,7 +171,7 @@ func get_pickup_candidate() -> WeaponPickup:
 	for pickup in _pickups:
 		if not is_instance_valid(pickup) or not pickup.available:
 			continue
-		if find_weapon(pickup.get_weapon_id()) != null:
+		if find_weapon(pickup.get_weapon_id()) != null and not pickup.is_battery_upgrade_for(self):
 			continue
 		var target := (
 			pickup.pivot.global_position if pickup.pivot != null else pickup.global_position
@@ -280,7 +283,11 @@ func _physics_process(delta: float) -> void:
 
 
 func _update_pickup_hold(delta: float) -> void:
-	_pickups = _pickups.filter(func(p: WeaponPickup) -> bool: return is_instance_valid(p))
+	var live: Array[WeaponPickup] = []
+	for pickup in _pickups:
+		if is_instance_valid(pickup):
+			live.append(pickup)
+	_pickups = live
 	var held := _input_enabled() and Input.is_action_pressed("action_interact")
 	if not held:
 		_hold = 0.0
@@ -300,20 +307,29 @@ func _update_pickup_hold(delta: float) -> void:
 		take_pickup(candidate)
 
 
-## Empty slot: fill it and switch to it. Otherwise swap with the active weapon and drop it.
+## Same weapon carried (battery swap): replace that copy. Else an empty slot: fill it and
+## switch to it. Otherwise swap with the active weapon and drop it.
 ## Pickup-carrier API (WeaponPickup.try_pickup); also the hold-to-take path. True if taken.
 func take_pickup(pickup: WeaponPickup) -> bool:
-	if pickup == null or (_player != null and _player.is_dead()):
+	var blocked := pickup == null or (_player != null and _player.is_dead())
+	if not blocked and pickup_request_hook.is_valid():
+		pickup_request_hook.call(pickup)
+	if blocked or pickup_request_hook.is_valid():
 		return false
 	var weapon := pickup.take()
 	if weapon == null:
 		return false
-	var empty := slots.find(null)
-	if empty >= 0:
-		_install(weapon, empty)
-		_equip(empty)
-		return true
-	var old := give_weapon(weapon, active_index)
+	var same := find_weapon(WeaponPickup.weapon_id_of(weapon))
+	var slot := slots.find(same) if same != null else -1
+	if slot < 0:
+		var empty := slots.find(null)
+		if empty >= 0:
+			_install(weapon, empty)
+			_equip(empty)
+			return true
+		slot = active_index
+	var old := _install(weapon, slot)
+	_equip(slot)
 	if old == null:
 		return true
 	var parent: Node = get_tree().current_scene if is_inside_tree() else null
@@ -357,8 +373,48 @@ func _drop_position() -> Vector3:
 	return floor_hit.position
 
 
+## Equip slot index if it holds a weapon (net: remote weapon switches).
+func select_slot(index: int) -> void:
+	if index >= 0 and index < SLOT_COUNT and index != active_index:
+		_equip(index)
+
+
+## Net: adopt the host's loadout after a pickup. entries[i] is {} for an empty slot or
+## {"id": weapon id, "scene": PackedScene, "magazine": int, "reserve": int}. A slot already
+## holding that weapon id keeps its local instance (and the client's own magazine split);
+## anything else is replaced with a fresh instance carrying the host's ammo. Equips active.
+func apply_loadout(entries: Array, active: int) -> void:
+	for i in SLOT_COUNT:
+		var entry: Dictionary = entries[i] if i < entries.size() else {}
+		var w := slots[i]
+		if w != null and entry.get("id", "") == WeaponPickup.weapon_id_of(w):
+			continue
+		if w != null:
+			w.holster()
+			if w.zoom_changed.is_connected(_on_zoom_changed):
+				w.zoom_changed.disconnect(_on_zoom_changed)
+			slots[i] = null
+			if w.get_parent() == self:
+				remove_child(w)
+			w.queue_free()
+		var scene := entry.get("scene") as PackedScene
+		var fresh := scene.instantiate() as Weapon if scene != null else null
+		if fresh == null:
+			continue
+		_install(fresh, i)
+		# _install's add_child ran _ready (full magazine); the host's ammo goes on after.
+		fresh.magazine = int(entry.get("magazine", fresh.magazine))
+		fresh.reserve = int(entry.get("reserve", fresh.reserve))
+	active_index = clampi(active, 0, SLOT_COUNT - 1)
+	var first := _first_filled(active_index)
+	if first >= 0:
+		_equip(first)
+	else:
+		active_weapon_changed.emit(null)
+
+
 func _input_enabled() -> bool:
-	if _player != null and _player.is_dead():
+	if _player != null and (_player.is_dead() or _player.net_puppet):
 		return false
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"
 
@@ -382,9 +438,11 @@ func _drop_all_on_death() -> void:
 		carried.append(w)
 	if carried.is_empty():
 		return
-	var sides: Array[float] = [0.0] if carried.size() == 1 else [1.0, -1.0]
 	for i in carried.size():
-		WeaponPickup.drop(carried[i], parent, _death_drop_position(sides[i]))
+		# One weapon drops at the feet. Two drop to either side. A typed array literal in a
+		# ternary is an untyped Array, which Godot refuses to assign to Array[float].
+		var side := 0.0 if carried.size() == 1 else (1.0 if i == 0 else -1.0)
+		WeaponPickup.drop(carried[i], parent, _death_drop_position(side))
 	if get_active() == null:
 		active_weapon_changed.emit(null)
 

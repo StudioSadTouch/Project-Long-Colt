@@ -8,8 +8,10 @@ extends CharacterBody3D
 ## Collision layout (see docs/ai/arena_ai_spec.md):
 ##   root capsule  layer 0, mask World | Player | Enemy. Movement only; weapons never hit it,
 ##                 because a 0.35 m capsule would cover the visor and turn head shots into body.
-##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.7 x 1.4 x 0.4 like the dummies.
+##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.7 x 1.46 x 0.4 like the dummies.
 ##   Rig heads     HeadArmored / HeadUnarmored on Hitbox (32), from dummy_rig.tscn.
+##   PlayerModel   scenes/characters/player_body.tscn (visual + anims only); the dummy_rig
+##                 meshes are hidden in bot.tscn, its hitboxes stay on Rig.
 ## Damage: take_damage on the root only, so Weapon's receiver (nearest ancestor with
 ## take_damage) is always the Bot for hurtbox and head hits alike (keeps the visor probe's
 ## same-target check working). KillVolume, GravLift, WeaponPickup and AmmoCrate see the
@@ -40,11 +42,12 @@ const CROUCH_EYE := 0.95
 const PITCH_LIMIT := 89.0
 const FLOOR_SNAP := 0.3
 const FLOOR_MAX_ANGLE_DEG := 50.0
+const STEP_HEIGHT := 0.35
 
 const SLOT_COUNT := 2
 const ENEMY_LAYER := 4
 const MOVE_MASK := 1 | 2 | 4
-const HURTBOX_HEIGHT := 1.4
+const HURTBOX_HEIGHT := 1.46
 const HURTBOX_MIN_HEIGHT := 0.7
 ## Horizontal reach to take or top up from a WeaponPickup.
 const DROP_MASK := 1
@@ -282,6 +285,10 @@ func is_lunging() -> bool:
 func take_damage(amount: float, info: Dictionary) -> void:
 	if dead:
 		return
+	# Anim contract: info.dir is world shooter -> victim (Weapon sets it; fill it otherwise).
+	# info.impulse is optional and passed through as-is.
+	if not info.has("dir"):
+		info["dir"] = Player.damage_direction(self, info)
 	last_damage_info = info
 	var result := health_shield.apply_damage(amount, info)
 	var applied: float = result.shield + result.health
@@ -296,7 +303,8 @@ func take_damage(amount: float, info: Dictionary) -> void:
 ## Pickup carrier API (WeaponPickup's duck-typed contract, as WeaponHolder): the brain calls
 ## pickup.is_useful_to(self) / is_in_reach(self) / try_pickup(self); walk-over ammo from weapon
 ## pickups is applied by the pickup itself (it uses find_weapon). Installs a weapon the pickup
-## hands over: an empty slot first, else it replaces the active weapon and drops that one.
+## hands over: the slot holding the same weapon (battery swap), then an empty slot, then a slot
+## holding a dry weapon, else it replaces the active weapon and drops that one.
 func take_pickup(pickup: WeaponPickup) -> bool:
 	if dead or pickup == null:
 		return false
@@ -306,13 +314,20 @@ func take_pickup(pickup: WeaponPickup) -> bool:
 	var w := _weapon_from_taken(taken)
 	if w == null:
 		return false
+	var same := find_weapon(WeaponPickup.weapon_id_of(w))
+	var slot := slots.find(same) if same != null else -1
 	var empty := slots.find(null)
-	if empty >= 0:
+	if slot < 0 and empty >= 0:
 		_install(w, empty)
 		_equip(empty)
 		return true
-	var old := _install(w, active_index)
-	_equip(active_index)
+	for i in SLOT_COUNT:
+		if slot < 0 and total_ammo(slots[i]) <= 0:
+			slot = i
+	if slot < 0:
+		slot = active_index
+	var old := _install(w, slot)
+	_equip(slot)
 	if old != null:
 		_drop(old)
 	return true
@@ -328,6 +343,15 @@ func get_weapons() -> Array[Weapon]:
 		if w != null:
 			out.append(w)
 	return out
+
+
+## Tints the body (PlayerModel, see PlayerColor.apply). NetMatch assigns bot colours online.
+func set_primary_color(color: Color) -> void:
+	PlayerColor.apply(self, color)
+
+
+func get_model() -> Node3D:
+	return get_node_or_null(^"PlayerModel") as Node3D
 
 
 func respawn_at(xform: Transform3D) -> void:
@@ -392,7 +416,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 	if airborne:
 		velocity.y -= gravity * delta * 0.5
-	move_and_slide()
+	StepUp.move_and_slide(self, STEP_HEIGHT, on_floor_before, jumped)
 	if airborne and not is_on_floor():
 		velocity.y -= gravity * delta * 0.5
 	if jumped:
@@ -701,7 +725,7 @@ func _on_health_died() -> void:
 	collision_shape.set_deferred(&"disabled", true)
 	velocity = Vector3.ZERO
 	move_wish = Vector3.ZERO
-	visible = false
+	# Stays visible: the PlayerModel plays its death clip until respawn_at.
 	died.emit(self, killer, last_damage_info)
 
 

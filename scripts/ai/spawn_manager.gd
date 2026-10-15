@@ -11,8 +11,16 @@ extends Node
 ## sets its respawn_delay to ours; player.gd runs the one timer and emits respawn_requested,
 ## which SpawnManager answers with respawn_at(safe spawn). Kill credit is the killer argument of
 ## Player.died(player, killer, info).
+##
+## Networking (NetMatch, docs/net/netcode.md): runs on the host only (a net client returns at
+## the top of _ready). Remote players join through register_player / unregister_player and are
+## spawned, scored and respawned exactly like the local player. remove_bot() drops a bot when
+## a late joiner takes its slot. match_won fires at score_limit; with end_on_win the scores are
+## kept for the game-over screen instead of being reset (offline keeps the reset).
 
 signal score_changed(scores: Dictionary)
+## A combatant reached score_limit.
+signal match_won(winner: String, scores: Dictionary)
 
 const LOS_MASK := 1
 const PLAYER_TEAM := 0
@@ -32,8 +40,12 @@ const PLAYER_TEAM := 0
 @export var show_debug_label: bool = true
 ## Spawns closer than this to a living enemy are heavily penalized.
 @export var min_enemy_distance: float = 8.0
+## Net matches end at score_limit (NetMatch shows game over); false = print and reset (offline).
+@export var end_on_win: bool = false
 
 var bots: Array[Bot] = []
+## Extra (remote, networked) players registered with register_player.
+var players: Array[Player] = []
 ## display name -> {"kills": int, "deaths": int, "suicides": int}
 var scores: Dictionary = {}
 
@@ -45,6 +57,8 @@ var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	if not multiplayer.is_server():
+		return
 	_rng.randomize()
 	_events = ArenaEvents.find(get_tree())
 	for path in spawn_roots:
@@ -59,9 +73,10 @@ func _ready() -> void:
 	_player = get_node_or_null(player_path) as Player
 	if _player != null:
 		_player.set_meta(&"team", PLAYER_TEAM)
-		_player.set_meta(&"display_name", "Player")
-		_score_entry("Player")
-		_hook_player()
+		if not _player.has_meta(&"display_name"):
+			_player.set_meta(&"display_name", "Player")
+		_score_entry(_name_of(_player))
+		_hook_player(_player)
 		if _events != null:
 			_events.track_player.call_deferred(_player)
 	if show_debug_label:
@@ -148,6 +163,9 @@ func _combatants() -> Array[Node3D]:
 	var out: Array[Node3D] = []
 	if _player != null:
 		out.append(_player)
+	for p in players:
+		if is_instance_valid(p):
+			out.append(p)
 	for b in bots:
 		if is_instance_valid(b):
 			out.append(b)
@@ -167,11 +185,70 @@ func _respawn_bot(bot: Bot) -> void:
 		bot.respawn_at(_pick_spawn(bot))
 
 
-func _hook_player() -> void:
-	_player.auto_respawn = false
-	_player.respawn_delay = respawn_delay
-	_player.died.connect(_on_player_died)
-	_player.respawn_requested.connect(_on_player_respawn_requested)
+func _hook_player(player: Player) -> void:
+	player.auto_respawn = false
+	player.respawn_delay = respawn_delay
+	player.died.connect(_on_player_died)
+	player.respawn_requested.connect(_on_player_respawn_requested)
+
+
+## Net: a remote player (meta display_name set; team = its own FFA team). Spawns it now.
+func register_player(player: Player, team: int) -> void:
+	if player == null or players.has(player):
+		return
+	players.append(player)
+	player.set_meta(&"team", team)
+	_score_entry(_name_of(player))
+	_hook_player(player)
+	if _events != null:
+		_events.track_player(player)
+	player.respawn_at(_pick_spawn(player))
+	score_changed.emit(scores)
+	_refresh_label()
+
+
+func unregister_player(player: Player) -> void:
+	if not players.has(player):
+		return
+	players.erase(player)
+	if is_instance_valid(player):
+		if player.died.is_connected(_on_player_died):
+			player.died.disconnect(_on_player_died)
+		if player.respawn_requested.is_connected(_on_player_respawn_requested):
+			player.respawn_requested.disconnect(_on_player_respawn_requested)
+		scores.erase(_name_of(player))
+	score_changed.emit(scores)
+	_refresh_label()
+
+
+## Net host: spawns one more bot now (NetMatch's refill of a slot a human left), named after
+## the first free "Bot N". Host only; returns false on a client or without a bot scene.
+func add_bot() -> bool:
+	if not multiplayer.is_server() or bot_scene == null:
+		return false
+	var taken := {}
+	for bot in bots:
+		if is_instance_valid(bot):
+			taken[bot.display_name] = true
+	var index := 0
+	while taken.has("Bot %d" % (index + 1)):
+		index += 1
+	_spawn_bot(index)
+	_refresh_label()
+	return true
+
+
+## Net: removes the newest bot (a late joiner takes its slot). Returns false if none left.
+func remove_bot() -> bool:
+	while not bots.is_empty():
+		var bot: Bot = bots.pop_back()
+		if is_instance_valid(bot):
+			scores.erase(bot.display_name)
+			bot.queue_free()
+			score_changed.emit(scores)
+			_refresh_label()
+			return true
+	return false
 
 
 func _on_player_died(player: Player, killer: Node, info: Dictionary) -> void:
@@ -213,10 +290,13 @@ func _record_kill(killer: Node, victim: Node, info: Dictionary) -> void:
 		if _events != null:
 			_events.kill.emit(killer, victim, info)
 		if entry.kills >= score_limit:
-			print("[Arena] %s wins with %d kills. Scores reset." % [killer_name, entry.kills])
+			var tail := "" if end_on_win else " Scores reset."
+			print("[Arena] %s wins with %d kills.%s" % [killer_name, entry.kills, tail])
 			_print_scores()
-			for key in scores:
-				scores[key] = {"kills": 0, "deaths": 0, "suicides": 0}
+			match_won.emit(killer_name, scores.duplicate(true))
+			if not end_on_win:
+				for key in scores:
+					scores[key] = {"kills": 0, "deaths": 0, "suicides": 0}
 	score_changed.emit(scores)
 	_refresh_label()
 

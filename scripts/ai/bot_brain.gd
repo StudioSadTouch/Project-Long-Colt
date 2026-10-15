@@ -35,17 +35,10 @@ const STUCK_DISTANCE := 0.4
 ## no falloff until 35 m and the rifle has lost most of its damage.
 const RANGE_RIFLE := Vector2(6.0, 24.0)
 const RANGE_PISTOL := Vector2(12.0, 40.0)
-## Rifle below this distance, pistol above, with +/- WEAPON_SWITCH_HYSTERESIS so a bot near
-## the split doesn't swap back and forth: holding the rifle it switches past 31 m, holding the
-## pistol it switches back under 25 m.
-const WEAPON_SPLIT := 28.0
-const WEAPON_SWITCH_HYSTERESIS := 3.0
 const CORNERED_DISTANCE := 5.0
 const COVER_SEARCH_RADIUS := 25.0
 const PICKUP_SEEK_RADIUS := 40.0
 const OPPORTUNISTIC_PICKUP_RADIUS := 8.0
-const BURST_HYSTERESIS := 3.0
-const ZOOM_RANGE := 25.0
 const LOW_AMMO_FRACTION := 0.25
 
 var state: State = State.PATROL
@@ -74,6 +67,9 @@ var _spray_left: float = 0.0
 var _pause_left: float = 0.0
 var _next_press_at: float = 0.0
 var _press_held: bool = false
+## DER: letting heat drop (BotWeaponPrefs.keep_cooling); charge shots rolled per engagement.
+var _cooling: bool = false
+var _use_charge: bool = false
 # movement
 var _goal: Vector3 = Vector3.ZERO
 var _has_goal: bool = false
@@ -255,8 +251,8 @@ func _target_entry() -> Dictionary:
 func _think() -> void:
 	_pick_target()
 	var weapon := _bot.get_active()
-	var out_of_ammo := _all_ammo() <= 0
-	var low_ammo := out_of_ammo or _ammo_fraction() < LOW_AMMO_FRACTION
+	var out_of_ammo := BotWeaponPrefs.all_ammo(_bot) <= 0
+	var low_ammo := out_of_ammo or BotWeaponPrefs.ammo_fraction(_bot.slots) < LOW_AMMO_FRACTION
 	var visible := _target_visible()
 	var dist := _target_distance()
 	if state == State.RETREAT:
@@ -341,6 +337,7 @@ func _on_engage_start() -> void:
 	# A full first spray (0 would fire one round, then a full pause).
 	_spray_left = _diff.spray_time
 	_pause_left = 0.0
+	_use_charge = _rng.randf() < _diff.weapon_switch_skill
 	_has_goal = false
 	_pickup = null
 	var entry := _target_entry()
@@ -361,12 +358,16 @@ func _choose_pickup(radius: float) -> bool:
 	var best: WeaponPickup = null
 	var best_d := radius
 	for p in _events.get_pickups():
-		if not p.is_useful_to(_bot):
+		if not p.is_useful_to(_bot) or BotWeaponPrefs.small_battery_gain(p, _bot):
 			continue
 		var d := _bot.global_position.distance_to(p.global_position)
 		# Prefer pickups that solve the actual problem: ammo for what we carry, or a new gun.
-		if _bot.find_weapon(p.get_weapon_id()) == null and _all_ammo() > 0:
-			d *= 1.5
+		# Roster power weapons (BotWeaponPrefs.pickup_weight) are worth a detour.
+		if _bot.find_weapon(p.get_weapon_id()) == null:
+			d *= (
+				(1.5 if BotWeaponPrefs.all_ammo(_bot) > 0 else 1.0)
+				* BotWeaponPrefs.pickup_weight(p)
+			)
 		if d < best_d:
 			best_d = d
 			best = p
@@ -379,8 +380,9 @@ func _choose_weapon(dist: float) -> void:
 	var other := _bot.get_other()
 	if other == null or _bot.is_lunging():
 		return
-	var a := _weapon_score(active, dist, true)
-	var b := _weapon_score(other, dist, false)
+	var shielded := _target_shielded()
+	var a := BotWeaponPrefs.score(active, dist, true, shielded, _bot.total_ammo(active))
+	var b := BotWeaponPrefs.score(other, dist, false, shielded, _bot.total_ammo(other))
 	if active != null and active.magazine <= 0 and active.reserve > 0 and other.magazine > 0:
 		# Halo: switching beats reloading under fire, for skilled players.
 		if _rng.randf() < _diff.weapon_switch_skill:
@@ -388,19 +390,6 @@ func _choose_weapon(dist: float) -> void:
 	if b > a + 1.0:
 		_release_trigger()
 		_bot.switch_weapon()
-
-
-## `held`: the active weapon gets the hysteresis margin, so switching needs a clear reason.
-func _weapon_score(w: BotWeapon, dist: float, held: bool) -> float:
-	if w == null or w.data == null or _bot.total_ammo(w) <= 0:
-		return -100.0
-	var auto := w.data.fire_mode == WeaponData.FireMode.AUTO
-	var split := WEAPON_SPLIT
-	if held:
-		split += WEAPON_SWITCH_HYSTERESIS if auto else -WEAPON_SWITCH_HYSTERESIS
-	if auto:
-		return 2.0 if dist < split else -0.5
-	return 2.0 if dist >= split else 0.5
 
 
 # ------------------------------------------------------------------ states
@@ -469,9 +458,7 @@ func _do_engage(delta: float) -> Vector3:
 			if not points.is_empty() and _bot.try_melee(target, points.body):
 				_release_trigger()
 	# Range keeping, scaled by aggression.
-	var band := RANGE_RIFLE
-	if weapon != null and weapon.data != null and weapon.data.fire_mode != WeaponData.FireMode.AUTO:
-		band = RANGE_PISTOL
+	var band := BotWeaponPrefs.band_for(weapon, _bot.slots, dist, RANGE_RIFLE, RANGE_PISTOL)
 	var to_target := target.global_position - _bot.global_position
 	to_target.y = 0.0
 	var fwd := to_target.normalized() if to_target.length_squared() > 0.01 else Vector3.FORWARD
@@ -526,7 +513,7 @@ func _aim_at_target(delta: float) -> void:
 		_aim_head = _rng.randf() < _diff.headshot_bias
 	_target_was_shielded = shielded
 	var point: Vector3 = points.body
-	if _aim_head and not _bot.is_lunging():
+	if _aim_head and not _bot.is_lunging() and not BotWeaponPrefs.body_only(weapon):
 		if (
 			points.has("face")
 			and weapon != null
@@ -582,12 +569,21 @@ func _fire(weapon: BotWeapon, desired: Vector3, dist: float, delta: float) -> vo
 		if weapon.reserve > 0:
 			weapon.reload()
 		return
-	_manage_modes(weapon, dist)
+	if BotWeaponPrefs.manage_modes(weapon, dist, _diff, _use_charge, target):
+		_press_held = false
 	if _now < _first_shot_at:
 		_release_trigger()
 		return
 	var tolerance := atan(0.45 / maxf(dist, 0.5)) + deg_to_rad(_diff.fire_tolerance_deg)
-	if _track_dir.angle_to(desired) > tolerance:
+	var aligned := _track_dir.angle_to(desired) <= tolerance
+	if weapon.fire_mode == WeaponData.FireMode.CHARGE:
+		_fire_charge(weapon, aligned)
+		return
+	if not aligned:
+		_release_trigger()
+		return
+	_cooling = BotWeaponPrefs.keep_cooling(weapon, _cooling)
+	if _cooling:
 		_release_trigger()
 		return
 	if weapon.fire_mode == WeaponData.FireMode.AUTO:
@@ -620,29 +616,25 @@ func _fire(weapon: BotWeapon, desired: Vector3, dist: float, delta: float) -> vo
 	_press_held = true
 
 
-## Rifle AUTO <-> BURST by range, pistol zoom.
-func _manage_modes(weapon: BotWeapon, dist: float) -> void:
-	var data := weapon.data
-	var can_burst := (
-		data.fire_mode == WeaponData.FireMode.AUTO
-		and data.alt_fire_mode == WeaponData.FireMode.BURST
-	)
-	if can_burst:
-		var want_alt := (
-			dist > _diff.burst_switch_range + (0.0 if weapon.alt_mode else BURST_HYSTERESIS)
-		)
-		if not weapon.alt_mode and want_alt or weapon.alt_mode and dist < _diff.burst_switch_range:
-			weapon.toggle_fire_mode()
-			_press_held = false
-	if data.secondary == WeaponData.Secondary.ZOOM:
-		var want_zoom := _diff.uses_zoom and dist > ZOOM_RANGE and not weapon.reloading
-		if want_zoom != weapon.zoomed:
-			weapon.set_zoom(want_zoom)
+## CHARGE mode: hold to charge (keep holding while off target), release once full and on target.
+## Every other _release_trigger (target lost, retreat, lunge...) drops a held charge unfired.
+func _fire_charge(weapon: BotWeapon, aligned: bool) -> void:
+	if weapon.charging:
+		if weapon.charge >= 1.0 and aligned:
+			_release_trigger(true)
+		return
+	if not aligned or _press_held:
+		_release_trigger()
+		return
+	weapon.trigger(true, true)
+	_press_held = true
 
 
-func _release_trigger() -> void:
+func _release_trigger(fire_charge: bool = false) -> void:
 	if _press_held:
 		var weapon := _bot.get_active()
+		if weapon != null and weapon.charging and not fire_charge:
+			weapon.heat_charge.release(false)
 		if weapon != null:
 			weapon.release_trigger()
 	_press_held = false
@@ -700,23 +692,6 @@ func _target_shielded() -> bool:
 func _melee_reach() -> float:
 	var weapon := _bot.get_active()
 	return weapon.data.melee_lunge_range if weapon != null and weapon.data != null else 0.0
-
-
-func _all_ammo() -> int:
-	var total := 0
-	for w in _bot.slots:
-		total += _bot.total_ammo(w)
-	return total
-
-
-func _ammo_fraction() -> float:
-	var have := 0.0
-	var cap := 0.0
-	for w in _bot.slots:
-		if w != null and w.data != null:
-			have += w.magazine + w.reserve
-			cap += w.data.magazine_size + w.data.reserve_max
-	return have / cap if cap > 0.0 else 0.0
 
 
 ## Ground ahead (no ledge drop > 1 m) and no wall at chest height.

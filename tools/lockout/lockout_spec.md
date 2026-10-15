@@ -83,6 +83,7 @@ Placements:
 - **Shotgun + SMG** — bottom of lift tower / green shotgun hallway [S Durinsbane; Halopedia production note].
 - **Energy Sword** — "Sword" callout under BR Bridge [S Bungie.net callout image].
 - Plasma Rifle, Carbine, Needler — present [S], positions **unknown** (place freely).
+- **Project Long Colt five-gun mapping** (emit_arena_tscn.py / emit_lockout_tscn.py, see docs/weapons/roster_balance.md): Combat Shotgun at BotMid (0, 0, 0), Directed Energy Rifle in Green hall at (0, 0, 17), both 90 s respawn; Marksman Carbine on the BR3 roof; Service Pistols on S3 and Top Blue (x2); Standard Issue Rifle on Top Blue. All on open floor, none gated by a step or lip.
 - Exact spawn points are **not sourced**. Diagram cyan dots are suggested FFA spawns spread across all 3 heights [E]. "3D/3D spawn" is a callout on the BR side [S name only].
 
 ## 7. Godot build order (CSG / box primitives)

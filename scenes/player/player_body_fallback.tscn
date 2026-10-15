@@ -1,0 +1,44 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player_body_fallback.gd" id="1_body"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_armor"]
+albedo_color = Color(0.290196, 0.313725, 0.223529, 1)
+roughness = 0.9
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.33
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_visor"]
+albedo_color = Color(0.66, 0.48, 0.12, 1)
+metallic = 0.6
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="BoxMesh_visor"]
+size = Vector3(0.24, 0.14, 0.06)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_accent"]
+albedo_color = Color(0.701961, 0.14902, 0.117647, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_accent"]
+size = Vector3(0.18, 0.08, 0.3)
+
+[node name="PlayerModel" type="Node3D"]
+script = ExtResource("1_body")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("CapsuleMesh_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_armor")
+
+[node name="Visor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -0.3)
+mesh = SubResource("BoxMesh_visor")
+surface_material_override/0 = SubResource("StandardMaterial3D_visor")
+
+[node name="Accent" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 1.38, 0)
+mesh = SubResource("BoxMesh_accent")
+surface_material_override/0 = SubResource("StandardMaterial3D_accent")

@@ -9,7 +9,10 @@ extends Node3D
 ## and despawn after despawn_time.
 ##
 ## Walk-over ammo: a placed pickup gives ammo_amount rounds (default one magazine) and is
-## consumed only if any ammo was actually added. A dropped pickup hands over its own
+## consumed only if any ammo was actually added. Battery weapons (WeaponData.battery) take no
+## ammo; instead a same-id pickup holding more charge than the carried copy can be taken as a
+## swap (is_battery_upgrade_for): the carrier's take_pickup replaces the carried copy, which
+## drops as a pickup like any swap. A dropped pickup hands over its own
 ## reserve then magazine and disappears only once it's empty (Halo behavior).
 ##
 ## The Area3D sits on the Pickup layer (7), masks Player (2) and Enemy (4), and is not
@@ -27,6 +30,10 @@ extends Node3D
 ## node in group CARRIER_GROUP (skipped while is_dead()). Carriers in reach get walk-over ammo
 ## automatically every physics tick; can_take / take / ammo_for / give_ammo / is_useful_to /
 ## is_in_reach / try_pickup let an AI decide and act without touching privates.
+##
+## Networking: the host (or offline play: multiplayer.is_server() is true) owns pickups. On a
+## net client walk-over ammo, take() and despawn do nothing; the host's NetMatch mirrors
+## availability with net_set_available() and spawns / frees dropped pickups.
 
 const SCENE_PATH := "res://scenes/pickups/weapon_pickup.tscn"
 const BOB_HEIGHT := 0.08
@@ -138,6 +145,8 @@ func ammo_for(carrier: Object) -> int:
 
 ## Walk-over ammo (rules in the class comment). Returns rounds added; may consume the pickup.
 func give_ammo(carrier: Object) -> int:
+	if not is_authority():
+		return 0
 	var carried := _carried_match(carrier)
 	if carried == null:
 		return 0
@@ -163,7 +172,24 @@ func give_ammo(carrier: Object) -> int:
 func is_useful_to(carrier: Object) -> bool:
 	if not can_take() or carrier == null:
 		return false
-	return _find(carrier, get_weapon_id()) == null or ammo_for(carrier) > 0
+	if _find(carrier, get_weapon_id()) == null or ammo_for(carrier) > 0:
+		return true
+	return is_battery_upgrade_for(carrier)
+
+
+## A battery weapon with more charge than the carrier's copy of the same weapon (swap, not ammo).
+func is_battery_upgrade_for(carrier: Object) -> bool:
+	return battery_gain_for(carrier) > 0
+
+
+## Battery this pickup holds over the carrier's copy of the same battery weapon (0 if none).
+func battery_gain_for(carrier: Object) -> int:
+	if not can_take() or weapon.data == null or not weapon.data.battery:
+		return 0
+	var carried := _find(carrier, get_weapon_id())
+	# Placed pickups hold a fresh, never-readied weapon: full charge.
+	var offered := weapon.magazine if dropped else weapon.data.magazine_size
+	return maxi(offered - carried.magazine, 0) if carried != null else 0
 
 
 ## carrier has a body inside the trigger.
@@ -171,12 +197,12 @@ func is_in_reach(carrier: Object) -> bool:
 	return carrier != null and _carriers.has(carrier)
 
 
-## In reach: top up if carried (true if any ammo moved), else hand the weapon to
-## carrier.take_pickup(self) when it has one. False otherwise.
+## In reach: top up if carried (true if any ammo moved), else (or for a battery upgrade) hand
+## the weapon to carrier.take_pickup(self) when it has one. False otherwise.
 func try_pickup(carrier: Object) -> bool:
 	if not can_take() or not is_in_reach(carrier):
 		return false
-	if _find(carrier, get_weapon_id()) != null:
+	if _find(carrier, get_weapon_id()) != null and not is_battery_upgrade_for(carrier):
 		return give_ammo(carrier) > 0
 	if carrier.has_method(&"take_pickup"):
 		return bool(carrier.call(&"take_pickup", self))
@@ -186,7 +212,7 @@ func try_pickup(carrier: Object) -> bool:
 ## Hands over the weapon (the caller installs it) and consumes the pickup. Used by
 ## WeaponHolder.take_pickup and by bots.
 func take() -> Weapon:
-	if not available or weapon == null:
+	if not available or weapon == null or not is_authority():
 		return null
 	var taken := weapon
 	weapon = null
@@ -194,13 +220,31 @@ func take() -> Weapon:
 	return taken
 
 
+## Pickup state changes happen here: offline, or on the net host.
+func is_authority() -> bool:
+	return not is_inside_tree() or multiplayer.is_server()
+
+
+## Net client: mirror the host's availability (no timers, no weapon changes).
+func net_set_available(on: bool) -> void:
+	if on == available:
+		return
+	available = on
+	pivot.visible = on
+	var method := &"register_pickup" if on else &"unregister_pickup"
+	# Untyped: a freed carrier key can't be assigned to an Object-typed variable.
+	for carrier in _carriers.keys():
+		if is_instance_valid(carrier) and carrier.has_method(method):
+			carrier.call(method, self)
+
+
 func _physics_process(delta: float) -> void:
 	_time += delta
 	pivot.position.y = 0.45 + sin(_time * BOB_SPEED) * BOB_HEIGHT
 	pivot.rotation.y += SPIN_SPEED * delta
-	if not available:
+	if not available or not is_authority():
 		return
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if not available:
 			return
 		if is_instance_valid(carrier):
@@ -230,7 +274,7 @@ func _ammo_offered() -> int:
 func _consume() -> void:
 	available = false
 	pivot.visible = false
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if is_instance_valid(carrier) and carrier.has_method(&"unregister_pickup"):
 			carrier.call(&"unregister_pickup", self)
 	if dropped or weapon_scene == null:
@@ -246,13 +290,13 @@ func _respawn() -> void:
 	weapon = weapon_scene.instantiate() as Weapon
 	available = true
 	pivot.visible = true
-	for carrier: Object in _carriers.keys():
+	for carrier in _carriers.keys():  # untyped: keys may be freed carriers
 		if is_instance_valid(carrier) and carrier.has_method(&"register_pickup"):
 			carrier.call(&"register_pickup", self)
 
 
 func _on_despawn() -> void:
-	if available:
+	if available and is_authority():
 		_consume()
 
 
@@ -270,7 +314,7 @@ func _on_body_entered(body: Node3D) -> void:
 func _on_body_exited(body: Node3D) -> void:
 	if not _bodies.has(body):
 		return
-	var carrier: Object = _bodies[body]
+	var carrier: Variant = _bodies[body]  # may be a freed carrier: no Object-typed assignment
 	_bodies.erase(body)
 	var count: int = _carriers.get(carrier, 1) - 1
 	if count > 0:

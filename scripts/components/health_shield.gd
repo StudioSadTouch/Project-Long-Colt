@@ -92,6 +92,44 @@ func apply_damage(amount: float, info: Dictionary = {}) -> Dictionary:
 	return result
 
 
+## Net client: adopt the host's values. Drops emit shield_damaged / shield_broken /
+## health_damaged and restart the recharge delay, so HUD flashes and zoom knock-out still work;
+## rises are taken silently (the client's own recharge predicts them). Never kills: a client
+## dies only through force_death(), on the host's death message.
+func apply_network_state(new_shield: float, new_health: float) -> void:
+	if dead:
+		return
+	new_shield = clampf(new_shield, 0.0, max_shield)
+	new_health = clampf(new_health, 0.0, max_health)
+	var shield_drop := shield - new_shield
+	var health_drop := health - new_health
+	# Small rises/drops are recharge drift between snapshots, not damage.
+	if shield_drop > 0.5 or health_drop > 0.5:
+		_since_damage = 0.0
+		recharging = false
+	if shield_drop > 0.5:
+		shield_damaged.emit(shield_drop)
+		if new_shield <= 0.0 and shield > 0.0:
+			shield_broken.emit()
+	if health_drop > 0.5:
+		health_damaged.emit(health_drop)
+	shield = new_shield
+	health = maxf(new_health, 0.01)
+	changed.emit(shield, health)
+
+
+## Net client: the host says this body died. Empties shield and health and emits died.
+func force_death() -> void:
+	if dead:
+		return
+	shield = 0.0
+	health = 0.0
+	dead = true
+	recharging = false
+	changed.emit(shield, health)
+	died.emit()
+
+
 func is_shield_up() -> bool:
 	return shield > 0.0
 

@@ -5,10 +5,14 @@ extends Resource
 ## only; shield_damage_multiplier hits shields only.
 
 ## Values are stored as ints in .tres files: append, never reorder.
-enum FireMode { SEMI, AUTO, BURST }
+## CHARGE: hold the trigger to charge, release to fire (see the Charge group). A release before
+## charge_time fires one normal shot (Halo 2 plasma pistol rules).
+enum FireMode { SEMI, AUTO, BURST, CHARGE }
 enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 
 @export var display_name: String = "Weapon"
+## Viewmodel / third-person animation set: &"pistol", &"rifle", &"carbine", &"shotgun", &"der".
+@export var anim_type: StringName = &"rifle"
 
 @export_group("Damage")
 @export var damage: float = 25.0
@@ -21,6 +25,9 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 @export var shield_damage_multiplier: float = 1.0
 ## If true, the overflow of a shot that breaks a shield spills into health.
 @export var bleedthrough: bool = false
+## Multiplier on damage dealt to health only, applied on top of the zone multiplier (e.g. plasma
+## weapons < 1.0: strong vs shields, weak vs flesh). 1.0 = none.
+@export var health_damage_multiplier: float = 1.0
 @export var max_range: float = 150.0
 ## Full damage up to this distance.
 @export var falloff_start: float = 30.0
@@ -41,6 +48,16 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 ## BURST: seconds from a burst's last round to the next burst's first round.
 @export var burst_cooldown: float = 0.35
 
+@export_group("Pellets")
+## Rays per shot (shotguns). 1 = the classic single ray.
+## > 1: a blast (Weapon._emit_pellets). Pellet 0 is the aim ray itself (spread, assist, bend);
+## the rest scatter around it. Each pellet traces the shared ray path with its own falloff, then
+## all pellets on one victim are summed into ONE take_damage, zoned by pellet 0 (head only if
+## the centre ray hit the head). Directions come from Weapon's seeded _spread_rng.
+@export var pellet_count: int = 1
+## Pellet cone half-angle in degrees, around pellet 0 (the bloomed, assisted aim ray).
+@export var pellet_spread: float = 0.0
+
 @export_group("Ammo")
 @export var magazine_size: int = 12
 @export var reserve_max: int = 48
@@ -51,6 +68,31 @@ enum Secondary { NONE, ZOOM, ALT, TOGGLE_MODE }
 ## fraction of their authored length, so keep the two in sync when retiming an animation.
 @export_range(0.0, 1.0) var reload_insert_fraction: float = 1.0
 @export var equip_time: float = 0.35
+## Energy weapons: the magazine is the battery (magazine_size = full charge). No reload, and
+## add_ammo refuses (ammo pickups and dropped copies can't refill it). Set reserve to 0.
+@export var battery: bool = false
+
+@export_group("Heat")
+## Heat (0..1) added per shot. 0 disables heat. Reaching 1.0 overheats: no fire for
+## overheat_vent_time while heat drains to 0.
+@export var heat_per_shot: float = 0.0
+## Seconds after the last shot before heat starts to drop.
+@export var heat_cooldown_delay: float = 0.3
+## Heat lost per second once cooling.
+@export var heat_cooldown_rate: float = 0.8
+@export var overheat_vent_time: float = 1.8
+
+@export_group("Charge")
+## FireMode.CHARGE (as fire_mode or alt_fire_mode). Seconds of held trigger for a full charge.
+@export var charge_time: float = 0.75
+## Charged shot damage = damage * this (falloff, zones, shield and health multipliers still apply).
+@export var charge_damage_multiplier: float = 5.0
+## Magazine/battery spent by a charged shot (at least 1; fires with whatever is left).
+@export var charge_ammo_cost: int = 10
+## Heat added by a charged shot (1.0 = always overheats). Ignored when heat_per_shot is 0.
+@export var charge_heat: float = 1.0
+## Magazine/battery drained per second while a full charge is held. 0 = none.
+@export var charge_hold_drain: float = 0.0
 
 @export_group("Recoil")
 ## Camera kick per shot. It recovers on its own, so it disturbs follow-ups rather than drifting aim.
