@@ -617,10 +617,11 @@ func _fire(weapon: BotWeapon, desired: Vector3, dist: float, delta: float) -> vo
 
 
 ## CHARGE mode: hold to charge (keep holding while off target), release once full and on target.
+## Every other _release_trigger (target lost, retreat, lunge...) drops a held charge unfired.
 func _fire_charge(weapon: BotWeapon, aligned: bool) -> void:
 	if weapon.charging:
 		if weapon.charge >= 1.0 and aligned:
-			_release_trigger()
+			_release_trigger(true)
 		return
 	if not aligned or _press_held:
 		_release_trigger()
@@ -629,9 +630,11 @@ func _fire_charge(weapon: BotWeapon, aligned: bool) -> void:
 	_press_held = true
 
 
-func _release_trigger() -> void:
+func _release_trigger(fire_charge: bool = false) -> void:
 	if _press_held:
 		var weapon := _bot.get_active()
+		if weapon != null and weapon.charging and not fire_charge:
+			weapon.heat_charge.release(false)
 		if weapon != null:
 			weapon.release_trigger()
 	_press_held = false
