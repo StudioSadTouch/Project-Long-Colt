@@ -1,0 +1,22 @@
+Gunshots are single takes trimmed from The Free Firearm Sound Library (CC0),
+created by Ben Jaszczak. Mirror:
+https://github.com/buddingmonkey/FreeFirearmsSFXLibrary
+
+  Standard Issue Rifle    AR-15 prepared take D_24P
+  Marksman Carbine        Tikka prepared take W_24P
+  Combat Shotgun          Mossberg prepared take N_30P
+  Service Pistol          Walther PPQ prepared take X_31P
+
+The energy rifle, the shotgun pump, and the hit / hurt / death stingers are
+Kenney Sci-fi Sounds and Kenney Impact Sounds (CC0), www.kenney.nl.
+Credit is not required.
+
+  DER bolt               laserLarge_000, shortened
+  DER charged shot       laserLarge_004
+  DER charge loop        spaceEngineLow_000
+  DER overheat           explosionCrunch_000
+  Shotgun pump           impactMetal_medium_000 then impactMetal_light_001
+  Hit marker             impactGeneric_light_002
+  Shield damage          forceField_002
+  Health damage          impactPunch_medium_001
+  Death                  lowFrequency_explosion_001

@@ -66,6 +66,8 @@ func take_damage(amount: float, info: Dictionary) -> void:
 	if dead or _health == null:
 		return
 	var result := _health.apply_damage(amount, info)
+	info["shield_dealt"] = result.shield
+	info["health_dealt"] = result.health
 	if result.shield > 0.0:
 		_spawn_number(result.shield, info, SHIELD_COLOR, 36)
 	if result.health > 0.0:

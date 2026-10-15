@@ -88,7 +88,7 @@ Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills 
   7-shot face kill at 70 m vs the carbine's 4).
 - 2.5x scope with the HUD scope overlay (pistol 2x, rifle 1.8x burst-only).
 - 10-round magazine, 30 reserve (max 40): about 7-8 kills from a fresh pickup.
-- Distinct report: a sharp high crack with a long, ringing tail (placeholder generated audio).
+- Distinct report: a sharp high crack (trimmed CC0 Tikka shot; see assets/audio/SOURCES.txt).
 
 ### Combat Shotgun (`resources/weapons/combat_shotgun.tres`)
 Tuning decided by Morgon: vs 70 shield / 45 health, **2 blasts strip, then 1 head blast or 2
@@ -154,7 +154,7 @@ blast is ~70% and two blasts no longer strip. Past 10 m it is useless, as intend
 - Range: bolts 20 -> 45 m to 0.5, the charge shot 25 -> 50 m to 0.6. Past 35 m the bolts
   overheat before they kill.
 - Hook: cyan emissive coils that glow with heat and charge, a rising whine while charging and a
-  vent hiss on overheat (placeholder generated audio).
+  vent crunch on overheat (Kenney CC0; see assets/audio/SOURCES.txt).
 
 ## 4. How the five fit together
 

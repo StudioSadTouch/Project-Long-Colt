@@ -4,6 +4,7 @@
 # Export artifacts
 export.cfg
 export_presets.cfg
+build/
 *.translation
 *.apk
 *.aab

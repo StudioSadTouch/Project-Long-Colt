@@ -293,6 +293,8 @@ func take_damage(amount: float, info: Dictionary) -> void:
 		info["dir"] = Player.damage_direction(self, info)
 	last_damage_info = info
 	var result := health_shield.apply_damage(amount, info)
+	info["shield_dealt"] = result.shield
+	info["health_dealt"] = result.health
 	var applied: float = result.shield + result.health
 	if applied > 0.0:
 		damaged.emit(applied, info)

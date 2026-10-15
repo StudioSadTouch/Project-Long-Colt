@@ -15,7 +15,7 @@ extends Node
 @export var charge_sound: AudioStream
 @export var overheat_sound: AudioStream
 @export_range(-0.5, 0.5) var pitch_jitter: float = 0.04
-@export var volume_db: float = -4.0
+@export var volume_db: float = -8.0
 ## OmniLight3D flashed on each shot.
 @export var muzzle_light: OmniLight3D
 @export var flash_time: float = 0.05
@@ -49,6 +49,7 @@ func _ready() -> void:
 	_weapon.charge_started.connect(_on_charge_started)
 	_weapon.charge_released.connect(_on_charge_released)
 	_weapon.heat_changed.connect(_on_heat_changed)
+	_arm_charge_loop()
 	for mesh in glow_meshes:
 		var source := mesh.get_active_material(0) as StandardMaterial3D if mesh != null else null
 		if source == null:
@@ -79,8 +80,17 @@ func _make_player(polyphony: int) -> AudioStreamPlayer:
 	var player := AudioStreamPlayer.new()
 	player.max_polyphony = polyphony
 	player.volume_db = volume_db
+	if AudioServer.get_bus_index(&"Weapons") >= 0:
+		player.bus = &"Weapons"
 	add_child(player)
 	return player
+
+
+## The charge whine is one trimmed clip. Loop it here so the import sidecar can stay unlooped.
+func _arm_charge_loop() -> void:
+	var wav := charge_sound as AudioStreamWAV
+	if wav != null:
+		wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 
 
 func _play(stream: AudioStream) -> void:

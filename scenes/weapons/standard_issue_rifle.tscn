@@ -1,9 +1,11 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
 [ext_resource type="Script" path="res://scripts/weapons/viewmodel_reload.gd" id="3_reload"]
 [ext_resource type="Script" path="res://scripts/weapons/viewmodel_melee.gd" id="4_melee"]
 [ext_resource type="Resource" path="res://resources/weapons/standard_issue_rifle.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_fx.gd" id="5_fx"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/standard_issue_rifle_fire.wav" id="6_fire"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
 albedo_color = Color(0.24, 0.27, 0.22, 1)
@@ -844,3 +846,8 @@ script = ExtResource("4_melee")
 animation_player = NodePath("../AnimationPlayer")
 hit_time = 0.1
 impact_kick_deg = 1.2
+
+[node name="WeaponFx" type="Node" parent="." groups=["viewmodel_only"]]
+script = ExtResource("5_fx")
+fire_sound = ExtResource("6_fire")
+pitch_jitter = 0.03
