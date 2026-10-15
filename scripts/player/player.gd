@@ -1,3 +1,4 @@
+# gdlint: disable=max-public-methods
 class_name Player
 extends CharacterBody3D
 ## First-person body for the Phase 0 pad.
@@ -35,7 +36,11 @@ extends CharacterBody3D
 ##                         HealthShield values arrive through HealthShield.apply_network_state and
 ##                         death through net_force_death().
 
+## A hit landed (amount = shield + health actually removed). info carries a world-space "dir"
+## (from the attacker toward this player) for hit reactions and third-person animation.
+signal damaged(amount: float, info: Dictionary)
 ## Health reached 0. killer = info.source when it is a live Node (may be self or null).
+## info carries "dir" like damaged (death clip / ragdoll direction).
 ## Can fire inside a physics flush (KillVolume): defer tree or physics changes in listeners.
 signal died(player: Player, killer: Node, info: Dictionary)
 ## respawn_delay elapsed while dead. Call respawn_at(spawn) from here to pick the spawn point.
@@ -304,12 +309,49 @@ func _physics_process(delta: float) -> void:
 func take_damage(amount: float, info: Dictionary) -> void:
 	if dead or health_shield == null or not net_damage_authority:
 		return
+	if not info.has("dir"):
+		info["dir"] = damage_direction(self, info)
 	last_damage_info = info
-	health_shield.apply_damage(amount, info)
+	var result := health_shield.apply_damage(amount, info)
+	var applied: float = result.shield + result.health
+	if applied > 0.0:
+		damaged.emit(applied, info)
+
+
+## World-space direction a hit travelled (attacker -> victim), from info.direction (weapons),
+## else from info.source's position, else zero (falls, kill volumes).
+static func damage_direction(victim: Node3D, info: Dictionary) -> Vector3:
+	var direction: Variant = info.get("direction")
+	if direction is Vector3 and (direction as Vector3).length_squared() > 0.0001:
+		return (direction as Vector3).normalized()
+	var source: Variant = info.get("source")
+	if source is Node3D and is_instance_valid(source) and source != victim:
+		var offset := victim.global_position - (source as Node3D).global_position
+		if offset.length_squared() > 0.0001:
+			return offset.normalized()
+	return Vector3.ZERO
 
 
 func is_dead() -> bool:
 	return dead
+
+
+## Third-person animation getters (CharacterAnimState contract; keep stable).
+func get_aim_pitch() -> float:
+	return head.rotation.x
+
+
+func is_crouching() -> bool:
+	return crouched
+
+
+func is_sliding() -> bool:
+	return sliding
+
+
+func get_active_weapon() -> Weapon:
+	var holder := get_weapon_holder()
+	return holder.get_active() if holder != null else null
 
 
 ## Seconds until respawn_requested, 0 when alive or already requested.
