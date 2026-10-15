@@ -7,7 +7,7 @@
 [ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="5_health"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="6_rifle"]
 [ext_resource type="Script" path="res://scripts/player/aim_assist.gd" id="7_aim"]
-[ext_resource type="PackedScene" path="res://scenes/player/player_body_fallback.tscn" id="8_body"]
+[ext_resource type="PackedScene" path="res://scenes/characters/player_body.tscn" id="8_body"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 resource_local_to_scene = true

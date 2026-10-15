@@ -22,11 +22,13 @@ extends CharacterBody3D
 ##   later and auto_respawn is on, it respawns at its scene spawn. A mode with its own timer
 ##   just calls respawn_at(); that cancels the pending fallback. respawn_at() on a live player
 ##   is a full reset + teleport.
-## Body visual: an optional PlayerModel child (LC Modeler's player_model.tscn, or the capsule
-## fallback scenes/player/player_body_fallback.tscn). Its meshes are on render layer 1 unless
-## first_person_hidden is set, which moves them to layer 2. Only the LOCAL player sets it, and
-## gameplay cameras cull layer 2, so you never see your own body while remote players and bots
-## stay visible. Hidden while dead. set_primary_color(color) tints it (PlayerColor.apply).
+## Body visual: an optional PlayerModel child, LC Animator's scenes/characters/player_body.tscn
+## (LC Modeler's model + CharacterAnimDriver/Source; the capsule fallback
+## scenes/player/player_body_fallback.tscn has the same contract). Its meshes are on render
+## layer 1 unless first_person_hidden is set, which moves them to layer 2. Only the LOCAL player
+## sets it, and gameplay cameras cull layer 2, so you never see your own body while remote
+## players and bots stay visible. Hidden while dead. set_primary_color(color) tints it
+## (PlayerColor.apply).
 ## Networking (scripts/net, docs/net/netcode.md). Offline everything below stays at its default:
 ##   net_puppet            set BEFORE add_child: a remote player (or a bot seen from a client).
 ##                         No input, camera, HUD or AimAssist; the pose comes from
