@@ -144,7 +144,8 @@ func _other_weapon() -> Object:
 	if slots is Array and index is int and (slots as Array).size() > 1:
 		var arr := slots as Array
 		var other: Variant = arr[(index + 1) % arr.size()]
-		return other as Object
+		# `as` on a freed instance errors; an empty or freed slot is no holster.
+		return other if is_instance_valid(other) else null
 	return null
 
 

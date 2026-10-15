@@ -259,9 +259,10 @@ func _id_of(node: Variant) -> int:
 func _refresh_bots() -> void:
 	if spawn_manager == null:
 		return
-	for bot: Bot in spawn_manager.bots:
-		if not is_instance_valid(bot) or _bot_ids.has(bot):
+	for value in spawn_manager.bots:  # untyped: may hold a freed bot
+		if not is_instance_valid(value) or _bot_ids.has(value):
 			continue
+		var bot: Bot = value
 		var id := -_next_bot
 		_next_bot += 1
 		_bot_ids[bot] = id

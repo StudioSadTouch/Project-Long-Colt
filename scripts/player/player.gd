@@ -390,7 +390,7 @@ func respawn_at(xform: Transform3D) -> void:
 	aim_slowdown_scale = 1.0
 	_apply_capsule()
 	_update_head(0.0)
-	for body: CollisionObject3D in _layers:
+	for body in _layers:  # untyped: a freed key fails a typed iterator before the check
 		if is_instance_valid(body):
 			body.collision_layer = _layers[body]
 	collision_shape.disabled = false
@@ -422,7 +422,7 @@ func _on_died() -> void:
 	sliding = false
 	velocity = Vector3.ZERO
 	# Deferred: death can come from a KillVolume body_entered during the physics flush.
-	for body: CollisionObject3D in _layers:
+	for body in _layers:  # untyped: a freed key fails a typed iterator before the check
 		if is_instance_valid(body):
 			body.set_deferred(&"collision_layer", 0)
 	collision_shape.set_deferred(&"disabled", true)
