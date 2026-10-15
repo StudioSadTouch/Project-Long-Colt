@@ -27,7 +27,17 @@ func _ready() -> void:
 	var mesh := NavigationMesh.new()
 	# Match the map's cell size, or the region won't merge with links cleanly.
 	mesh.cell_size = NavigationServer3D.map_get_cell_size(map)
+	# project.godot sets navigation/3d/default_cell_height = 0.05 so the 0.35 m climb is a whole
+	# number of cells (Recast floors climb and ceils height to cells; 0.25 cells gave 0.25 climb).
 	mesh.cell_height = NavigationServer3D.map_get_cell_height(map)
+	var climb_cells := agent_max_climb / mesh.cell_height
+	if absf(climb_cells - roundf(climb_cells)) > 0.01:
+		push_warning(
+			(
+				"ArenaNavigation: agent_max_climb %.2f is not a multiple of cell_height %.2f"
+				% [agent_max_climb, mesh.cell_height]
+			)
+		)
 	mesh.agent_radius = agent_radius
 	mesh.agent_height = agent_height
 	mesh.agent_max_climb = agent_max_climb
