@@ -293,6 +293,7 @@ func _refresh_bots() -> void:
 		bot.set_meta(&"net_id", id)
 		entities[id] = bot
 		roster[id] = {"name": bot.display_name, "color": _bot_color(id), "kind": KIND_BOT}
+		bot.set_primary_color(Color.from_string(_bot_color(id), PlayerColor.default_color()))
 		_track_anim(id, bot)
 		_hook_authority(id, bot)
 		for weapon: Weapon in bot.slots:

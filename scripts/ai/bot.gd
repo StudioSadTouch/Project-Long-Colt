@@ -10,6 +10,8 @@ extends CharacterBody3D
 ##                 because a 0.35 m capsule would cover the visor and turn head shots into body.
 ##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.7 x 1.46 x 0.4 like the dummies.
 ##   Rig heads     HeadArmored / HeadUnarmored on Hitbox (32), from dummy_rig.tscn.
+##   PlayerModel   scenes/characters/player_body.tscn (visual + anims only); the dummy_rig
+##                 meshes are hidden in bot.tscn, its hitboxes stay on Rig.
 ## Damage: take_damage on the root only, so Weapon's receiver (nearest ancestor with
 ## take_damage) is always the Bot for hurtbox and head hits alike (keeps the visor probe's
 ## same-target check working). KillVolume, GravLift, WeaponPickup and AmmoCrate see the
@@ -337,6 +339,15 @@ func get_weapons() -> Array[Weapon]:
 		if w != null:
 			out.append(w)
 	return out
+
+
+## Tints the body (PlayerModel, see PlayerColor.apply). NetMatch assigns bot colours online.
+func set_primary_color(color: Color) -> void:
+	PlayerColor.apply(self, color)
+
+
+func get_model() -> Node3D:
+	return get_node_or_null(^"PlayerModel") as Node3D
 
 
 func respawn_at(xform: Transform3D) -> void:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/ai/bot.gd" id="1_bot"]
 [ext_resource type="Script" path="res://scripts/ai/bot_brain.gd" id="2_brain"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="5_rifle"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="6_pistol"]
 [ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="7_diff"]
+[ext_resource type="PackedScene" path="res://scenes/characters/player_body.tscn" id="8_body"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_move"]
 resource_local_to_scene = true
@@ -43,6 +44,20 @@ shape = SubResource("BoxShape3D_hurt")
 [node name="AimHeadPoint" type="Marker3D" parent="Rig"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.64, 0)
 
+[node name="BodyMesh" parent="Rig"]
+visible = false
+
+[node name="HelmetMesh" parent="Rig/HeadArmored"]
+visible = false
+
+[node name="VisorMesh" parent="Rig/HeadUnarmored"]
+visible = false
+
+[node name="NeckMesh" parent="Rig/HeadUnarmored"]
+visible = false
+
+[node name="PlayerModel" parent="." instance=ExtResource("8_body")]
+
 [node name="Head" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)
 
@@ -61,3 +76,5 @@ radius = 0.35
 
 [node name="Brain" type="Node" parent="."]
 script = ExtResource("2_brain")
+
+[editable path="Rig"]
