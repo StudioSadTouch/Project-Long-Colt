@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/weapon_holder.gd" id="2_holder"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="5_health"]
 [ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="6_rifle"]
 [ext_resource type="Script" path="res://scripts/player/aim_assist.gd" id="7_aim"]
+[ext_resource type="PackedScene" path="res://scenes/player/player_body_fallback.tscn" id="8_body"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 resource_local_to_scene = true
@@ -44,6 +45,8 @@ sync_to_physics = false
 [node name="Shape" type="CollisionShape3D" parent="Hurtbox"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.73, 0)
 shape = SubResource("BoxShape3D_hurt")
+
+[node name="PlayerModel" parent="." instance=ExtResource("8_body")]
 
 [node name="Rig" type="Node3D" parent="."]
 

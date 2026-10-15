@@ -21,6 +21,19 @@ extends CharacterBody3D
 ##   later and auto_respawn is on, it respawns at its scene spawn. A mode with its own timer
 ##   just calls respawn_at(); that cancels the pending fallback. respawn_at() on a live player
 ##   is a full reset + teleport.
+## Body visual: an optional PlayerModel child (LC Modeler's player_model.tscn, or the capsule
+## fallback scenes/player/player_body_fallback.tscn). Its meshes are on render layer 1 unless
+## first_person_hidden is set, which moves them to layer 2. Only the LOCAL player sets it, and
+## gameplay cameras cull layer 2, so you never see your own body while remote players and bots
+## stay visible. Hidden while dead. set_primary_color(color) tints it (PlayerColor.apply).
+## Networking (scripts/net, docs/net/netcode.md). Offline everything below stays at its default:
+##   net_puppet            set BEFORE add_child: a remote player (or a bot seen from a client).
+##                         No input, camera, HUD or AimAssist; the pose comes from
+##                         apply_net_pose(). On the host its HealthShield, hitboxes and weapons are
+##                         real (the host re-casts the owner's shots with them).
+##   net_damage_authority  false on net clients: take_damage is ignored there, the host's
+##                         HealthShield values arrive through HealthShield.apply_network_state and
+##                         death through net_force_death().
 
 ## Health reached 0. killer = info.source when it is a live Node (may be self or null).
 ## Can fire inside a physics flush (KillVolume): defer tree or physics changes in listeners.
@@ -41,6 +54,8 @@ const HURTBOX_MIN_HEIGHT := 0.7
 const BODY_AIM_HEIGHT := 0.7
 ## Step camera smoothing: the -dy view offset decays at this rate per second (~0.1 s to 5%).
 const STEP_SMOOTH_RATE := 30.0
+## Render layer for first-person-hidden bodies (layer 2); every gameplay camera culls it.
+const HIDDEN_BODY_LAYER := 1 << 1
 
 @export var stand_speed: float = 7.5
 @export var crouch_speed: float = 3.2
@@ -88,6 +103,9 @@ var sliding: bool = false
 var dead: bool = false
 ## Info of the last hit taken (kill credit: "source").
 var last_damage_info: Dictionary = {}
+## Net hooks, see the header. Set net_puppet before the node enters the tree.
+var net_puppet: bool = false
+var net_damage_authority: bool = true
 
 var _eye_height: float = STAND_EYE
 var _landing_dip: float = 0.0
@@ -136,7 +154,13 @@ func _ready() -> void:
 	_eye_height = STAND_EYE
 	_apply_capsule()
 	camera.fov = fov
-	camera.current = true
+	if net_puppet:
+		_become_puppet()
+	else:
+		camera.current = true
+		# First person: our own body goes to layer 2, which this camera doesn't draw.
+		PlayerColor.set_first_person_hidden(self, true)
+	camera.cull_mask &= ~HIDDEN_BODY_LAYER
 	add_to_group("player")
 	# GravLift pushes CharacterBody3Ds in this group.
 	add_to_group(&"lift_rider")
@@ -145,11 +169,29 @@ func _ready() -> void:
 		add_to_group(Weapon.PASSTHROUGH_GROUP)
 	for body in get_own_colliders():
 		_layers[body] = body.collision_layer
-	if DisplayServer.get_name() != "headless":
+	if DisplayServer.get_name() != "headless" and not net_puppet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
+## Remote representation: no camera, HUD, AimAssist or input; the WeaponHolder stays (the host
+## re-casts this player's shots with its weapons) but is hidden and ignores input.
+func _become_puppet() -> void:
+	camera.current = false
+	set_process_unhandled_input(false)
+	for path: NodePath in [^"HUD", ^"AimAssist"]:
+		var node := get_node_or_null(path)
+		if node != null:
+			node.queue_free()
+	var holder := get_weapon_holder()
+	if holder != null:
+		holder.visible = false
+	# Other players' AimAssist and the bots target this body.
+	add_to_group(AimAssist.TARGET_GROUP)
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if net_puppet:
+		return
 	if event.is_action_pressed("action_pause"):
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -177,6 +219,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		return
+	if net_puppet:
+		# Pose comes from apply_net_pose; only the lunge timer runs (host melee waits on it).
+		_lunge_left = maxf(_lunge_left - delta, 0.0)
+		_update_head(delta)
 		return
 	_apply_stick_look(delta)
 	gravity = get_gravity().length()
@@ -255,7 +302,7 @@ func _physics_process(delta: float) -> void:
 
 ## Damage contract shared with enemies; HealthShield applies the shield and zone rules.
 func take_damage(amount: float, info: Dictionary) -> void:
-	if dead or health_shield == null:
+	if dead or health_shield == null or not net_damage_authority:
 		return
 	last_damage_info = info
 	health_shield.apply_damage(amount, info)
@@ -302,6 +349,7 @@ func respawn_at(xform: Transform3D) -> void:
 		if is_instance_valid(body):
 			body.collision_layer = _layers[body]
 	collision_shape.disabled = false
+	_set_model_visible(true)
 	last_damage_info = {}
 	if health_shield != null:
 		health_shield.reset()
@@ -333,6 +381,7 @@ func _on_died() -> void:
 		if is_instance_valid(body):
 			body.set_deferred(&"collision_layer", 0)
 	collision_shape.set_deferred(&"disabled", true)
+	_set_model_visible(false)
 	var info := last_damage_info
 	var holder := get_weapon_holder()
 	if holder != null:
@@ -358,6 +407,41 @@ func _on_respawn_timeout(life: int) -> void:
 	await get_tree().process_frame
 	if life == _life_id and dead:
 		respawn_at(_spawn_transform)
+
+
+## Net: pose from the network (host: the owning client's validated state; client: interpolated
+## snapshot). Yaw on the body, pitch on Head, crouch resizes capsule, Hurtbox and Rig.
+func apply_net_pose(pos: Vector3, yaw: float, pitch: float, is_crouched: bool) -> void:
+	global_position = pos
+	rotation.y = yaw
+	head.rotation.x = clampf(pitch, deg_to_rad(-PITCH_LIMIT), deg_to_rad(PITCH_LIMIT))
+	if is_crouched != crouched:
+		crouched = is_crouched
+		_apply_capsule()
+
+
+## Net client: the host says this player died. info is the host's (lite) damage info with
+## source resolved to a local node or null. Runs the normal death path (_on_died).
+func net_force_death(info: Dictionary) -> void:
+	if dead or health_shield == null:
+		return
+	last_damage_info = info
+	health_shield.force_death()
+
+
+## Tints the body (PlayerModel, see PlayerColor.apply).
+func set_primary_color(color: Color) -> void:
+	PlayerColor.apply(self, color)
+
+
+func get_model() -> Node3D:
+	return get_node_or_null(^"PlayerModel") as Node3D
+
+
+func _set_model_visible(on: bool) -> void:
+	var model := get_model()
+	if model != null:
+		model.visible = on
 
 
 ## Every collider the player's own weapons, melee and AimAssist must ignore.
