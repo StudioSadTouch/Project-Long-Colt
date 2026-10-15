@@ -3,6 +3,13 @@ extends CharacterBody3D
 ## First-person body for the Phase 0 pad.
 ## Yaw lives on this node. Pitch lives on Head. Movement reads this body's -Z.
 
+const STAND_HEIGHT := 1.8
+const CROUCH_HEIGHT := 1.15
+const CAPSULE_RADIUS := 0.35
+const STAND_EYE := 1.62
+const CROUCH_EYE := 0.95
+const PITCH_LIMIT := 89.0
+
 @export var stand_speed: float = 7.5
 @export var crouch_speed: float = 3.2
 @export var ground_accel: float = 70.0
@@ -28,13 +35,6 @@ extends CharacterBody3D
 ## Radial stick deadzone, shared by look here and AimAssist's device detection.
 @export_range(0.0, 0.9) var stick_deadzone: float = 0.2
 @export_group("")
-
-const STAND_HEIGHT := 1.8
-const CROUCH_HEIGHT := 1.15
-const CAPSULE_RADIUS := 0.35
-const STAND_EYE := 1.62
-const CROUCH_EYE := 0.95
-const PITCH_LIMIT := 89.0
 
 ## Refreshed every physics tick from get_gravity() so Area3D overrides apply.
 var gravity: float = 22.0
@@ -97,7 +97,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if (
+		event is InputEventMouseButton
+		and event.pressed
+		and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED
+	):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		get_viewport().set_input_as_handled()
 		return
@@ -239,7 +243,11 @@ func _apply_stick_look(delta: float) -> void:
 		return
 	# get_vector applies the deadzone radially and rescales the rest to 0..1.
 	var stick := Input.get_vector(
-		"action_look_left", "action_look_right", "action_look_up", "action_look_down", stick_deadzone
+		"action_look_left",
+		"action_look_right",
+		"action_look_up",
+		"action_look_down",
+		stick_deadzone
 	)
 	var magnitude := stick.length()
 	if magnitude <= 0.0:
@@ -261,8 +269,14 @@ func add_aim_offset(yaw: float, pitch: float) -> void:
 
 
 func _wish_direction() -> Vector3:
-	var input_forward := Input.get_action_strength("action_move_forward") - Input.get_action_strength("action_move_back")
-	var input_right := Input.get_action_strength("action_move_right") - Input.get_action_strength("action_move_left")
+	var input_forward := (
+		Input.get_action_strength("action_move_forward")
+		- Input.get_action_strength("action_move_back")
+	)
+	var input_right := (
+		Input.get_action_strength("action_move_right")
+		- Input.get_action_strength("action_move_left")
+	)
 	# Body -Z, flattened. Pitch on Head must not steer this vector.
 	var fwd := -global_transform.basis.z
 	fwd.y = 0.0
