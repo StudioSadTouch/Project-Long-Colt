@@ -1,0 +1,7 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "mat_undersuit"
+albedo_color = Color(0.180392, 0.184314, 0.192157, 1)
+roughness = 0.9
+metallic = 0.0
