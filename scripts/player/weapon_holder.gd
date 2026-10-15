@@ -572,6 +572,12 @@ func get_zoom_blend() -> float:
 	return _zoom_blend
 
 
+## True while the local player is scoped with weapon and its viewmodel is hidden (never on
+## puppets). WeaponFx skips its muzzle light then, so the flash doesn't glare through the scope.
+func is_scope_hiding(weapon: Weapon) -> bool:
+	return weapon != null and _hidden_viewmodel == weapon
+
+
 ## Hide the scoped weapon's viewmodel by moving its meshes onto Player.HIDDEN_BODY_LAYER,
 ## which the local camera culls. Never touches weapon.visible (it gates Weapon physics) or
 ## holder.visible (puppet state). Lights and particles that aren't GeometryInstance3D are left.

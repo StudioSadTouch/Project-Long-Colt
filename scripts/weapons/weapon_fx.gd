@@ -64,7 +64,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if muzzle_light != null and _flash_left > 0.0:
 		_flash_left -= delta
-		muzzle_light.visible = _flash_left > 0.0
+		muzzle_light.visible = _flash_left > 0.0 and not _scope_hides_flash()
 	if _materials.is_empty():
 		return
 	var level := maxf(_weapon.heat, _weapon.charge)
@@ -100,10 +100,17 @@ func _on_fired() -> void:
 	_play(charged_fire_sound if charged and charged_fire_sound != null else fire_sound)
 	if muzzle_light != null:
 		muzzle_light.light_energy = flash_energy * (3.0 if charged else 1.0)
-		muzzle_light.visible = true
+		muzzle_light.visible = not _scope_hides_flash()
 		_flash_left = flash_time * (2.0 if charged else 1.0)
 	if cycle_sound != null:
 		get_tree().create_timer(cycle_delay, false).timeout.connect(_play.bind(cycle_sound))
+
+
+## Local player scoped (WeaponHolder hid the viewmodel): no flash light, which would only glare
+## on the scope overlay. Puppets and bots have no hiding holder, so their flash is unchanged.
+func _scope_hides_flash() -> bool:
+	var holder := _weapon.get_parent() as WeaponHolder
+	return holder != null and holder.is_scope_hiding(_weapon)
 
 
 func _on_charge_started() -> void:
