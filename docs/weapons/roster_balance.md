@@ -55,7 +55,7 @@ Shots to kill (time). Strip = shots to break the shield.
 | DER charge | <= 25 m | 80 shield / 37.5 health | **1** (after 0.75 s charge) | never alone (37.5 < 45) | - | - |
 | Shotgun | <= 3 m, 10 pellets | 100 | 1st shot strips + 30 health | **2 shots (0.83 s)**, or shot + melee | same (no head bonus) | same |
 | Shotgun | <= 3 m vs **unshielded** | 100 | - | **1 shot** (needs 5 of 10 pellets) | - | - |
-| Shotgun | 6 m vs unshielded | 7 per pellet | - | 1 shot needs 7+ pellets (~70% at 4 deg) | - | - |
+| Shotgun | 6 m vs unshielded | 7 per pellet | - | 1 shot needs 7+ pellets (~92% of shots with centred aim at 4 deg) | - | - |
 | Shotgun | 8 m vs unshielded | 5 per pellet | - | 1 shot only with all 10 | - | - |
 | Shotgun | 10 m, full shield | 3 per pellet | - | 4+ shots: not a 10 m gun | - | - |
 
@@ -113,15 +113,19 @@ Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills 
 - Plasma family: 1.6x to shields, 0.75x to health, no head bonus. Strips a shield in 5 bolts
   (0.50 s, fastest in the game) and finishes slowly (6 more bolts).
 - Battery, no reload: 100 charge, 1 per bolt, 10 per charge shot. Ammo pickups and dropped guns
-  can't refill it (Halo: plasma weapons don't take ammo). A dead battery is a gun to drop.
+  can't refill it (Halo: plasma weapons don't take ammo). A dead battery is a gun to drop: a
+  DER pickup with more battery than yours is offered as a swap (hold to take; bots take it too)
+  and your DER drops in its place.
 - Heat: +0.075 per bolt, cools 0.8/s after 0.3 s of not firing. 14 bolts in a row overheat it
   (1.63 s of trigger), which is enough for one perfect kill (11), not two. An overheat locks the gun
   for 1.8 s while it vents.
-- Secondary (right click / LB) toggles CHARGE mode. In CHARGE mode a tap fires one bolt (Halo 2
-  plasma pistol rules); holding for 0.75 s charges a shot that does 50 base: 80 to a shield
-  (strips a full shield in one), 37.5 to health (never kills alone). The charge shot costs 10
-  battery and fills heat to 100%, so it always vents afterwards. Holding a full charge drains
-  4 battery/s.
+- Secondary (right click / pad LT, `action_alt_fire`) toggles CHARGE mode, as does fire select
+  (F / D-pad up). In CHARGE mode a tap fires one bolt on release (Halo 2 plasma pistol rules);
+  taps faster than fire_rate (8/s) are dropped, and tap bolts use the alt spread (x0.5) and the
+  alt falloff (25 -> 50 m to 0.6), like the charge shot. Holding for 0.75 s charges a shot that
+  does 50 base: 80 to a shield (strips a full shield in one), 37.5 to health (never kills alone).
+  The charge shot costs 10 battery and fills heat to 100%, so it always vents afterwards. Holding
+  a full charge drains 4 battery/s.
 - Range: bolts 20 -> 45 m to 0.5, the charge shot 25 -> 50 m to 0.6. Past 35 m the bolts
   overheat before they kill.
 - Hook: cyan emissive coils that glow with heat and charge, a rising whine while charging and a
