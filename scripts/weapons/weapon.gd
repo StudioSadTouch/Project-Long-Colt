@@ -143,6 +143,10 @@ var next_shot_seed: int = 0:
 		next_shot_seed = value
 		_has_next_seed = true
 var next_shot_spread: float = -1.0
+## Replay only (NetWeapon): pellet 0's final direction for the next blast (the client's bend,
+## which the host can't reproduce), used instead of local bend; ZERO = none. _bent comes along.
+var next_shot_centre: Vector3 = Vector3.ZERO
+var next_shot_centre_bent: bool = false
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
@@ -519,7 +523,14 @@ func _shot_spread() -> float:
 ## holds per blast. Zone = pellet 0's: head only if the centre ray hit that victim's head zone,
 ## otherwise body. info is the first pellet's on that victim, plus pellet_hits.
 func _emit_pellets(damage_scale: float = 1.0) -> void:
-	var centre := _assisted_direction(_spread_direction(_shot_spread())).normalized()
+	var centre := _spread_direction(_shot_spread())  # always 2 draws: same pellet pattern
+	if next_shot_centre != Vector3.ZERO:
+		centre = next_shot_centre
+		_bent = next_shot_centre_bent
+		next_shot_centre = Vector3.ZERO
+	else:
+		centre = _assisted_direction(centre)
+	centre = centre.normalized()
 	var basis := _aim().global_transform.basis
 	basis = Basis(Quaternion(-basis.z.normalized(), centre)) * basis
 	var blasts := {}  # victim -> {target, amount, info}, in first-hit order

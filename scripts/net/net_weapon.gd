@@ -13,7 +13,9 @@ extends RefCounted
 ##     and works on origin/main's weapon.gd, which has no seeding.
 ##   * Pellet blasts (data.pellet_count > 1) replay the pattern exactly: next_shot_seed = the
 ##     client's last_shot_seed and next_shot_spread = its spread, then _emit_shots(), which
-##     seeds via _seed_shot() / _shot_spread(). Pellets never bend. Whatever damage model the
+##     seeds via _seed_shot() / _shot_spread(). Pellet guns with aim_bend_angle > 0 take pellet 0's
+##     client direction (its bend) as the centre (_set_centre); bendless ones (the shotgun) are
+##     replayed exactly as before. Whatever damage model the
 ##     weapon uses (main-guns next: one take_damage per victim per blast, summed after falloff)
 ##     the host gets it for free, and NetMatch broadcasts whatever damaged signals result.
 ##   * Charged shots (DER): accepted only when the client-reported charge peaked >= 1.0 since
@@ -179,6 +181,8 @@ static func clear_pending(weapon: Weapon) -> void:
 		weapon.set(&"_has_next_seed", false)
 	if &"next_shot_spread" in weapon:
 		weapon.set(&"next_shot_spread", -1.0)
+	if &"next_shot_centre" in weapon:
+		weapon.set(&"next_shot_centre", Vector3.ZERO)
 
 
 static func _arg_count(weapon: Weapon, method: StringName) -> int:
@@ -223,6 +227,7 @@ static func replay(weapon: Weapon, request: Array, proxy: Node3D, charge_ok: boo
 		shots = seeds.size()
 		for i in shots:
 			_seed(weapon, request, i)
+			_set_centre(weapon, request, i * pellets)
 			weapon.call(&"_emit_shots")
 	elif charged and _arg_count(weapon, &"_fire_ray") < 2:
 		_seed(weapon, request, 0)
@@ -261,6 +266,25 @@ static func _seed(weapon: Weapon, request: Array, index: int) -> void:
 	if &"next_shot_spread" in weapon and index < spreads.size():
 		var bounds := spread_bounds(weapon.data)
 		weapon.set(&"next_shot_spread", clampf(spreads[index], bounds.x, bounds.y))
+
+
+## Bent pellet guns: blast pellet 0's client direction (dirs[index]) becomes the next blast's
+## centre if it lies inside spread + bend (bend depends on the client's view of targets). No-op
+## for pellet guns without bend (the shotgun), so their replay stays exactly the host's own.
+static func _set_centre(weapon: Weapon, request: Array, index: int) -> void:
+	var data := weapon.data
+	var dirs: PackedVector3Array = request[NetShot.REQ_DIRS]
+	if data.aim_bend_angle <= 0.0 or not (&"next_shot_centre" in weapon) or index >= dirs.size():
+		return
+	var dir := dirs[index]
+	var quat: Quaternion = request[NetShot.REQ_QUAT]
+	var forward := -(Basis(quat.normalized()).z)
+	var cone := spread_bounds(data).y + data.aim_bend_angle + DIR_TOLERANCE_DEG
+	if not dir.is_finite() or rad_to_deg(forward.angle_to(dir)) > cone:
+		return
+	var bent: PackedByteArray = request[NetShot.REQ_BENT]
+	weapon.set(&"next_shot_centre", dir.normalized())
+	weapon.set(&"next_shot_centre_bent", index < bent.size() and bent[index] != 0)
 
 
 ## Why a request is refused ("" = fine). Rate limiting is the caller's (per shooter).

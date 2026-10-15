@@ -187,9 +187,12 @@ The client's own hits, hit markers and FX stay local predictions; no damage is a
    * **Pellet blasts:** `next_shot_seed` and `next_shot_spread` are set per round, then
      `_emit_shots()` is called. Same seed + aim gives the same pellets. The host then gets
      whatever damage model the weapon has; main-guns next makes that one `take_damage` per
-     victim per blast.
+     victim per blast. If the weapon has `aim_bend_angle > 0`, pellet 0's client direction
+     (inside spread + bend) is set as `next_shot_centre` so the host blast follows the client's
+     bend; the RNG still draws pellet 0's 2 values, so pellets 1.. match. Bendless pellet guns
+     (the shotgun) skip this and replay exactly as before.
 8. **Restore and clean up:** colliders are restored, ammo is spent, and `next_shot_seed` /
-   `next_shot_spread` are cleared after a replay or a refusal so nothing leaks into the next
+   `next_shot_spread` / `next_shot_centre` are cleared after a replay or a refusal so nothing leaks into the next
    shot.
 9. **Effects:** damage → `damaged` / `died` signals → broadcasts. One `_rpc_shot_fx` with
    every ray end goes to everyone but the shooter.
