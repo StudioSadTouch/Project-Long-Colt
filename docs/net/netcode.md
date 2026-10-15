@@ -222,30 +222,40 @@ copy on clients.
 
 ## Third-person animation (LC Animator contract)
 
-* **Who packs what.** Each body's authority packs `CharacterAnimState` into 10 bytes:
-  * velocity: int8 ×3 at 0.25 m/s;
-  * flags: on_floor, crouch, slide, dead, plus weapon type;
-  * u8 counters: fire, action, cancel, death;
-  * action | death_dir;
-  * duration at 20 ms.
+* **What travels.** `CharacterAnimState.to_dict()` (animator-main e1cc52e) for every body, sent
+  as a value array in `NetAnim.keys()` order (`scripts/net/net_anim.gd`). It covers:
+  * velocity, on floor, crouch, slide and dead;
+  * the active and holstered weapon types;
+  * the fire, action, action-cancel, death and flinch counters;
+  * action and action duration;
+  * death dir and death impulse, and flinch dir.
 
-  The authority is the client for its own player and the host for its player and bots. Yaw and
-  pitch ride the snapshot pose. The host overrides death fields (dead, death_seq, death_dir)
-  with its own.
-* **Counters** come from Weapon signals:
-  * `fired`;
-  * `reload_started` (reload or empty reload);
-  * `melee_started`;
-  * `reload_cancelled`;
-  * holder / bot weapon switch (SWITCH, with equip_time).
-* **Death dir:** the hit's travel direction in the victim's frame. It uses `info.dir`;
-  `Player.take_damage` fills `dir` when the weapon didn't.
-* **Weapon type:** `WeaponData.anim_type` (main-guns), read guarded; rifle when absent.
-* **Receivers:** the data goes to any descendant with `apply_state` / `reset_baseline`.
-  `reset_baseline()` runs on spawn, respawn and late join.
+  Yaw and pitch are not in the array; they ride the snapshot pose. Receivers coerce each value
+  to its `to_dict()` default type, and drop a malformed array.
+* **Authority** (its `CharacterAnimSource` stays enabled):
+  * the client, for its own player (in `_rpc_state`);
+  * the host, for its own player and its bots (in the snapshot).
+* **Host override.** For a client's player, the host replaces the death and flinch fields
+  (`d ds dd di fl fd`) with the ones its own puppet's source recorded from the authoritative
+  `died` / `damaged` signals.
+* **Remote copies** (every puppet): `NetAnim.make_remote()` disables the source, and each
+  packet calls `driver.apply_state(CharacterAnimState.from_dict(...))`.
+* **Baseline.** `reset_baseline()` runs on puppet spawn (including a late join) and on every
+  respawn. The next applied state becomes the baseline without firing one-shots. A late joiner
+  therefore sees an already-dead body posed dead, but the death clip doesn't replay. That is
+  the driver's API; replaying it would need a "play death on baseline" option in the driver.
+* **Damage info.** `damaged` / `died` info carries world `dir` (shooter → victim) and an
+  optional `impulse`, on Player and Bot:
+  * Weapon hit info sets `dir`;
+  * `Player.take_damage` and `Bot.take_damage` fill it when missing.
+
+  Clients get `dir` through `_rpc_died` / `_rpc_damaged`; the impulse reaches them only via
+  the host's death fields.
 * **Not synced:**
   * Head hitboxes stay stance-driven.
-  * Ragdoll is client-local; only the death counter and dir are synced.
+  * Ragdoll is client-local (`death_started(dir, impulse)`).
+* **Rate.** Remote drivers are fed at the packet rate: snapshot rate for the host's bodies,
+  and the client send rate on the host. `Net.PROTOCOL` is 2 (the anim wire format changed).
 
 ## Settings and colour
 

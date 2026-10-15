@@ -23,7 +23,7 @@ const DEFAULT_PORT := 7777
 const DISCOVERY_PORT := 7778
 const MAX_PLAYERS := 4
 ## Bump on any change to the RPC set or wire formats (here or in NetMatch).
-const PROTOCOL := 1
+const PROTOCOL := 2
 const GAME_TAG := "PLC"
 const MAP_NAME := "Lockout"
 const ARENA_SCENE := "res://scenes/main/arena_lockout.tscn"

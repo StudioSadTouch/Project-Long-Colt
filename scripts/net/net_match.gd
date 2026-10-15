@@ -49,7 +49,6 @@ var is_game_over: bool = false
 
 var _online: bool = false
 var _host: bool = true
-var _anim: Dictionary = {}
 var _client_anim: Dictionary = {}
 var _buffers: Dictionary = {}
 var _shots: Dictionary = {}
@@ -117,7 +116,6 @@ func _setup_local() -> void:
 	local_player.set_meta(&"display_name", Net.name_of(my_id))
 	local_player.set_meta(&"net_id", my_id)
 	entities[my_id] = local_player
-	_track_anim(my_id, local_player)
 
 
 func _setup_offline() -> void:
@@ -225,7 +223,7 @@ func _make_puppet(id: int, info: Dictionary, host_side: bool) -> Player:
 		Color.from_string(str(info.get("color", "")), PlayerColor.default_color())
 	)
 	entities[id] = puppet
-	NetAnim.reset(puppet)
+	NetAnim.make_remote(puppet)
 	return puppet
 
 
@@ -234,34 +232,11 @@ func _remove_entity(id: int) -> void:
 	entities.erase(id)
 	_buffers.erase(id)
 	_net_host.remote.erase(id)
-	_anim.erase(id)
 	_client_anim.erase(id)
 	if body is Player and is_instance_valid(body) and body != local_player:
 		if _host and spawn_manager != null:
 			spawn_manager.unregister_player(body)
 		(body as Node).queue_free()
-
-
-func _track_anim(id: int, body: Node3D) -> NetAnim:
-	var tracker: NetAnim = _anim.get(id)
-	if tracker == null:
-		tracker = NetAnim.new()
-		_anim[id] = tracker
-	if body is Player:
-		var holder := (body as Player).get_weapon_holder()
-		if holder != null:
-			for weapon in holder.get_weapons():
-				tracker.watch_weapon(weapon)
-			if not holder.active_weapon_changed.is_connected(tracker.note_switch):
-				holder.active_weapon_changed.connect(tracker.note_switch)
-	elif body is Bot:
-		for weapon: Weapon in (body as Bot).slots:
-			tracker.watch_weapon(weapon)
-		var bot_switch := func(w: BotWeapon) -> void: tracker.note_switch(w)
-		if not body.has_meta(&"net_switch_hooked"):
-			body.set_meta(&"net_switch_hooked", true)
-			(body as Bot).weapon_changed.connect(bot_switch)
-	return tracker
 
 
 ## Host: death, damage and respawn of a body the host simulates go out to every peer.
@@ -294,7 +269,6 @@ func _refresh_bots() -> void:
 		entities[id] = bot
 		roster[id] = {"name": bot.display_name, "color": _bot_color(id), "kind": KIND_BOT}
 		bot.set_primary_color(Color.from_string(_bot_color(id), PlayerColor.default_color()))
-		_track_anim(id, bot)
 		_hook_authority(id, bot)
 		for weapon: Weapon in bot.slots:
 			_watch_fx_weapon(id, weapon)
@@ -305,7 +279,7 @@ func _refresh_bots() -> void:
 			_bot_ids.erase(bot)
 			entities.erase(id)
 			roster.erase(id)
-			_anim.erase(id)
+			_client_anim.erase(id)
 
 
 static func _bot_color(id: int) -> String:
@@ -330,8 +304,6 @@ func _rewatch_local() -> void:
 	var holder := local_player.get_weapon_holder()
 	if holder == null:
 		return
-	var my_id := Net.my_id()
-	_track_anim(my_id, local_player)
 	for weapon in holder.get_weapons():
 		weapon.hit_mask_override = Weapon.HIT_MASK | Weapon.LAYER_PLAYER
 		if _shots.has(weapon.get_instance_id()):
@@ -386,8 +358,7 @@ func _send_state() -> void:
 		flags |= NetHost.FLAG_RELOADING if weapon.reloading else 0
 		flags |= NetHost.FLAG_ZOOMED if weapon.zoomed else 0
 	var holder := player.get_weapon_holder()
-	var tracker: NetAnim = _anim.get(Net.my_id())
-	var anim := tracker.pack(player, player.velocity) if tracker != null else PackedByteArray()
+	var anim := NetAnim.capture(player)
 	_rpc_state.rpc_id(
 		1,
 		_teleport_seq,
@@ -431,7 +402,6 @@ func _rpc_client_ready() -> void:
 		_rpc_drop.rpc_id(peer, message)
 	var puppet := _make_puppet(peer, roster[peer], true)
 	_net_host.add_client(peer)
-	_track_anim(peer, puppet)
 	_hook_authority(peer, puppet)
 	if spawn_manager != null:
 		spawn_manager.register_player(puppet, HUMAN_TEAM_BASE + peer)
@@ -455,7 +425,7 @@ func _rpc_state(
 	pitch: float,
 	flags: int,
 	slot: int,
-	anim: PackedByteArray,
+	anim: Array,
 	wstate: PackedFloat32Array
 ) -> void:
 	var peer := multiplayer.get_remote_sender_id()
@@ -470,7 +440,7 @@ func _rpc_state(
 	_net_host.accept_inputs(peer, puppet, flags, slot, wstate)
 	_remote_weapon_fx(peer, puppet, wstate)
 	_client_anim[peer] = anim
-	NetAnim.apply(puppet, NetAnim.unpack(anim, yaw, pitch))
+	NetAnim.apply(puppet, anim, yaw, pitch)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -524,16 +494,11 @@ func _send_snapshot(tick: int) -> void:
 		var pitch := head.rotation.x if head != null else 0.0
 		var health := body.get(&"health_shield") as HealthShield
 		var vitals := Vector2(health.shield, health.health) if health != null else Vector2.ZERO
-		var tracker: NetAnim = _anim.get(id)
-		var anim := PackedByteArray()
-		if _client_anim.has(id):
-			anim = (
-				tracker.override_death(_client_anim[id], bool(body.call(&"is_dead")))
-				if tracker
-				else _client_anim[id]
-			)
-		elif tracker != null:
-			anim = tracker.pack(body, (body as CharacterBody3D).velocity)
+		var anim: Array = (
+			NetAnim.override_life(_client_anim[id], body)
+			if _client_anim.has(id)
+			else NetAnim.capture(body)
+		)
 		var weapon := NetAnim.active_weapon_of(body)
 		entries.append(
 			[
@@ -573,14 +538,14 @@ func _rpc_snapshot(tick: int, entries: Array) -> void:
 			health.apply_network_state(vitals.x, vitals.y)
 		if body == local_player:
 			continue
-		var anim: PackedByteArray = entry[5]
-		var crouched := anim.size() == NetAnim.ANIM_BYTES and (anim[3] & 2) != 0
+		var anim: Variant = entry[5]  # untyped RPC data: NetAnim.decode validates it
+		var crouched := NetAnim.crouched_of(anim)
 		var frames: Array = _buffers.get(id, [])
 		frames.append([tick, entry[1], entry[2], entry[3], crouched])
 		while frames.size() > 20:
 			frames.pop_front()
 		_buffers[id] = frames
-		NetAnim.apply(body, NetAnim.unpack(anim, entry[2], entry[3]))
+		NetAnim.apply(body, anim, float(entry[2]), float(entry[3]))
 		_remote_weapon_fx(id, body, entry[6])
 
 
@@ -754,10 +719,8 @@ func _rpc_ammo(weapon_id: String, amount: int) -> void:
 
 func _on_authority_died(body: Node3D, killer: Node, info: Dictionary) -> void:
 	var id := _id_of(body)
+	# Death dir / impulse for the animation come from each body's CharacterAnimSource (died).
 	var dir: Vector3 = info.get("dir", Player.damage_direction(body, info))
-	var tracker: NetAnim = _anim.get(id)
-	if tracker != null:
-		tracker.note_death(body, dir)
 	var killer_id := _id_of(killer)
 	var weapon_name := str(info.get("weapon", ""))
 	var headshot := bool(info.get("headshot", false))
@@ -788,10 +751,6 @@ func _rpc_died(
 	var killer: Variant = entities.get(killer_id)
 	if killer is Node and is_instance_valid(killer):
 		info["source"] = killer
-	if body == local_player:
-		var tracker: NetAnim = _anim.get(id)
-		if tracker != null:
-			tracker.note_death(body, dir)
 	body.net_force_death(info)
 
 
