@@ -172,7 +172,10 @@ The client's own hits, hit markers and FX stay local predictions; no damage is a
    * The charge is therefore client-trusted: a modified client could report a full charge
      early. **Morgon accepted this for LAN play;** don't add host-side charge simulation
      unless that changes.
-   * Hit zones are unchanged: the neck stays body (Morgon).
+   * Hit zones are unchanged (Morgon): the rig's neck box (`NeckShape`, y 1.40-1.47) is part
+     of `HeadUnarmored`. The hurtbox covers most of it, but the ~1 cm band just above the
+     1.46 m hurtbox top counts as an unarmored head hit, by design. A shotgun blast centred
+     there takes the head multiplier.
 6. **Rewind:** NetLag rewinds every other body's colliders to the client's render tick (at most
    0.25 s back).
 7. **Re-cast** through the host's own weapon, aimed from a proxy node at the request origin and
