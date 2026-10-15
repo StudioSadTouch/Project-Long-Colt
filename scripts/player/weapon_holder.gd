@@ -130,6 +130,15 @@ func give_weapon(weapon: Weapon, slot: int = -1) -> Weapon:
 	return old
 
 
+## Carried weapons (non-empty slots). Pickup-carrier API, used by AmmoCrate.
+func get_weapons() -> Array[Weapon]:
+	var out: Array[Weapon] = []
+	for w in slots:
+		if w != null:
+			out.append(w)
+	return out
+
+
 ## Carried weapon with this id (WeaponPickup.weapon_id_of), or null.
 func find_weapon(weapon_id: String) -> Weapon:
 	if weapon_id == "":
@@ -288,30 +297,34 @@ func _update_pickup_hold(delta: float) -> void:
 	if _hold >= pickup_hold_time:
 		_hold = 0.0
 		_hold_lock = true
-		_take_pickup(candidate)
+		take_pickup(candidate)
 
 
 ## Empty slot: fill it and switch to it. Otherwise swap with the active weapon and drop it.
-func _take_pickup(pickup: WeaponPickup) -> void:
+## Pickup-carrier API (WeaponPickup.try_pickup); also the hold-to-take path. True if taken.
+func take_pickup(pickup: WeaponPickup) -> bool:
+	if pickup == null or (_player != null and _player.is_dead()):
+		return false
 	var weapon := pickup.take()
 	if weapon == null:
-		return
+		return false
 	var empty := slots.find(null)
 	if empty >= 0:
 		_install(weapon, empty)
 		_equip(empty)
-		return
+		return true
 	var old := give_weapon(weapon, active_index)
 	if old == null:
-		return
+		return true
 	var parent: Node = get_tree().current_scene if is_inside_tree() else null
 	if parent == null and is_inside_tree():
 		parent = get_tree().root
 	if _player == null or parent == null:
 		# Nowhere to drop it: free it rather than leak an orphan Weapon.
 		old.queue_free()
-		return
+		return true
 	WeaponPickup.drop(old, parent, _drop_position())
+	return true
 
 
 ## In front of the player, short of walls, on the floor. Falls back to the player's feet when

@@ -305,6 +305,11 @@ func get_weapon_holder() -> WeaponHolder:
 	return get_node_or_null(^"Head/Camera3D/WeaponHolder") as WeaponHolder
 
 
+## Pickup-carrier hook (WeaponPickup.carrier_of): the WeaponHolder, none while dead.
+func get_pickup_carrier() -> Object:
+	return null if dead else get_weapon_holder()
+
+
 func _on_died() -> void:
 	if dead:
 		return
