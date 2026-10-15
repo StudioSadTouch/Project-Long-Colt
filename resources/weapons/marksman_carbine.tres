@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Marksman Carbine"
+damage = 28.0
+headshot_armored_multiplier = 2.0
+headshot_unarmored_multiplier = 2.5
+shield_damage_multiplier = 1.0
+health_damage_multiplier = 1.0
+bleedthrough = false
+max_range = 200.0
+falloff_start = 50.0
+falloff_end = 90.0
+min_damage_multiplier = 0.7
+fire_mode = 0
+fire_rate = 3.0
+trigger_buffer = 0.1
+pellet_count = 1
+pellet_spread = 0.0
+magazine_size = 10
+reserve_max = 40
+reserve_start = 30
+reload_time = 2.0
+reload_insert_fraction = 0.6
+equip_time = 0.45
+battery = false
+recoil_pitch = 1.6
+recoil_yaw = 0.35
+recoil_recovery = 10.0
+spread_base = 0.05
+bloom_per_shot = 0.6
+spread_max = 1.5
+bloom_recovery = 1.5
+spread_air_add = 0.6
+secondary = 1
+zoom_fov = 37.5
+zoom_sensitivity = 0.55
+zoom_spread_multiplier = 0.6
+zoom_time = 0.12
+zoom_magnification = 2.5
+zoom_overlay = true
+aim_magnetism = 0.2
+aim_slowdown = 0.65
+aim_assist_cone = 3.5
+aim_bend_angle = 0.8
+aim_assist_range = 60.0
+melee_damage = 70.0
+melee_range = 2.0
+melee_lunge_range = 3.5
+melee_lunge_speed = 10.0
+melee_cooldown = 0.8
+melee_shield_damage_multiplier = 1.0
+melee_bleedthrough = false
