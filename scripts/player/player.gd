@@ -27,8 +27,8 @@ extends CharacterBody3D
 ## scenes/player/player_body_fallback.tscn has the same contract). Its meshes are on render
 ## layer 1 unless first_person_hidden is set, which moves them to layer 2. Only the LOCAL player
 ## sets it, and gameplay cameras cull layer 2, so you never see your own body while remote
-## players and bots stay visible. Hidden while dead. set_primary_color(color) tints it
-## (PlayerColor.apply).
+## players and bots stay visible. Visible while dead (death clip). set_primary_color(color)
+## tints it (PlayerColor.apply).
 ## Networking (scripts/net, docs/net/netcode.md). Offline everything below stays at its default:
 ##   net_puppet            set BEFORE add_child: a remote player (or a bot seen from a client).
 ##                         No input, camera, HUD or AimAssist; the pose comes from
@@ -425,7 +425,7 @@ func _on_died() -> void:
 		if is_instance_valid(body):
 			body.set_deferred(&"collision_layer", 0)
 	collision_shape.set_deferred(&"disabled", true)
-	_set_model_visible(false)
+	# The model stays visible while dead so the death clip plays (respawn_at re-shows it anyway).
 	var info := last_damage_info
 	var holder := get_weapon_holder()
 	if holder != null:

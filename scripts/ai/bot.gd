@@ -721,7 +721,7 @@ func _on_health_died() -> void:
 	collision_shape.set_deferred(&"disabled", true)
 	velocity = Vector3.ZERO
 	move_wish = Vector3.ZERO
-	visible = false
+	# Stays visible: the PlayerModel plays its death clip until respawn_at.
 	died.emit(self, killer, last_damage_info)
 
 
