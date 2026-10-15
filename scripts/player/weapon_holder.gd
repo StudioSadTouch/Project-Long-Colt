@@ -34,6 +34,9 @@ const PAD_BUTTON_NAMES := {0: "A", 1: "B", 2: "X", 3: "Y", 4: "Back", 6: "Start"
 
 var slots: Array[Weapon] = []
 var active_index: int = 0
+## Net client hook: when valid, take_pickup(p) calls this with p and returns false instead of
+## taking it locally (the host decides and sends the new loadout; see apply_loadout).
+var pickup_request_hook: Callable
 
 var _player: Player
 var _melee_left: float = 0.0
@@ -307,7 +310,10 @@ func _update_pickup_hold(delta: float) -> void:
 ## Empty slot: fill it and switch to it. Otherwise swap with the active weapon and drop it.
 ## Pickup-carrier API (WeaponPickup.try_pickup); also the hold-to-take path. True if taken.
 func take_pickup(pickup: WeaponPickup) -> bool:
-	if pickup == null or (_player != null and _player.is_dead()):
+	var blocked := pickup == null or (_player != null and _player.is_dead())
+	if not blocked and pickup_request_hook.is_valid():
+		pickup_request_hook.call(pickup)
+	if blocked or pickup_request_hook.is_valid():
 		return false
 	var weapon := pickup.take()
 	if weapon == null:
@@ -361,8 +367,48 @@ func _drop_position() -> Vector3:
 	return floor_hit.position
 
 
+## Equip slot index if it holds a weapon (net: remote weapon switches).
+func select_slot(index: int) -> void:
+	if index >= 0 and index < SLOT_COUNT and index != active_index:
+		_equip(index)
+
+
+## Net: adopt the host's loadout after a pickup. entries[i] is {} for an empty slot or
+## {"id": weapon id, "scene": PackedScene, "magazine": int, "reserve": int}. A slot already
+## holding that weapon id keeps its local instance (and the client's own magazine split);
+## anything else is replaced with a fresh instance carrying the host's ammo. Equips active.
+func apply_loadout(entries: Array, active: int) -> void:
+	for i in SLOT_COUNT:
+		var entry: Dictionary = entries[i] if i < entries.size() else {}
+		var w := slots[i]
+		if w != null and entry.get("id", "") == WeaponPickup.weapon_id_of(w):
+			continue
+		if w != null:
+			w.holster()
+			if w.zoom_changed.is_connected(_on_zoom_changed):
+				w.zoom_changed.disconnect(_on_zoom_changed)
+			slots[i] = null
+			if w.get_parent() == self:
+				remove_child(w)
+			w.queue_free()
+		var scene := entry.get("scene") as PackedScene
+		var fresh := scene.instantiate() as Weapon if scene != null else null
+		if fresh == null:
+			continue
+		_install(fresh, i)
+		# _install's add_child ran _ready (full magazine); the host's ammo goes on after.
+		fresh.magazine = int(entry.get("magazine", fresh.magazine))
+		fresh.reserve = int(entry.get("reserve", fresh.reserve))
+	active_index = clampi(active, 0, SLOT_COUNT - 1)
+	var first := _first_filled(active_index)
+	if first >= 0:
+		_equip(first)
+	else:
+		active_weapon_changed.emit(null)
+
+
 func _input_enabled() -> bool:
-	if _player != null and _player.is_dead():
+	if _player != null and (_player.is_dead() or _player.net_puppet):
 		return false
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"
 

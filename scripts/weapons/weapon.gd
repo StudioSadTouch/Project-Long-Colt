@@ -42,6 +42,8 @@ extends Node3D
 ## HIT_MASK | LAYER_PLAYER scores body, helmet and face on the player exactly as on bots.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
 
+## Net / FX hook: every hitscan ray (to = hit point, or max_range out on a miss).
+signal ray_fired(from: Vector3, to: Vector3, hit: Dictionary)
 signal ammo_changed(magazine: int, reserve: int)
 signal fired
 signal trigger_released
@@ -607,6 +609,8 @@ func _apply_melee(hit: Dictionary) -> void:
 
 func _fire_ray(direction: Vector3) -> void:
 	var hit := _raycast(direction, data.max_range)
+	var from := _aim().global_position
+	ray_fired.emit(from, hit.get("position", from + direction * data.max_range), hit)
 	if hit.is_empty():
 		return
 	var target := _damage_receiver(hit.collider)

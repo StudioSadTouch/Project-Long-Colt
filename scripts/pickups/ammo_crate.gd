@@ -6,6 +6,8 @@ extends Node3D
 ## Serves any pickup carrier (see WeaponPickup: WeaponPickup.carrier_of, which needs
 ## get_weapons() here) automatically while in reach; AIs can also ask can_give / is_in_reach and
 ## call give / try_pickup themselves.
+## Networking: only the host (or offline play) gives ammo; net clients mirror availability with
+## net_set_available() from NetMatch.
 
 @export var magazines_per_weapon: int = 1
 @export var respawn_delay: float = 30.0
@@ -38,7 +40,7 @@ func can_give(carrier: Object) -> bool:
 
 ## Gives every carried weapon its share. True (and consumed) if any ammo moved. No reach check.
 func give(carrier: Object) -> bool:
-	if not available:
+	if not available or not is_authority():
 		return false
 	var added := 0
 	for w in _weapons_of(carrier):
@@ -58,6 +60,17 @@ func is_in_reach(carrier: Object) -> bool:
 ## give(), but only in reach.
 func try_pickup(carrier: Object) -> bool:
 	return is_in_reach(carrier) and give(carrier)
+
+
+## Crate state changes happen here: offline, or on the net host.
+func is_authority() -> bool:
+	return not is_inside_tree() or multiplayer.is_server()
+
+
+## Net client: mirror the host's availability.
+func net_set_available(on: bool) -> void:
+	available = on
+	visual.visible = on
 
 
 func _physics_process(_delta: float) -> void:

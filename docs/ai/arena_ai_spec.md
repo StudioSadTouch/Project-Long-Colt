@@ -12,7 +12,7 @@ Legendary = faster, more accurate, more aggressive). Every Halo-derived number i
 ```
 Bot (CharacterBody3D, bot.gd)       movement = duplicated player.gd constants, lunge, crouch, jump
 ├─ CollisionShape3D  capsule r0.35 h1.8   layer 0, mask World|Player|Enemy (movement only)
-├─ Hurtbox (AnimatableBody3D)        Enemy layer (4), box 0.7x1.4x0.4 like the dummies
+├─ Hurtbox (AnimatableBody3D)        Enemy layer (4), box 0.7x1.46x0.4 like the dummies
 ├─ Rig (dummy_rig.tscn)              HeadArmored / HeadUnarmored on Hitbox layer (32)
 │  └─ AimHeadPoint (Marker3D)        get_aim_points().head (movable; not hard-coded)
 ├─ Head/Eye (Node3D)                 Weapon.aim_source: ray origin + aim basis

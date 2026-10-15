@@ -27,6 +27,10 @@ extends Node3D
 ## node in group CARRIER_GROUP (skipped while is_dead()). Carriers in reach get walk-over ammo
 ## automatically every physics tick; can_take / take / ammo_for / give_ammo / is_useful_to /
 ## is_in_reach / try_pickup let an AI decide and act without touching privates.
+##
+## Networking: the host (or offline play: multiplayer.is_server() is true) owns pickups. On a
+## net client walk-over ammo, take() and despawn do nothing; the host's NetMatch mirrors
+## availability with net_set_available() and spawns / frees dropped pickups.
 
 const SCENE_PATH := "res://scenes/pickups/weapon_pickup.tscn"
 const BOB_HEIGHT := 0.08
@@ -138,6 +142,8 @@ func ammo_for(carrier: Object) -> int:
 
 ## Walk-over ammo (rules in the class comment). Returns rounds added; may consume the pickup.
 func give_ammo(carrier: Object) -> int:
+	if not is_authority():
+		return 0
 	var carried := _carried_match(carrier)
 	if carried == null:
 		return 0
@@ -186,7 +192,7 @@ func try_pickup(carrier: Object) -> bool:
 ## Hands over the weapon (the caller installs it) and consumes the pickup. Used by
 ## WeaponHolder.take_pickup and by bots.
 func take() -> Weapon:
-	if not available or weapon == null:
+	if not available or weapon == null or not is_authority():
 		return null
 	var taken := weapon
 	weapon = null
@@ -194,11 +200,28 @@ func take() -> Weapon:
 	return taken
 
 
+## Pickup state changes happen here: offline, or on the net host.
+func is_authority() -> bool:
+	return not is_inside_tree() or multiplayer.is_server()
+
+
+## Net client: mirror the host's availability (no timers, no weapon changes).
+func net_set_available(on: bool) -> void:
+	if on == available:
+		return
+	available = on
+	pivot.visible = on
+	var method := &"register_pickup" if on else &"unregister_pickup"
+	for carrier: Object in _carriers.keys():
+		if is_instance_valid(carrier) and carrier.has_method(method):
+			carrier.call(method, self)
+
+
 func _physics_process(delta: float) -> void:
 	_time += delta
 	pivot.position.y = 0.45 + sin(_time * BOB_SPEED) * BOB_HEIGHT
 	pivot.rotation.y += SPIN_SPEED * delta
-	if not available:
+	if not available or not is_authority():
 		return
 	for carrier: Object in _carriers.keys():
 		if not available:
@@ -252,7 +275,7 @@ func _respawn() -> void:
 
 
 func _on_despawn() -> void:
-	if available:
+	if available and is_authority():
 		_consume()
 
 
