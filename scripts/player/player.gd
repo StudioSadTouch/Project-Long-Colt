@@ -311,6 +311,7 @@ func _physics_process(delta: float) -> void:
 func take_damage(amount: float, info: Dictionary) -> void:
 	if dead or health_shield == null or not net_damage_authority:
 		return
+	# Anim contract: info.dir is world shooter -> victim; info.impulse is optional, passed on.
 	if not info.has("dir"):
 		info["dir"] = damage_direction(self, info)
 	last_damage_info = info

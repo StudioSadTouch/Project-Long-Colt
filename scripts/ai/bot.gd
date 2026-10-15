@@ -285,6 +285,10 @@ func is_lunging() -> bool:
 func take_damage(amount: float, info: Dictionary) -> void:
 	if dead:
 		return
+	# Anim contract: info.dir is world shooter -> victim (Weapon sets it; fill it otherwise).
+	# info.impulse is optional and passed through as-is.
+	if not info.has("dir"):
+		info["dir"] = Player.damage_direction(self, info)
 	last_damage_info = info
 	var result := health_shield.apply_damage(amount, info)
 	var applied: float = result.shield + result.health
