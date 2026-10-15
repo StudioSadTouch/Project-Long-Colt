@@ -3,8 +3,8 @@
 Target: Bungie-era Halo (CE through Reach, Halo 2 first). Every number below is checked against
 HealthShield (70 shield / 45 health) and the shared Weapon code:
 
-- No bleedthrough on any gun: the round (or pellet) that breaks the shield is absorbed, its
-  overflow is lost.
+- No bleedthrough on any gun: the round (or shotgun blast) that breaks the shield is absorbed,
+  its overflow is lost. A shotgun blast is one damage event per victim (section 3).
 - Zone multipliers (helmet = `hitbox_head_armored`, face/neck = `hitbox_head_unarmored`) apply to
   health only. While the shield is up every zone does base damage to the shield.
 - `shield_damage_multiplier` applies to shield damage only. New: `health_damage_multiplier`
@@ -26,7 +26,7 @@ HealthShield (70 shield / 45 health) and the shared Weapon code:
 | Service Pistol (existing) | Spawn sidearm, precision finisher | SEMI 4.5/s, 2x zoom | 22 | x2.0 / x5.0 | 1.0 / 1.0 | 0-50 m | 35 -> 70 m, 0.6 |
 | Standard Issue Rifle (existing) | Spawn primary, close-mid sprayer; burst for mid | AUTO 10/s; BURST 3 rounds (0.47 s cycle) | 9 | x2.0 / x2.0 | 1.0 / 1.0 | AUTO 0-20 m, BURST 0-40 m | AUTO 15 -> 40 m, 0.5; BURST 35 -> 70 m, 0.6 |
 | Marksman Carbine (new) | Map pickup, mid-long precision | SEMI 3.0/s, 2.5x scope | 28 | x2.0 / x2.5 | 1.0 / 1.0 | 15-75 m | 50 -> 90 m, 0.7 |
-| Combat Shotgun (new) | Power weapon, close range | SEMI pump 1.2/s, 10 pellets | 10 per pellet (100) | x1.0 / x1.0 | 1.0 / 1.0 | 0-6 m (one-shot), useless past 10 m | 3 -> 12 m, 0.1 |
+| Combat Shotgun (new) | Power weapon, close range | SEMI pump 1.2/s, 10 pellets | 4 per pellet (40 per blast) | x4.0 / x4.0 (head blast) | 1.0 / 1.0 | 0-6 m (head-blast kill), useless past 10 m | 6 -> 12 m, 0.1 |
 | Directed Energy Rifle (new) | Power weapon, shield stripper | AUTO 8/s bolts; alt mode: charge shot | 10 (charge 50) | x1.0 / x1.0 | 1.6 / 0.75 | 0-25 m | 20 -> 45 m, 0.5 (charge 25 -> 50 m, 0.6) |
 
 Values verified from the .tres files for pistol (`resources/weapons/service_pistol.tres`) and
@@ -53,19 +53,10 @@ Shots to kill (time). Strip = shots to break the shield.
 | DER bolts | 35 m | 11.2 / 5.25 | 7 (0.75 s) | 16 (1.88 s), overheats at 14 | same | same |
 | DER bolts | >= 45 m | 8 / 3.75 | 9 (1.00 s) | 21 (2.50 s), overheats | same | same |
 | DER charge | <= 25 m | 80 shield / 37.5 health | **1** (after 0.75 s charge) | never alone (37.5 < 45) | - | - |
-| Shotgun | <= 3 m, 10 pellets | 100 | 1st shot strips + 30 health | **2 shots (0.83 s)**, or shot + melee | same (no head bonus) | same |
-| Shotgun | <= 3 m vs **unshielded** | 100 | - | **1 shot** (needs 5 of 10 pellets) | - | - |
-| Shotgun | 6 m vs unshielded | 7 per pellet | - | 1 shot needs 7+ pellets (~92% of shots with centred aim at 4 deg) | - | - |
-| Shotgun | 8 m vs unshielded | 5 per pellet | - | 1 shot only with all 10 | - | - |
-| Shotgun | 10 m, full shield | 3 per pellet | - | 4+ shots: not a 10 m gun | - | - |
+| Shotgun | <= 6 m | 40 per blast | **2 blasts (0.83 s)** | 4 blasts (2.50 s) | **3 blasts (1.67 s)**: 2 + 1 head blast | same as helmet |
 
-Pellets are separate hits, each going through HealthShield on its own. The "breaking shot
-doesn't carry through" rule is therefore per pellet: the pellet that breaks the shield loses its
-overflow, and every pellet after it in the same blast hits health. At point blank, 10 x 10:
-pellets 1-7 take exactly 70 shield, pellets 8-10 do 30 health. So the shotgun never one-shots a
-full shield, as specified, but shot + melee (70) or shot + any follow-up kills.
-Tuning note for Morgon: 12 damage per pellet makes it a Halo 2/3-style one-shot on a full shield at
-<= 3 m with all 10 pellets (6 to break, 4 x 12 = 48 health). It is not shipped that way.
+The shotgun has its own table (section 3). Morgon's rule: 2 blasts strip, then 1 head blast or 2
+body blasts kill.
 
 Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills bare health.
 
@@ -77,7 +68,7 @@ Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills 
 | DER charge -> Carbine helmet | + 0.45 s carbine equip -> ~0.45 s after release | Helmet one-shots with the carbine. |
 | DER charge -> melee | ~0.1-0.3 s after release (lunge 3.5 m) | |
 | DER bolts (5) -> Pistol face | 0.50 s + 0.30 s equip + 1 shot = ~0.8 s | |
-| Shotgun -> melee | ~0.1-0.3 s after the blast | Classic CE/H2 close-quarters combo. |
+| Shotgun -> melee -> shotgun | blast (40) + melee (strips, overflow lost) + head blast | Classic CE/H2 close-quarters combo; melee alone kills bare health, so blast + melee + melee also works. |
 | Melee -> Pistol face | melee then 1 shot | Unchanged. |
 | Rifle strip (AUTO 10 m, 0.70 s) -> Pistol face | 0.70 + 0.30 + 1 shot = ~1.0 s | Unchanged. |
 
@@ -100,12 +91,46 @@ Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills 
 - Distinct report: a sharp high crack with a long, ringing tail (placeholder generated audio).
 
 ### Combat Shotgun (`resources/weapons/combat_shotgun.tres`)
-- 10 pellets x 10 in a 4 deg half-angle cone (seedable RNG, see the framework section), no head
-  bonus (Halo shotguns never had one), pump 0.83 s, 6 shells, 12 reserve (max 24).
-- One-shots unshielded targets up close: 100 at <= 3 m (needs 5 pellets), 7 pellets at 6 m.
-  Falloff 3 -> 12 m to 0.1: at 10 m a full blast does 30.
-- Two shots or shot + melee on a full shield (0.83 s or ~0.3 s): faster than any rifle up close,
-  hopeless past 10 m. Huge kick (7 deg pitch, 1.8 deg yaw) and a 0.6 s equip.
+Tuning decided by Morgon: vs 70 shield / 45 health, **2 blasts strip, then 1 head blast or 2
+body blasts kill**. Full-pellet blast D = 10 x 4.0 = 40 (35 <= D < 45), head x4.0 (D x 4 >= 45).
+
+- 10 pellets x 4.0 in a 4 deg half-angle cone (seeded, see the framework section), pump 0.83 s,
+  6 shells, 12 reserve (max 24). Full damage to 6 m, falloff 6 -> 12 m to 0.1.
+- **A blast is one damage event per victim.** Every pellet traces the shared ray path with its own
+  falloff; the pellets that hit the same victim are summed into a single `take_damage`. So
+  no-bleedthrough applies per blast: the blast that breaks a shield loses its overflow, and no
+  pellet of it reaches health. (Per-pellet hits would let the pellets after the shield-breaking
+  one hit health and break "2 blasts strip".)
+- **Head blast = the centre pellet on the head.** Pellet 0 is the exact aim ray (spread, aim
+  assist and bend applied, no cone offset); the other 9 scatter around it. If pellet 0 hits the
+  victim's head zone (helmet, face or neck), the whole summed blast takes the head multiplier
+  (x4.0, armored and unarmored alike, health only). Otherwise it is a body blast, even when stray
+  pellets touch the head; if pellet 0 misses the victim but other pellets hit, it is a body blast.
+  Aim decides it, not pellet luck, and it replays deterministically from the shot seed.
+- Why x4.0 and not ~1.3: a head-aimed pattern spills off the target (above and beside the
+  helmet), so a head blast lands far fewer pellets than a centre-mass one: ~5 of 10 at 5 m,
+  ~4.6 at 6 m (centre-mass: 10 and ~9.3). With x4 a head blast kills on 3 pellets (48) at full
+  damage, which is a >= 93% kill to 6 m with the centre on the helmet. x1.3 would kill only
+  inside ~3 m. Point-blank overkill (160) is health-only and irrelevant.
+- Guarantees: one body blast never kills a full-health unshielded target (max 40 < 45, any
+  range); 2 body blasts kill a stripped target out to ~7 m; head blasts do nothing extra to a
+  shield (zone multipliers are health only).
+- Huge kick (7 deg pitch, 1.8 deg yaw) and a 0.6 s equip.
+
+Expected values with the target's real silhouette (body 0.7 x 1.4 m box, neck, 0.36 m helmet),
+centre-mass aim for body blasts and helmet-centre aim for head blasts; P = chance that a single
+head blast kills a stripped target (from the pellet-hit odds). 0.83 s per pump.
+
+| Range | Falloff | Body blast (pellets) | Blasts to strip | Head blast to health (pellets) | P(head kill) | 2 body blasts | Full kill, head finish | Full kill, body only |
+|---|---|---|---|---|---|---|---|---|
+| 2 m | 1.00 | 40.0 (10) | 2 | 160 (10) | 1.00 | 80 | **3 (1.67 s)** | 4 (2.50 s) |
+| 4 m | 1.00 | 40.0 (10) | 2 | 99 (6.2) | 0.99 | 80 | **3 (1.67 s)** | 4 (2.50 s) |
+| 6 m | 1.00 | 37.1 (9.3) | 2 (83%) | 73 (4.6) | 0.93 | 74 | **3 (1.67 s)** | 4 (2.50 s) |
+| 8 m | 0.70 | 21.5 (7.7) | 4 | 45 (4.0) | 0.35 | 43 | 6 (4.17 s) | 7 (5.00 s) |
+| 10 m | 0.40 | 10.3 (6.5) | 7 | 23 (3.5) | 0.00 | 21 | 9+ (6.7 s) | 12 (9.2 s) |
+
+At 6 m two blasts strip 83% of the time (the shield needs 18 of 20 pellets); at 7 m the head
+blast is ~70% and two blasts no longer strip. Past 10 m it is useless, as intended.
 - Reload is a whole-tube reload (2.6 s). A Halo-style shell-by-shell reload is a follow-up
   (needs a per-round reload mode and LC Animator's clips).
 
@@ -136,14 +161,16 @@ Melee (70, all five guns, no bleedthrough): breaks a full shield exactly, kills 
 - Spawn kit: Standard Issue Rifle + Service Pistol (unchanged). Rifle AUTO owns 0-15 m, BURST
   15-40 m; the pistol is the "still dangerous" precision finisher and the face one-shot.
 - Pickups add a step up in each band, each with a clear cost:
-  - close: Shotgun (power) beats the rifle inside 6 m, loses past 10 m, 2 shots on shields.
+  - close: Shotgun (power) beats the rifle inside 6 m, loses past 10 m: 2 blasts strip, a head
+    blast finishes.
   - mid-long: Carbine beats the pistol past 40 m and forgives helmet hits, but is slower to
     fire (3/s), kicks harder and runs out (40 rounds max).
   - shields: DER strips faster than anything and enables combos, but can't finish efficiently,
     overheats, can't reload, and loses to range.
 - Nobody wins every band. Kill times from full shield cluster around 0.9-1.3 s for perfect
-  play (pistol face 0.89, carbine head 1.00, rifle AUTO head 1.00, DER 1.25, shotgun 0.83),
-  so encounters stay readable (Halo 2's ~1 s range). The power guns win on reliability, not on
+  play (pistol face 0.89, carbine head 1.00, rifle AUTO head 1.00, DER 1.25; the shotgun's
+  3-blast kill is 1.67 s, but it strips in 0.83 s and its combos are faster), so encounters stay
+  readable (Halo 2's ~1 s range). The power guns win on reliability, not on
   a faster theoretical TTK. Combos (DER + precision, shotgun + melee) are the fast kills, Halo-style.
 
 ## 5. Flag: the pistol helmet shot (44 vs 45)
@@ -175,9 +202,10 @@ So the 1 HP gap is a consequence of a deliberate damage change, not an accident 
 
 WeaponData (all appended, defaults = old behaviour):
 - `health_damage_multiplier = 1.0`: health-only scale, multiplied into zone_multiplier.
-- `pellet_count = 1`, `pellet_spread = 0.0`: pellets per shot, cone half-angle around the aim ray.
-  Pellet directions come from `Weapon._spread_rng`, a seedable RandomNumberGenerator; the
-  single-ray path keeps the global randf() so the pistol and rifle are byte-identical.
+- `pellet_count = 1`, `pellet_spread = 0.0`: pellets per shot, cone half-angle around pellet 0
+  (the aim ray). A blast sums its pellets per victim into one take_damage, zoned by pellet 0.
+  Every shot (pistol and rifle too) is seeded from `Weapon._spread_rng`, a seedable
+  RandomNumberGenerator.
 - `battery = false`: magazine is battery charge, no reload, no ammo pickup.
 - `heat_per_shot = 0.0` (0 = no heat), `heat_cooldown_delay`, `heat_cooldown_rate`,
   `overheat_vent_time`.
@@ -186,3 +214,9 @@ WeaponData (all appended, defaults = old behaviour):
 
 See the commit messages and the report for the exact members added to weapon.gd and
 weapon_data.gd.
+
+## 7. Confirmed by Morgon
+
+- Marksman Carbine: stays BR-like. No change.
+- DER swap-when-flat: confirmed (a DER pickup with more battery than yours is a swap).
+- Combat Shotgun retune and the head-blast rule above.
