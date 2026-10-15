@@ -40,6 +40,8 @@ const CHARGE_MIN_SHIELD := 0.9
 ## Pickup distance multipliers (< 1 = more attractive) for guns the bot doesn't carry.
 const PICKUP_WEIGHT := {Role.CARBINE: 0.8, Role.SHOTGUN: 0.6, Role.ENERGY: 0.6}
 const HYSTERESIS := 3.0
+## Bots only detour for a same-id battery-weapon swap (flat DER) gaining at least this much.
+const MIN_BATTERY_GAIN := 25
 ## Pistol / rifle: rifle below WEAPON_SPLIT, pistol above, with +/- WEAPON_SWITCH_HYSTERESIS so a
 ## bot near the split doesn't swap back and forth: holding the rifle it switches past 31 m,
 ## holding the pistol it switches back under 25 m.
@@ -131,6 +133,12 @@ static func has_loaded_shotgun(slots: Array) -> bool:
 		):
 			return true
 	return false
+
+
+## A battery swap (WeaponPickup.is_battery_upgrade_for) gaining < MIN_BATTERY_GAIN: not worth
+## a bot's detour. Players take any gain.
+static func small_battery_gain(pickup: WeaponPickup, bot: Bot) -> bool:
+	return pickup.is_battery_upgrade_for(bot) and pickup.battery_gain_for(bot) < MIN_BATTERY_GAIN
 
 
 static func pickup_weight(pickup: WeaponPickup) -> float:

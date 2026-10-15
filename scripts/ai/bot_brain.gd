@@ -358,7 +358,7 @@ func _choose_pickup(radius: float) -> bool:
 	var best: WeaponPickup = null
 	var best_d := radius
 	for p in _events.get_pickups():
-		if not p.is_useful_to(_bot):
+		if not p.is_useful_to(_bot) or BotWeaponPrefs.small_battery_gain(p, _bot):
 			continue
 		var d := _bot.global_position.distance_to(p.global_position)
 		# Prefer pickups that solve the actual problem: ammo for what we carry, or a new gun.

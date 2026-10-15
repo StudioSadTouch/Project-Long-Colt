@@ -173,12 +173,17 @@ func is_useful_to(carrier: Object) -> bool:
 
 ## A battery weapon with more charge than the carrier's copy of the same weapon (swap, not ammo).
 func is_battery_upgrade_for(carrier: Object) -> bool:
+	return battery_gain_for(carrier) > 0
+
+
+## Battery this pickup holds over the carrier's copy of the same battery weapon (0 if none).
+func battery_gain_for(carrier: Object) -> int:
 	if not can_take() or weapon.data == null or not weapon.data.battery:
-		return false
+		return 0
 	var carried := _find(carrier, get_weapon_id())
 	# Placed pickups hold a fresh, never-readied weapon: full charge.
 	var offered := weapon.magazine if dropped else weapon.data.magazine_size
-	return carried != null and carried.magazine < offered
+	return maxi(offered - carried.magazine, 0) if carried != null else 0
 
 
 ## carrier has a body inside the trigger.
