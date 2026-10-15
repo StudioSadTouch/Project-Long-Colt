@@ -121,8 +121,8 @@ func release(fire: bool = true) -> void:
 		_w._try_fire()
 
 
-## The one path for charged shots: hitscan x charge_damage_multiplier, costs charge_ammo_cost,
-## adds charge_heat. Refused while reloading.
+## The one path for charged shots: Weapon._emit_shots(charge_damage_multiplier), seeded like
+## every shot; costs charge_ammo_cost, adds charge_heat. Refused while reloading.
 func fire_charged() -> void:
 	var data := _w.data
 	_w.charging = false
@@ -132,8 +132,7 @@ func fire_charged() -> void:
 		return
 	_w.magazine -= mini(maxi(data.charge_ammo_cost, 1), _w.magazine)
 	_w._cooldown = maxf(_w._cooldown, 0.0) + 1.0 / data.fire_rate
-	var aim := _w._assisted_direction(_w._spread_direction(_w.get_spread()))
-	_w._fire_ray(aim, data.charge_damage_multiplier)
+	_w._emit_shots(data.charge_damage_multiplier)
 	add_heat(data.charge_heat)
 	_w._bloom = minf(_w._bloom + data.bloom_per_shot, data.spread_max - data.spread_base)
 	_w._kick()

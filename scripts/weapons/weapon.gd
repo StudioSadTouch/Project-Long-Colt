@@ -128,13 +128,17 @@ var charging: bool = false
 var charge: float = 0.0
 ## Heat / charge timers and transitions (WeaponHeatCharge), incl. netcode get/apply_net_state.
 var heat_charge: WeaponHeatCharge
-## Seed the last pellet shot used (data.pellet_count > 1).
+## Every shot (single ray, pellets, charged) reseeds _spread_rng once: next_shot_seed if one
+## was written since the last shot (netcode replay), else randi(). last_shot_seed is the seed
+## the last shot used. next_shot_spread >= 0 overrides get_spread() for the next shot only.
+## Draw order per shot: 2 randf for a single ray (radius, angle); pellets 2 for the centre,
+## then 2 per pellet in order.
 var last_shot_seed: int = 0
-## Write to seed the next pellet shot only (netcode replay). Unset, each shot draws randi().
 var next_shot_seed: int = 0:
 	set(value):
 		next_shot_seed = value
 		_has_next_seed = true
+var next_shot_spread: float = -1.0
 
 var _cooldown: float = 0.0
 var _equip_left: float = 0.0
@@ -481,30 +485,38 @@ func _consume_ammo() -> bool:
 	return true
 
 
-## Override for bursts. Default: one hitscan ray through the spread cone (bent by aim assist),
-## or data.pellet_count pellets (_emit_pellets).
-func _emit_shots() -> void:
+## Override for bursts. Default: one seeded hitscan ray through the spread cone (bent by aim
+## assist), or data.pellet_count pellets. damage_scale: charged shots (1.0 otherwise).
+func _emit_shots(damage_scale: float = 1.0) -> void:
+	_seed_shot()
 	if data.pellet_count > 1:
-		_emit_pellets()
+		_emit_pellets(damage_scale)
 		return
-	_fire_ray(_assisted_direction(_spread_direction(get_spread())))
+	_fire_ray(_assisted_direction(_spread_direction(_shot_spread())), damage_scale)
 
 
-## The bloomed aim picks the pattern centre, each pellet scatters within data.pellet_spread of
-## it. One _spread_rng seed per shot: same seed + aim = same pellets. No bend on pellets.
-func _emit_pellets() -> void:
-	_bent = false
-	if _has_next_seed:
-		_spread_rng.seed = next_shot_seed
-		_has_next_seed = false
-	else:
-		_spread_rng.seed = randi()
+func _seed_shot() -> void:
+	_spread_rng.seed = next_shot_seed if _has_next_seed else randi()
+	_has_next_seed = false
 	last_shot_seed = _spread_rng.seed
+
+
+## Spread for this shot: next_shot_spread if set (then cleared), else get_spread().
+func _shot_spread() -> float:
+	var spread := next_shot_spread if next_shot_spread >= 0.0 else get_spread()
+	next_shot_spread = -1.0
+	return spread
+
+
+## The shot spread picks the pattern centre, each pellet scatters within data.pellet_spread of
+## it, all from the shot's _spread_rng seed (same seed + aim = same pellets). No bend.
+func _emit_pellets(damage_scale: float = 1.0) -> void:
+	_bent = false
 	var basis := _aim().global_transform.basis
-	var centre := _cone_offset(get_spread(), _spread_rng)
+	var centre := _cone_offset(_shot_spread(), _spread_rng)
 	for _i in data.pellet_count:
 		var offset := centre + _cone_offset(data.pellet_spread, _spread_rng)
-		_fire_ray((basis * Vector3(offset.x, offset.y, -1.0)).normalized())
+		_fire_ray((basis * Vector3(offset.x, offset.y, -1.0)).normalized(), damage_scale)
 
 
 ## Uniform point in a cone (half-angle in degrees) as a tangent-plane offset at z = -1.
@@ -838,13 +850,10 @@ func _falloff(distance: float) -> float:
 	return lerpf(1.0, floor_mult, t)
 
 
+## Seeded (_spread_rng, see _seed_shot): 2 draws, radius then angle (sqrt keeps it even).
 func _spread_direction(spread_degrees: float) -> Vector3:
-	var basis := _aim().global_transform.basis
-	# sqrt keeps the distribution even across the cone's area.
-	var radius := tan(deg_to_rad(spread_degrees)) * sqrt(randf())
-	var angle := randf() * TAU
-	var local := Vector3(cos(angle) * radius, sin(angle) * radius, -1.0)
-	return (basis * local).normalized()
+	var offset := _cone_offset(spread_degrees, _spread_rng)
+	return (_aim().global_transform.basis * Vector3(offset.x, offset.y, -1.0)).normalized()
 
 
 func _finish_reload() -> void:
