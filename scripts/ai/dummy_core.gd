@@ -81,8 +81,9 @@ func take_damage(amount: float, info: Dictionary) -> void:
 func _die() -> void:
 	dead = true
 	_root.visible = false
-	for body: CollisionObject3D in _layers:
-		body.collision_layer = 0
+	for body: Variant in _layers:  # untyped: a collider may have been freed
+		if is_instance_valid(body):
+			(body as CollisionObject3D).collision_layer = 0
 	died.emit()
 	get_tree().create_timer(respawn_delay, false).timeout.connect(_respawn)
 
@@ -90,8 +91,9 @@ func _die() -> void:
 func _respawn() -> void:
 	dead = false
 	_health.reset()
-	for body: CollisionObject3D in _layers:
-		body.collision_layer = _layers[body]
+	for body: Variant in _layers:  # untyped: a collider may have been freed
+		if is_instance_valid(body):
+			(body as CollisionObject3D).collision_layer = _layers[body]
 	_root.visible = true
 	respawned.emit()
 

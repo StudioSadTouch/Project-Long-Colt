@@ -365,8 +365,9 @@ func respawn_at(xform: Transform3D) -> void:
 	_eye_height = STAND_EYE
 	_apply_capsule()
 	_apply_pose()
-	for body: CollisionObject3D in _layers:
-		body.collision_layer = _layers[body]
+	for body: Variant in _layers:  # untyped: a collider may have been freed
+		if is_instance_valid(body):
+			(body as CollisionObject3D).collision_layer = _layers[body]
 	collision_mask = MOVE_MASK
 	collision_shape.disabled = false
 	health_shield.reset()
@@ -719,8 +720,9 @@ func _on_health_died() -> void:
 	if drop_weapon_on_death and not last_damage_info.get("kill_volume", false):
 		_drop_all()
 	# Deferred: death can come from a KillVolume body_entered during the physics flush.
-	for body: CollisionObject3D in _layers:
-		body.set_deferred(&"collision_layer", 0)
+	for body: Variant in _layers:  # untyped: a collider may have been freed
+		if is_instance_valid(body):
+			(body as Object).set_deferred(&"collision_layer", 0)
 	set_deferred(&"collision_mask", 0)
 	collision_shape.set_deferred(&"disabled", true)
 	velocity = Vector3.ZERO

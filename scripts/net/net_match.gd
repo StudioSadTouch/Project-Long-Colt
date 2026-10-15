@@ -280,9 +280,14 @@ func _refresh_bots() -> void:
 		roster[id] = {"name": bot.display_name, "color": _bot_color(id), "kind": KIND_BOT}
 		bot.set_primary_color(Color.from_string(_bot_color(id), PlayerColor.default_color()))
 		_hook_authority(id, bot)
-		for weapon: Weapon in bot.slots:
-			_watch_fx_weapon(id, weapon)
-		bot.weapon_changed.connect(func(w: BotWeapon) -> void: _watch_fx_weapon(id, w))
+		for weapon: Variant in bot.slots:  # untyped: a slot may hold a freed weapon
+			if is_instance_valid(weapon):
+				_watch_fx_weapon(id, weapon)
+		bot.weapon_changed.connect(
+			func(w: Variant) -> void:
+				if is_instance_valid(w):
+					_watch_fx_weapon(id, w)
+		)
 	for bot: Variant in _bot_ids.keys():
 		if not is_instance_valid(bot):
 			var id: int = _bot_ids[bot]
