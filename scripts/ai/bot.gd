@@ -8,7 +8,7 @@ extends CharacterBody3D
 ## Collision layout (see docs/ai/arena_ai_spec.md):
 ##   root capsule  layer 0, mask World | Player | Enemy. Movement only; weapons never hit it,
 ##                 because a 0.35 m capsule would cover the visor and turn head shots into body.
-##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.7 x 1.4 x 0.4 like the dummies.
+##   Hurtbox       AnimatableBody3D on Enemy (4), box 0.7 x 1.46 x 0.4 like the dummies.
 ##   Rig heads     HeadArmored / HeadUnarmored on Hitbox (32), from dummy_rig.tscn.
 ## Damage: take_damage on the root only, so Weapon's receiver (nearest ancestor with
 ## take_damage) is always the Bot for hurtbox and head hits alike (keeps the visor probe's
@@ -44,7 +44,7 @@ const FLOOR_MAX_ANGLE_DEG := 50.0
 const SLOT_COUNT := 2
 const ENEMY_LAYER := 4
 const MOVE_MASK := 1 | 2 | 4
-const HURTBOX_HEIGHT := 1.4
+const HURTBOX_HEIGHT := 1.46
 const HURTBOX_MIN_HEIGHT := 0.7
 ## Horizontal reach to take or top up from a WeaponPickup.
 const DROP_MASK := 1

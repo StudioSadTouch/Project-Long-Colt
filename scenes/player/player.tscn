@@ -15,7 +15,7 @@ height = 1.8
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_hurt"]
 resource_local_to_scene = true
-size = Vector3(0.7, 1.4, 0.4)
+size = Vector3(0.7, 1.46, 0.4)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_helmet"]
 size = Vector3(0.36, 0.34, 0.36)
@@ -42,7 +42,7 @@ collision_mask = 0
 sync_to_physics = false
 
 [node name="Shape" type="CollisionShape3D" parent="Hurtbox"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.73, 0)
 shape = SubResource("BoxShape3D_hurt")
 
 [node name="Rig" type="Node3D" parent="."]

@@ -7,7 +7,7 @@ extends CharacterBody3D
 ##   root capsule  layer 2 (Player), movement, pickups, lifts, kill volumes. In group
 ##                 Weapon.PASSTHROUGH_GROUP, so hitscan and melee pass through it (a 0.35 m
 ##                 capsule would cover the visor and turn head shots into body shots).
-##   Hurtbox       AnimatableBody3D on layer 2, box 0.7 x 1.4 x 0.4: body hits.
+##   Hurtbox       AnimatableBody3D on layer 2, box 0.7 x 1.46 x 0.4: body hits.
 ##   Rig heads     HeadArmored (helmet) / HeadUnarmored (visor + neck) on Hitbox (32).
 ## Crouch lowers the Rig and shortens the Hurtbox with the eye. The player's own weapons and
 ## AimAssist exclude all of these (get_own_colliders()). take_damage stays on the root, so
@@ -35,7 +35,7 @@ const CAPSULE_RADIUS := 0.35
 const STAND_EYE := 1.62
 const CROUCH_EYE := 0.95
 const PITCH_LIMIT := 89.0
-const HURTBOX_HEIGHT := 1.4
+const HURTBOX_HEIGHT := 1.46
 const HURTBOX_MIN_HEIGHT := 0.7
 ## get_aim_points().body height above the Rig origin, as DummyCore and Bot.
 const BODY_AIM_HEIGHT := 0.7
