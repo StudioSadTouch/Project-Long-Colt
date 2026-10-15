@@ -30,18 +30,18 @@ var hand_path: NodePath = NodePath(CHEST + "/PB_UpperArm_R/PB_Forearm_R/PB_Hand_
 @export var rifle_grip: Vector3 = Vector3(0, -0.05, 0.09)
 @export var pistol_grip: Vector3 = Vector3(0, -0.045, 0.06)
 ## Fallback holster transforms of the grip point, in PB_Chest / PB_Thigh_R space, used only if
-## the library has no holster_* metadata (values match the generator's v1.1 output).
+## the library has no holster_* metadata (values match the generator's v1.2 output).
 @export var rifle_holster: Transform3D = Transform3D(
 	Basis(Vector3.RIGHT, deg_to_rad(80)) * Basis(Vector3.BACK, deg_to_rad(-25)),
-	Vector3(0.10, 0.58, 0.18)
+	Vector3(0.10, 0.575, 0.18)
 )
 @export var pistol_holster: Transform3D = Transform3D(
 	Basis(
-		Vector3(0.9884, -0.058, -0.1403),
-		Vector3(-0.1309, 0.1435, -0.981),
-		Vector3(0.0771, 0.9879, 0.1343)
+		Vector3(0.9884, -0.0528, -0.1423),
+		Vector3(-0.131, 0.1776, -0.9754),
+		Vector3(0.0768, 0.9827, 0.1686)
 	),
-	Vector3(0.1117, -0.004, 0.0042)
+	Vector3(0.1115, -0.0091, 0.0045)
 )
 ## Extra time after the switch's end before the fallback swap, seconds.
 @export var swap_fallback_margin: float = 0.05
