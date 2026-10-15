@@ -261,43 +261,58 @@ el, az = math.radians(ELEV), math.radians(AZ_DEG)
 to_sun = (math.sin(az) * math.cos(el), math.sin(el), -math.cos(az) * math.cos(el))
 SUN_COLS = basis_from_z(to_sun)
 
-# ---------------------------------------------------------------- placements (world = Lockout local; see build_lockout.py)
+# ---------------------------------------------------------------- placements
+# World = Lockout local. Positions are MCC-map pixels like tools/lockout/build_lockout_greybox.py
+# (M() converts; heights in metres): B 0, Top Mid 4.5, upper lift room 5.0, S3 8.5, BR3 roof 9.0.
 F, FL, S, W, WS, P, B = ("fluoro", "fluoro_long", "sodium", "work", "work_shadowed", "panel", "beacon")
 PX, NX, PZ, NZ = (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1)
+
+
+def M(px, py, y):
+    return (round((px - 279) * 0.12, 3), y, round((py - 390) * 0.12, 3))
+
+
 PLACE = [
-    # Bottom Mid: interior under Top Mid deck (ceiling 4.0)
-    ("BotMid_Fluoro_NW", FL, (-4, 4.0, -4), None), ("BotMid_Fluoro_NE", FL, (4, 4.0, -4), None),
-    ("BotMid_Fluoro_SW", FL, (-4, 4.0, 4), None), ("BotMid_Fluoro_SE", FL, (4, 4.0, 4), None),
-    ("BotMid_Fluoro_C", FL, (0, 4.0, 0), None),
-    ("BotMid_Work_NW", WS, (-7.2, 3.4, -7.2), (2, 0, 3)),
-    ("BotMid_Sodium_E", S, (7.5, 3.0, 4), NX),
-    ("BotMid_Panel_N", P, (-3, 1.6, -7.5), PZ),
-    # Sword hall / Sword room
-    ("SwordHall_Fluoro", FL, (-9.5, 4.0, -2), None),
-    ("SwordHall_Sodium", S, (-8.0, 3.0, 3), NX),
-    ("Sword_Work", WS, (-11, 6.9, -10), (-11, 2.0, -11.5)),
-    # Green Hall / Blue lift
-    ("GreenHall_Fluoro_N", FL, (0, 2.5, 15.5), None), ("GreenHall_Fluoro_S", FL, (0, 2.5, 18.5), None),
-    ("Lift_Panel_N", P, (0, 0.12, 19.4), "up"), ("Lift_Panel_S", P, (0, 0.12, 22.6), "up"),
-    # Under Top Blue deck (ceiling 8.5): Mags and Bottom Blue ledge
-    ("TopBlueUnder_Fluoro_W", F, (-4, 8.5, 14), None), ("TopBlueUnder_Fluoro_E", F, (4, 8.5, 14), None),
-    ("TopBlueUnder_Work", WS, (0, 8.3, 17.5), (0, 3.0, 15)),
-    ("TopBlueUnder_Fluoro_SW", FL, (-4, 8.5, 18), None), ("TopBlueUnder_Fluoro_SE", FL, (4, 8.5, 18), None),
-    # BR tower
-    ("BR1_Fluoro_A", F, (-18, 7.0, -2), None), ("BR1_Fluoro_B", F, (-15, 7.0, 1.5), None),
-    ("BR1_Sodium_N", S, (-13, 6.0, -4.0), PZ),
-    ("BR2_Fluoro", F, (-17, 10.0, -2), None),
-    # Sniper tower
-    ("S1_Fluoro_A", F, (15, 7.0, -4), None), ("S1_Fluoro_B", F, (19, 7.0, -4), None),
-    ("S1_Sodium_E", S, (21.0, 6.0, 3), NX),
-    ("S2_Fluoro", F, (17, 10.0, -5), None),
-    # Exterior floods and practicals
-    ("Library_Flood_W", W, (-5.5, 8.6, -10.15), (-1, 7.5, -15)), ("Library_Flood_E", W, (3.5, 8.6, -10.15), (-1, 7.5, -15)),
-    ("TopBlue_Flood_W", W, (-4, 10.1, 11.55), (0, 4.5, 2)), ("TopBlue_Flood_E", W, (4, 10.1, 11.55), (0, 4.5, 2)),
-    ("Elbow_Sodium_W", S, (9, 3.9, 19.95), NZ), ("Elbow_Sodium_E", S, (15, 3.9, 19.95), NZ),
-    # Beacons (emissive only)
-    ("BR3_Beacon", B, (-20.85, 11.55, -6.85), None), ("S3_Beacon", B, (20.85, 11.55, -8.85), None),
-    ("TopBlue_Beacon_W", B, (-5.85, 10.05, 19.2), None), ("TopBlue_Beacon_E", B, (5.85, 10.05, 19.2), None),
+    # Bottom Mid (ceiling = Top Mid deck underside, 4.0) and the two bottom halls
+    ("BotMid_Fluoro_W", FL, M(268, 400, 4.0), None), ("BotMid_Fluoro_E", FL, M(293, 400, 4.0), None),
+    ("BotMid_Fluoro_S", FL, M(280, 425, 4.0), None),
+    ("BotMid_Panel_N", P, M(300, 382, 1.6), PZ),
+    ("SniperAlley_Fluoro", FL, M(233, 398, 4.0), None),
+    ("EastCorridor_Fluoro", FL, M(326, 409, 4.0), None),
+    # Lift tower: lower room (ceiling 4.5), lift pad panels, upper room (ceiling 9.5)
+    ("LiftLower_Fluoro_NW", FL, M(248, 190, 4.5), None), ("LiftLower_Fluoro_NE", FL, M(310, 190, 4.5), None),
+    ("LiftLower_Fluoro_SW", FL, M(248, 255, 4.5), None), ("LiftLower_Fluoro_SE", FL, M(310, 255, 4.5), None),
+    ("Lift_Panel_W", P, M(263, 160, 0.12), "up"), ("Lift_Panel_E", P, M(297, 160, 0.12), "up"),
+    ("LiftUpper_Fluoro_W", F, M(252, 225, 9.5), None), ("LiftUpper_Fluoro_E", F, M(306, 225, 9.5), None),
+    ("LiftUpper_Fluoro_S", F, M(280, 262, 9.5), None),
+    ("GreenHall_Sodium_W", S, M(256, 282.5, 3.4), PZ), ("GreenHall_Sodium_E", S, M(304, 282.5, 3.4), PZ),
+    # BR tower: BR1 (ceiling 4.0), BR2 (ceiling 8.5)
+    ("BR1_Fluoro_A", FL, M(115, 395, 4.0), None), ("BR1_Fluoro_B", FL, M(140, 435, 4.0), None),
+    ("BR1_Fluoro_C", FL, M(105, 455, 4.0), None),
+    ("BR2_Fluoro_A", F, M(130, 400, 8.5), None), ("BR2_Fluoro_B", F, M(140, 460, 8.5), None),
+    ("BR2_Fluoro_C", F, M(188, 452, 8.5), None),
+    ("BR2_Sodium_Balcony", S, M(170, 487.5, 7.6), PZ),
+    # Sniper stack: S1 (ceiling 4.0), S2 (8.0), S3 (12.0)
+    ("S1_Fluoro_A", FL, M(400, 420, 4.0), None), ("S1_Fluoro_B", FL, M(445, 420, 4.0), None),
+    ("S1_Fluoro_C", FL, M(490, 420, 4.0), None),
+    ("S2_Fluoro_A", F, M(400, 430, 8.0), None), ("S2_Fluoro_B", F, M(450, 425, 8.0), None),
+    ("S2_Fluoro_C", F, M(490, 425, 8.0), None),
+    ("S3_Fluoro_A", F, M(440, 404, 12.0), None), ("S3_Fluoro_B", F, M(510, 404, 12.0), None),
+    ("S3_Sodium_Elbow", S, M(554.5, 393, 11.0), PX),
+    # Library (ceiling 8.0) and its basement (floor -3, ceiling 4.0)
+    ("Library_Fluoro_W", F, M(330, 520, 8.0), None), ("Library_Fluoro_C", F, M(400, 520, 8.0), None),
+    ("Library_Fluoro_E", F, M(468, 520, 8.0), None), ("Library_Fluoro_Bay", F, M(400, 560, 8.0), None),
+    ("Library_Panel_Pod", P, M(400, 565.5, 1.6 + 4.5), NZ),
+    ("Basement_Fluoro_W", FL, M(360, 511, 4.0), None), ("Basement_Fluoro_C", FL, M(416, 511, 4.0), None),
+    ("Basement_Fluoro_E", FL, M(462, 511, 4.0), None),
+    ("Basement_Work", WS, M(426, 547, 3.4), M(420, 510, -3.0)),
+    # Exterior floods onto Top Mid from the lift tower and the Library
+    ("TopMid_Flood_LiftW", W, M(262, 283, 9.0), M(270, 400, 4.5)),
+    ("TopMid_Flood_LiftE", W, M(298, 283, 9.0), M(290, 400, 4.5)),
+    ("TopMid_Flood_Library", W, M(330, 487, 7.8), M(280, 410, 4.5)),
+    # Beacons (emissive only) on the tower tops
+    ("LiftTower_Beacon_W", B, M(236, 150, 10.0), None), ("LiftTower_Beacon_E", B, M(319, 150, 10.0), None),
+    ("BR3_Beacon", B, M(59, 379, 10.05), None), ("S3_Beacon", B, M(530, 362, 12.5), None),
 ]
 SCENES = {F: "fixture_fluoro_strip", FL: "fixture_fluoro_strip_long", S: "fixture_sodium_wall", W: "fixture_caged_worklight",
           WS: "fixture_caged_worklight_shadowed", P: "fixture_emissive_panel", B: "fixture_beacon"}

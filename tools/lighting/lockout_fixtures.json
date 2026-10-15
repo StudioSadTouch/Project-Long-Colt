@@ -6,90 +6,42 @@
  ],
  "fixtures": [
   {
-   "name": "BotMid_Fluoro_NW",
+   "name": "BotMid_Fluoro_W",
    "kind": "fluoro_long",
    "pos": [
-    -4,
+    -1.32,
     4.0,
-    -4
+    1.2
    ],
    "aim": null
   },
   {
-   "name": "BotMid_Fluoro_NE",
+   "name": "BotMid_Fluoro_E",
    "kind": "fluoro_long",
    "pos": [
-    4,
+    1.68,
     4.0,
-    -4
+    1.2
    ],
    "aim": null
   },
   {
-   "name": "BotMid_Fluoro_SW",
+   "name": "BotMid_Fluoro_S",
    "kind": "fluoro_long",
    "pos": [
-    -4,
+    0.12,
     4.0,
-    4
+    4.2
    ],
    "aim": null
-  },
-  {
-   "name": "BotMid_Fluoro_SE",
-   "kind": "fluoro_long",
-   "pos": [
-    4,
-    4.0,
-    4
-   ],
-   "aim": null
-  },
-  {
-   "name": "BotMid_Fluoro_C",
-   "kind": "fluoro_long",
-   "pos": [
-    0,
-    4.0,
-    0
-   ],
-   "aim": null
-  },
-  {
-   "name": "BotMid_Work_NW",
-   "kind": "work_shadowed",
-   "pos": [
-    -7.2,
-    3.4,
-    -7.2
-   ],
-   "aim": [
-    2,
-    0,
-    3
-   ]
-  },
-  {
-   "name": "BotMid_Sodium_E",
-   "kind": "sodium",
-   "pos": [
-    7.5,
-    3.0,
-    4
-   ],
-   "aim": [
-    -1,
-    0,
-    0
-   ]
   },
   {
    "name": "BotMid_Panel_N",
    "kind": "panel",
    "pos": [
-    -3,
+    2.52,
     1.6,
-    -7.5
+    -0.96
    ],
    "aim": [
     0,
@@ -98,164 +50,210 @@
    ]
   },
   {
-   "name": "SwordHall_Fluoro",
+   "name": "SniperAlley_Fluoro",
    "kind": "fluoro_long",
    "pos": [
-    -9.5,
+    -5.52,
     4.0,
-    -2
+    0.96
    ],
    "aim": null
   },
   {
-   "name": "SwordHall_Sodium",
+   "name": "EastCorridor_Fluoro",
+   "kind": "fluoro_long",
+   "pos": [
+    5.64,
+    4.0,
+    2.28
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftLower_Fluoro_NW",
+   "kind": "fluoro_long",
+   "pos": [
+    -3.72,
+    4.5,
+    -24.0
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftLower_Fluoro_NE",
+   "kind": "fluoro_long",
+   "pos": [
+    3.72,
+    4.5,
+    -24.0
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftLower_Fluoro_SW",
+   "kind": "fluoro_long",
+   "pos": [
+    -3.72,
+    4.5,
+    -16.2
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftLower_Fluoro_SE",
+   "kind": "fluoro_long",
+   "pos": [
+    3.72,
+    4.5,
+    -16.2
+   ],
+   "aim": null
+  },
+  {
+   "name": "Lift_Panel_W",
+   "kind": "panel",
+   "pos": [
+    -1.92,
+    0.12,
+    -27.6
+   ],
+   "aim": "up"
+  },
+  {
+   "name": "Lift_Panel_E",
+   "kind": "panel",
+   "pos": [
+    2.16,
+    0.12,
+    -27.6
+   ],
+   "aim": "up"
+  },
+  {
+   "name": "LiftUpper_Fluoro_W",
+   "kind": "fluoro",
+   "pos": [
+    -3.24,
+    9.5,
+    -19.8
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftUpper_Fluoro_E",
+   "kind": "fluoro",
+   "pos": [
+    3.24,
+    9.5,
+    -19.8
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftUpper_Fluoro_S",
+   "kind": "fluoro",
+   "pos": [
+    0.12,
+    9.5,
+    -15.36
+   ],
+   "aim": null
+  },
+  {
+   "name": "GreenHall_Sodium_W",
    "kind": "sodium",
    "pos": [
-    -8.0,
+    -2.76,
+    3.4,
+    -12.9
+   ],
+   "aim": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "name": "GreenHall_Sodium_E",
+   "kind": "sodium",
+   "pos": [
     3.0,
-    3
-   ],
-   "aim": [
-    -1,
-    0,
-    0
-   ]
-  },
-  {
-   "name": "Sword_Work",
-   "kind": "work_shadowed",
-   "pos": [
-    -11,
-    6.9,
-    -10
-   ],
-   "aim": [
-    -11,
-    2.0,
-    -11.5
-   ]
-  },
-  {
-   "name": "GreenHall_Fluoro_N",
-   "kind": "fluoro_long",
-   "pos": [
-    0,
-    2.5,
-    15.5
-   ],
-   "aim": null
-  },
-  {
-   "name": "GreenHall_Fluoro_S",
-   "kind": "fluoro_long",
-   "pos": [
-    0,
-    2.5,
-    18.5
-   ],
-   "aim": null
-  },
-  {
-   "name": "Lift_Panel_N",
-   "kind": "panel",
-   "pos": [
-    0,
-    0.12,
-    19.4
-   ],
-   "aim": "up"
-  },
-  {
-   "name": "Lift_Panel_S",
-   "kind": "panel",
-   "pos": [
-    0,
-    0.12,
-    22.6
-   ],
-   "aim": "up"
-  },
-  {
-   "name": "TopBlueUnder_Fluoro_W",
-   "kind": "fluoro",
-   "pos": [
-    -4,
-    8.5,
-    14
-   ],
-   "aim": null
-  },
-  {
-   "name": "TopBlueUnder_Fluoro_E",
-   "kind": "fluoro",
-   "pos": [
-    4,
-    8.5,
-    14
-   ],
-   "aim": null
-  },
-  {
-   "name": "TopBlueUnder_Work",
-   "kind": "work_shadowed",
-   "pos": [
-    0,
-    8.3,
-    17.5
+    3.4,
+    -12.9
    ],
    "aim": [
     0,
-    3.0,
-    15
+    0,
+    1
    ]
-  },
-  {
-   "name": "TopBlueUnder_Fluoro_SW",
-   "kind": "fluoro_long",
-   "pos": [
-    -4,
-    8.5,
-    18
-   ],
-   "aim": null
-  },
-  {
-   "name": "TopBlueUnder_Fluoro_SE",
-   "kind": "fluoro_long",
-   "pos": [
-    4,
-    8.5,
-    18
-   ],
-   "aim": null
   },
   {
    "name": "BR1_Fluoro_A",
-   "kind": "fluoro",
+   "kind": "fluoro_long",
    "pos": [
-    -18,
-    7.0,
-    -2
+    -19.68,
+    4.0,
+    0.6
    ],
    "aim": null
   },
   {
    "name": "BR1_Fluoro_B",
-   "kind": "fluoro",
+   "kind": "fluoro_long",
    "pos": [
-    -15,
-    7.0,
-    1.5
+    -16.68,
+    4.0,
+    5.4
    ],
    "aim": null
   },
   {
-   "name": "BR1_Sodium_N",
+   "name": "BR1_Fluoro_C",
+   "kind": "fluoro_long",
+   "pos": [
+    -20.88,
+    4.0,
+    7.8
+   ],
+   "aim": null
+  },
+  {
+   "name": "BR2_Fluoro_A",
+   "kind": "fluoro",
+   "pos": [
+    -17.88,
+    8.5,
+    1.2
+   ],
+   "aim": null
+  },
+  {
+   "name": "BR2_Fluoro_B",
+   "kind": "fluoro",
+   "pos": [
+    -16.68,
+    8.5,
+    8.4
+   ],
+   "aim": null
+  },
+  {
+   "name": "BR2_Fluoro_C",
+   "kind": "fluoro",
+   "pos": [
+    -10.92,
+    8.5,
+    7.44
+   ],
+   "aim": null
+  },
+  {
+   "name": "BR2_Sodium_Balcony",
    "kind": "sodium",
    "pos": [
-    -13,
-    6.0,
-    -4.0
+    -13.08,
+    7.6,
+    11.7
    ],
    "aim": [
     0,
@@ -264,122 +262,146 @@
    ]
   },
   {
-   "name": "BR2_Fluoro",
-   "kind": "fluoro",
-   "pos": [
-    -17,
-    10.0,
-    -2
-   ],
-   "aim": null
-  },
-  {
    "name": "S1_Fluoro_A",
-   "kind": "fluoro",
+   "kind": "fluoro_long",
    "pos": [
-    15,
-    7.0,
-    -4
+    14.52,
+    4.0,
+    3.6
    ],
    "aim": null
   },
   {
    "name": "S1_Fluoro_B",
-   "kind": "fluoro",
+   "kind": "fluoro_long",
    "pos": [
-    19,
-    7.0,
-    -4
+    19.92,
+    4.0,
+    3.6
    ],
    "aim": null
   },
   {
-   "name": "S1_Sodium_E",
+   "name": "S1_Fluoro_C",
+   "kind": "fluoro_long",
+   "pos": [
+    25.32,
+    4.0,
+    3.6
+   ],
+   "aim": null
+  },
+  {
+   "name": "S2_Fluoro_A",
+   "kind": "fluoro",
+   "pos": [
+    14.52,
+    8.0,
+    4.8
+   ],
+   "aim": null
+  },
+  {
+   "name": "S2_Fluoro_B",
+   "kind": "fluoro",
+   "pos": [
+    20.52,
+    8.0,
+    4.2
+   ],
+   "aim": null
+  },
+  {
+   "name": "S2_Fluoro_C",
+   "kind": "fluoro",
+   "pos": [
+    25.32,
+    8.0,
+    4.2
+   ],
+   "aim": null
+  },
+  {
+   "name": "S3_Fluoro_A",
+   "kind": "fluoro",
+   "pos": [
+    19.32,
+    12.0,
+    1.68
+   ],
+   "aim": null
+  },
+  {
+   "name": "S3_Fluoro_B",
+   "kind": "fluoro",
+   "pos": [
+    27.72,
+    12.0,
+    1.68
+   ],
+   "aim": null
+  },
+  {
+   "name": "S3_Sodium_Elbow",
    "kind": "sodium",
    "pos": [
-    21.0,
-    6.0,
-    3
+    33.06,
+    11.0,
+    0.36
    ],
    "aim": [
-    -1,
+    1,
     0,
     0
    ]
   },
   {
-   "name": "S2_Fluoro",
+   "name": "Library_Fluoro_W",
    "kind": "fluoro",
    "pos": [
-    17,
-    10.0,
-    -5
+    6.12,
+    8.0,
+    15.6
    ],
    "aim": null
   },
   {
-   "name": "Library_Flood_W",
-   "kind": "work",
+   "name": "Library_Fluoro_C",
+   "kind": "fluoro",
    "pos": [
-    -5.5,
-    8.6,
-    -10.15
+    14.52,
+    8.0,
+    15.6
    ],
-   "aim": [
-    -1,
-    7.5,
-    -15
-   ]
+   "aim": null
   },
   {
-   "name": "Library_Flood_E",
-   "kind": "work",
+   "name": "Library_Fluoro_E",
+   "kind": "fluoro",
    "pos": [
-    3.5,
-    8.6,
-    -10.15
+    22.68,
+    8.0,
+    15.6
    ],
-   "aim": [
-    -1,
-    7.5,
-    -15
-   ]
+   "aim": null
   },
   {
-   "name": "TopBlue_Flood_W",
-   "kind": "work",
+   "name": "Library_Fluoro_Bay",
+   "kind": "fluoro",
    "pos": [
-    -4,
-    10.1,
-    11.55
+    14.52,
+    8.0,
+    20.4
    ],
-   "aim": [
-    0,
-    4.5,
-    2
-   ]
+   "aim": null
   },
   {
-   "name": "TopBlue_Flood_E",
-   "kind": "work",
+   "name": "Library_Panel_Pod",
+   "kind": "panel",
    "pos": [
-    4,
-    10.1,
-    11.55
-   ],
-   "aim": [
-    0,
-    4.5,
-    2
-   ]
-  },
-  {
-   "name": "Elbow_Sodium_W",
-   "kind": "sodium",
-   "pos": [
-    9,
-    3.9,
-    19.95
+    14.52,
+    6.1,
+    21.06
    ],
    "aim": [
     0,
@@ -388,26 +410,118 @@
    ]
   },
   {
-   "name": "Elbow_Sodium_E",
-   "kind": "sodium",
+   "name": "Basement_Fluoro_W",
+   "kind": "fluoro_long",
    "pos": [
-    15,
-    3.9,
-    19.95
+    9.72,
+    4.0,
+    14.52
+   ],
+   "aim": null
+  },
+  {
+   "name": "Basement_Fluoro_C",
+   "kind": "fluoro_long",
+   "pos": [
+    16.44,
+    4.0,
+    14.52
+   ],
+   "aim": null
+  },
+  {
+   "name": "Basement_Fluoro_E",
+   "kind": "fluoro_long",
+   "pos": [
+    21.96,
+    4.0,
+    14.52
+   ],
+   "aim": null
+  },
+  {
+   "name": "Basement_Work",
+   "kind": "work_shadowed",
+   "pos": [
+    17.64,
+    3.4,
+    18.84
    ],
    "aim": [
-    0,
-    0,
-    -1
+    16.92,
+    -3.0,
+    14.4
    ]
+  },
+  {
+   "name": "TopMid_Flood_LiftW",
+   "kind": "work",
+   "pos": [
+    -2.04,
+    9.0,
+    -12.84
+   ],
+   "aim": [
+    -1.08,
+    4.5,
+    1.2
+   ]
+  },
+  {
+   "name": "TopMid_Flood_LiftE",
+   "kind": "work",
+   "pos": [
+    2.28,
+    9.0,
+    -12.84
+   ],
+   "aim": [
+    1.32,
+    4.5,
+    1.2
+   ]
+  },
+  {
+   "name": "TopMid_Flood_Library",
+   "kind": "work",
+   "pos": [
+    6.12,
+    7.8,
+    11.64
+   ],
+   "aim": [
+    0.12,
+    4.5,
+    2.4
+   ]
+  },
+  {
+   "name": "LiftTower_Beacon_W",
+   "kind": "beacon",
+   "pos": [
+    -5.16,
+    10.0,
+    -28.8
+   ],
+   "aim": null
+  },
+  {
+   "name": "LiftTower_Beacon_E",
+   "kind": "beacon",
+   "pos": [
+    4.8,
+    10.0,
+    -28.8
+   ],
+   "aim": null
   },
   {
    "name": "BR3_Beacon",
    "kind": "beacon",
    "pos": [
-    -20.85,
-    11.55,
-    -6.85
+    -26.4,
+    10.05,
+    -1.32
    ],
    "aim": null
   },
@@ -415,29 +529,9 @@
    "name": "S3_Beacon",
    "kind": "beacon",
    "pos": [
-    20.85,
-    11.55,
-    -8.85
-   ],
-   "aim": null
-  },
-  {
-   "name": "TopBlue_Beacon_W",
-   "kind": "beacon",
-   "pos": [
-    -5.85,
-    10.05,
-    19.2
-   ],
-   "aim": null
-  },
-  {
-   "name": "TopBlue_Beacon_E",
-   "kind": "beacon",
-   "pos": [
-    5.85,
-    10.05,
-    19.2
+    30.12,
+    12.5,
+    -3.36
    ],
    "aim": null
   }

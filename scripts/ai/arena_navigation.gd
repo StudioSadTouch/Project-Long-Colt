@@ -3,7 +3,8 @@ extends NavigationRegion3D
 ## Runtime navmesh bake for an arena level (Godot isn't run in our pipeline, so nothing is
 ## prebaked). In _ready it parses the level's static colliders on the World layer and bakes
 ## asynchronously; `baked` fires once the region has the mesh. NavigationLink3D children
-## (lift, drops, jumps) are placed by tools/lockout/emit_arena_tscn.py.
+## (lift, drops, jumps) are written by the level generators (tools/lockout/build_lockout_greybox.py,
+## tools/headlong/build_headlong.py).
 ## The baked mesh is in the level root's local space, so the region copies its transform.
 
 signal baked

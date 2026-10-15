@@ -16,6 +16,11 @@ const STEPS: Array[AudioStream] = [
 const LAND := preload("res://assets/audio/foley/land.wav")
 const VOICES := 3
 
+## Overall trim on top of the speed curve (dB; -6 is about half as loud). Tune in the Inspector
+## on the Footsteps node in player_body.tscn.
+@export_range(-30.0, 6.0, 0.5) var step_volume_db: float = -8.0
+@export_range(-30.0, 6.0, 0.5) var land_volume_db: float = -4.0
+
 var _voices: Array[AudioStreamPlayer3D] = []
 var _cursor: int = 0
 var _step: int = 0
@@ -45,12 +50,12 @@ func _on_step(speed: float, crouched: bool) -> void:
 	var db := lerpf(-16.0, -8.0, loud)
 	if crouched:
 		db -= 7.0
-	_play(stream, db, randf_range(0.94, 1.06))
+	_play(stream, db + step_volume_db, randf_range(0.94, 1.06))
 
 
 func _on_land(impact: float) -> void:
 	var db := lerpf(-14.0, -5.0, clampf(impact / 8.0, 0.0, 1.0))
-	_play(LAND, db, randf_range(0.92, 1.04))
+	_play(LAND, db + land_volume_db, randf_range(0.92, 1.04))
 
 
 func _play(stream: AudioStream, db: float, pitch: float) -> void:

@@ -11,6 +11,7 @@ enum Page { MAIN, BOTS, LAN, LOBBY, SETTINGS, KEYBINDS }
 var _pages: Dictionary = {}
 var _page: Page = Page.MAIN
 var _status: Label
+var _now_playing: Label
 var _name_edit: LineEdit
 var _servers: ItemList
 var _server_data: Array = []
@@ -59,6 +60,10 @@ func _ready() -> void:
 	column.add_child(MenuTheme.label("Project Long Colt", MenuTheme.TITLE_SIZE, MenuTheme.ACCENT))
 	_status = MenuTheme.label("", 20, MenuTheme.TEXT_DIM)
 	column.add_child(_status)
+	_now_playing = MenuTheme.label("Sanctuary OS  ·  Dusqk", 16, MenuTheme.TEXT_DIM)
+	column.add_child(_now_playing)
+	_show_track(Music.title)
+	Music.track_changed.connect(_show_track)
 	var holder := Control.new()
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(holder)
@@ -247,6 +252,8 @@ func _build_settings() -> Control:
 	var fov := _slider(column, "Field of view", Settings.FOV_MIN, Settings.FOV_MAX, fov_value)
 	fov.step = 1.0
 	fov.value_changed.connect(func(v: float) -> void: Settings.fov = v)
+	var music := _slider(column, "Music", 0.0, 1.0, Settings.music_volume)
+	music.value_changed.connect(_on_music_volume)
 	var assist := CheckButton.new()
 	assist.text = "MOUSE AIM ASSIST"
 	assist.button_pressed = Settings.mouse_aim_assist
@@ -543,6 +550,20 @@ func _slider(parent: Control, text: String, low: float, high: float, value: floa
 
 
 # ------------------------------------------------------------------ actions
+
+
+func _show_track(track_title: String) -> void:
+	if _now_playing == null:
+		return
+	if track_title == "" or track_title == "Sanctuary OS":
+		_now_playing.text = "SANCTUARY OS  ·  DUSQK"
+	else:
+		_now_playing.text = "SANCTUARY OS  ·  %s  ·  DUSQK" % track_title.to_upper()
+
+
+func _on_music_volume(value: float) -> void:
+	Settings.music_volume = value
+	Settings.apply_music_volume()
 
 
 func _on_name_changed(text: String) -> void:

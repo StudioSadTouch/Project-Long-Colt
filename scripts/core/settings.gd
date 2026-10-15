@@ -33,10 +33,13 @@ var map_id: String = MapList.DEFAULT_ID
 var host_bot_fill: bool = true
 ## Host: replace a human who leaves mid-match with a bot (Morgon: off unless the host opts in).
 var host_bot_refill: bool = false
+## Music bus level, 0..1. The Music autoload still ducks this during a live match.
+var music_volume: float = 0.8
 
 
 func _ready() -> void:
 	load_settings()
+	apply_music_volume()
 
 
 func load_settings() -> void:
@@ -60,6 +63,7 @@ func load_settings() -> void:
 	map_id = MapList.sanitize(str(cfg.get_value("game", "map", map_id)))
 	host_bot_fill = bool(cfg.get_value("game", "bot_fill", true))
 	host_bot_refill = bool(cfg.get_value("game", "bot_refill", false))
+	music_volume = clampf(float(cfg.get_value("audio", "music", music_volume)), 0.0, 1.0)
 	var saved_binds := {}
 	if cfg.has_section("keybinds"):
 		for action: String in cfg.get_section_keys("keybinds"):
@@ -81,6 +85,7 @@ func save_settings() -> void:
 	cfg.set_value("game", "map", map_id)
 	cfg.set_value("game", "bot_fill", host_bot_fill)
 	cfg.set_value("game", "bot_refill", host_bot_refill)
+	cfg.set_value("audio", "music", music_volume)
 	# Only bindings that differ from project.godot, so new defaults reach existing players.
 	var binds := Keybinds.overrides()
 	for action: String in binds:
@@ -89,6 +94,16 @@ func save_settings() -> void:
 	if err != OK:
 		push_warning("Settings: could not save %s (%s)" % [PATH, error_string(err)])
 	changed.emit()
+
+
+## User mix for the Music bus. 0 mutes. Match ducking is the player's own volume_db.
+func apply_music_volume() -> void:
+	var idx := AudioServer.get_bus_index(&"Music")
+	if idx < 0:
+		return
+	var linear := clampf(music_volume, 0.0, 1.0)
+	AudioServer.set_bus_mute(idx, linear <= 0.001)
+	AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(linear, 0.0001)))
 
 
 static func sanitize_name(raw: String) -> String:

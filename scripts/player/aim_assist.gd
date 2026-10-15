@@ -88,7 +88,8 @@ func bend_scale() -> float:
 
 
 func _physics_process(delta: float) -> void:
-	if _player.is_dead():
+	if _player.is_dead() or _player.is_mounted():
+		# The gun camera is not this rig's camera. Leave the minigun to the driver's look.
 		reticle_on_target = false
 		_player.aim_slowdown_scale = 1.0
 		_tracked = null

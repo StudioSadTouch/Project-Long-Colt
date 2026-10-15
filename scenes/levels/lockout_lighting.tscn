@@ -33,116 +33,149 @@ directional_shadow_max_distance = 120.0
 
 [node name="Fixtures" type="Node3D" parent="."]
 
-[node name="BotMid_Fluoro_NW" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 4, -4)
+[node name="BotMid_Fluoro_W" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 4, 1.2)
 
-[node name="BotMid_Fluoro_NE" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 4, -4)
+[node name="BotMid_Fluoro_E" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.68, 4, 1.2)
 
-[node name="BotMid_Fluoro_SW" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 4, 4)
-
-[node name="BotMid_Fluoro_SE" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 4, 4)
-
-[node name="BotMid_Fluoro_C" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 0)
-
-[node name="BotMid_Work_NW" parent="Fixtures" instance=ExtResource("6_work_shadowed")]
-transform = Transform3D(-0.74257, 0.160927, -0.650148, 0, 0.970706, 0.240272, 0.669769, 0.178419, -0.720817, -7.2, 3.4, -7.2)
-
-[node name="BotMid_Sodium_E" parent="Fixtures" instance=ExtResource("4_sodium")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 7.5, 3, 4)
+[node name="BotMid_Fluoro_S" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 4, 4.2)
 
 [node name="BotMid_Panel_N" parent="Fixtures" instance=ExtResource("7_panel")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -3, 1.6, -7.5)
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.52, 1.6, -0.96)
 
-[node name="SwordHall_Fluoro" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.5, 4, -2)
+[node name="SniperAlley_Fluoro" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.52, 4, 0.96)
 
-[node name="SwordHall_Sodium" parent="Fixtures" instance=ExtResource("4_sodium")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -8, 3, 3)
+[node name="EastCorridor_Fluoro" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.64, 4, 2.28)
 
-[node name="Sword_Work" parent="Fixtures" instance=ExtResource("6_work_shadowed")]
-transform = Transform3D(1, 0, 0, 0, 0.292714, 0.9562, 0, -0.9562, 0.292714, -11, 6.9, -10)
+[node name="LiftLower_Fluoro_NW" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.72, 4.5, -24)
 
-[node name="GreenHall_Fluoro_N" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 15.5)
+[node name="LiftLower_Fluoro_NE" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.72, 4.5, -24)
 
-[node name="GreenHall_Fluoro_S" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 18.5)
+[node name="LiftLower_Fluoro_SW" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.72, 4.5, -16.2)
 
-[node name="Lift_Panel_N" parent="Fixtures" instance=ExtResource("7_panel")]
-transform = Transform3D(-1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0.12, 19.4)
+[node name="LiftLower_Fluoro_SE" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.72, 4.5, -16.2)
 
-[node name="Lift_Panel_S" parent="Fixtures" instance=ExtResource("7_panel")]
-transform = Transform3D(-1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0.12, 22.6)
+[node name="Lift_Panel_W" parent="Fixtures" instance=ExtResource("7_panel")]
+transform = Transform3D(-1, 0, 0, 0, 0, -1, 0, -1, 0, -1.92, 0.12, -27.6)
 
-[node name="TopBlueUnder_Fluoro_W" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 8.5, 14)
+[node name="Lift_Panel_E" parent="Fixtures" instance=ExtResource("7_panel")]
+transform = Transform3D(-1, 0, 0, 0, 0, -1, 0, -1, 0, 2.16, 0.12, -27.6)
 
-[node name="TopBlueUnder_Fluoro_E" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 8.5, 14)
+[node name="LiftUpper_Fluoro_W" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.24, 9.5, -19.8)
 
-[node name="TopBlueUnder_Work" parent="Fixtures" instance=ExtResource("6_work_shadowed")]
-transform = Transform3D(1, 0, 0, 0, 0.426619, 0.904432, 0, -0.904432, 0.426619, 0, 8.3, 17.5)
+[node name="LiftUpper_Fluoro_E" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.24, 9.5, -19.8)
 
-[node name="TopBlueUnder_Fluoro_SW" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 8.5, 18)
+[node name="LiftUpper_Fluoro_S" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 9.5, -15.36)
 
-[node name="TopBlueUnder_Fluoro_SE" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 8.5, 18)
+[node name="GreenHall_Sodium_W" parent="Fixtures" instance=ExtResource("4_sodium")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -2.76, 3.4, -12.9)
 
-[node name="BR1_Fluoro_A" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 7, -2)
+[node name="GreenHall_Sodium_E" parent="Fixtures" instance=ExtResource("4_sodium")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 3, 3.4, -12.9)
 
-[node name="BR1_Fluoro_B" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 7, 1.5)
+[node name="BR1_Fluoro_A" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.68, 4, 0.6)
 
-[node name="BR1_Sodium_N" parent="Fixtures" instance=ExtResource("4_sodium")]
-transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -13, 6, -4)
+[node name="BR1_Fluoro_B" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.68, 4, 5.4)
 
-[node name="BR2_Fluoro" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17, 10, -2)
+[node name="BR1_Fluoro_C" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.88, 4, 7.8)
 
-[node name="S1_Fluoro_A" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 7, -4)
+[node name="BR2_Fluoro_A" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -17.88, 8.5, 1.2)
 
-[node name="S1_Fluoro_B" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19, 7, -4)
+[node name="BR2_Fluoro_B" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.68, 8.5, 8.4)
 
-[node name="S1_Sodium_E" parent="Fixtures" instance=ExtResource("4_sodium")]
-transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 21, 6, 3)
+[node name="BR2_Fluoro_C" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.92, 8.5, 7.44)
 
-[node name="S2_Fluoro" parent="Fixtures" instance=ExtResource("2_fluoro")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 10, -5)
+[node name="BR2_Sodium_Balcony" parent="Fixtures" instance=ExtResource("4_sodium")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -13.08, 7.6, 11.7)
 
-[node name="Library_Flood_W" parent="Fixtures" instance=ExtResource("5_work")]
-transform = Transform3D(0.733063, 0.111553, -0.670951, 0, 0.986459, 0.16401, 0.680161, -0.12023, 0.723136, -5.5, 8.6, -10.15)
+[node name="S1_Fluoro_A" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.52, 4, 3.6)
 
-[node name="Library_Flood_E" parent="Fixtures" instance=ExtResource("5_work")]
-transform = Transform3D(0.733063, -0.111553, 0.670951, 0, 0.986459, 0.16401, -0.680161, -0.12023, 0.723136, 3.5, 8.6, -10.15)
+[node name="S1_Fluoro_B" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.92, 4, 3.6)
 
-[node name="TopBlue_Flood_W" parent="Fixtures" instance=ExtResource("5_work")]
-transform = Transform3D(0.922361, 0.18379, -0.339811, 0, 0.879589, 0.475735, 0.386329, -0.438799, 0.811298, -4, 10.1, 11.55)
+[node name="S1_Fluoro_C" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.32, 4, 3.6)
 
-[node name="TopBlue_Flood_E" parent="Fixtures" instance=ExtResource("5_work")]
-transform = Transform3D(0.922361, -0.18379, 0.339811, 0, 0.879589, 0.475735, -0.386329, -0.438799, 0.811298, 4, 10.1, 11.55)
+[node name="S2_Fluoro_A" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.52, 8, 4.8)
 
-[node name="Elbow_Sodium_W" parent="Fixtures" instance=ExtResource("4_sodium")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 3.9, 19.95)
+[node name="S2_Fluoro_B" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.52, 8, 4.2)
 
-[node name="Elbow_Sodium_E" parent="Fixtures" instance=ExtResource("4_sodium")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 3.9, 19.95)
+[node name="S2_Fluoro_C" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25.32, 8, 4.2)
+
+[node name="S3_Fluoro_A" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 19.32, 12, 1.68)
+
+[node name="S3_Fluoro_B" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.72, 12, 1.68)
+
+[node name="S3_Sodium_Elbow" parent="Fixtures" instance=ExtResource("4_sodium")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 33.06, 11, 0.36)
+
+[node name="Library_Fluoro_W" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.12, 8, 15.6)
+
+[node name="Library_Fluoro_C" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.52, 8, 15.6)
+
+[node name="Library_Fluoro_E" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.68, 8, 15.6)
+
+[node name="Library_Fluoro_Bay" parent="Fixtures" instance=ExtResource("2_fluoro")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.52, 8, 20.4)
+
+[node name="Library_Panel_Pod" parent="Fixtures" instance=ExtResource("7_panel")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.52, 6.1, 21.06)
+
+[node name="Basement_Fluoro_W" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.72, 4, 14.52)
+
+[node name="Basement_Fluoro_C" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.44, 4, 14.52)
+
+[node name="Basement_Fluoro_E" parent="Fixtures" instance=ExtResource("3_fluoro_long")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.96, 4, 14.52)
+
+[node name="Basement_Work" parent="Fixtures" instance=ExtResource("6_work_shadowed")]
+transform = Transform3D(0.987105, -0.130962, 0.092042, 0, 0.575006, 0.818149, -0.160071, -0.8076, 0.567591, 17.64, 3.4, 18.84)
+
+[node name="TopMid_Flood_LiftW" parent="Fixtures" instance=ExtResource("5_work")]
+transform = Transform3D(-0.997671, 0.020777, -0.064976, 0, 0.952489, 0.304574, 0.068217, 0.303864, -0.95027, -2.04, 9, -12.84)
+
+[node name="TopMid_Flood_LiftE" parent="Fixtures" instance=ExtResource("5_work")]
+transform = Transform3D(-0.997671, -0.020777, 0.064976, 0, 0.952489, 0.304574, -0.068217, 0.303864, -0.95027, 2.28, 9, -12.84)
+
+[node name="TopMid_Flood_Library" parent="Fixtures" instance=ExtResource("5_work")]
+transform = Transform3D(0.838692, -0.156268, 0.521704, 0, 0.957949, 0.286937, -0.544605, -0.240652, 0.803425, 6.12, 7.8, 11.64)
+
+[node name="LiftTower_Beacon_W" parent="Fixtures" instance=ExtResource("8_beacon")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.16, 10, -28.8)
+
+[node name="LiftTower_Beacon_E" parent="Fixtures" instance=ExtResource("8_beacon")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.8, 10, -28.8)
 
 [node name="BR3_Beacon" parent="Fixtures" instance=ExtResource("8_beacon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20.85, 11.55, -6.85)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -26.4, 10.05, -1.32)
 
 [node name="S3_Beacon" parent="Fixtures" instance=ExtResource("8_beacon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.85, 11.55, -8.85)
-
-[node name="TopBlue_Beacon_W" parent="Fixtures" instance=ExtResource("8_beacon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.85, 10.05, 19.2)
-
-[node name="TopBlue_Beacon_E" parent="Fixtures" instance=ExtResource("8_beacon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.85, 10.05, 19.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.12, 12.5, -3.36)

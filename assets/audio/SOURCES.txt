@@ -33,3 +33,21 @@ Fantozzi (CC0), https://opengameart.org/content/fantozzis-footsteps-grasssand-st
   Sticky stick           slime_000 (placeholder)
   Sticky fuse hiss       spaceEngineSmall_000, high-passed (placeholder)
   Sticky explosion       explosionCrunch_003 + forceField_002 (placeholder)
+
+Menu, pause, and game-over music (ducked during a live match) is Sanctuary OS
+by Dusqk, published 11 Jan 2025 by Heaven/11. Free download:
+https://dusqk.bandcamp.com/album/sanctuary-os
+The album is a concept mix for a console idling on its menu. Tracks play in
+album order on the Music bus and then loop. Credit Dusqk if a build ships.
+  sanctuary_os.mp3       Sanctuary OS
+  sanctuary_01.mp3       Sanctuary 1
+  sanctuary_02.mp3       Sanctuary 2
+  sanctuary_03.mp3       Sanctuary 3
+  sanctuary_04.mp3       Sanctuary 4
+  sanctuary_05.mp3       Sanctuary 5
+  sanctuary_06.mp3       Sanctuary 6
+  sanctuary_07.mp3       Sanctuary 7
+  sanctuary_08.mp3       Sanctuary 8
+  sanctuary_09.mp3       Sanctuary 9
+  sanctuary_10.mp3       Sanctuary 10
+  sanctuary_11.mp3       Sanctuary 11

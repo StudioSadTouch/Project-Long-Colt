@@ -114,6 +114,8 @@ var last_damage_info: Dictionary = {}
 ## Net hooks, see the header. Set net_puppet before the node enters the tree.
 var net_puppet: bool = false
 var net_damage_authority: bool = true
+## Set by Humvee while this body is in the driver seat. Movement and weapons stay off.
+var mounted_vehicle: Node = null
 
 var _eye_height: float = STAND_EYE
 var _landing_dip: float = 0.0
@@ -217,6 +219,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if dead:
 		return
+	if mounted_vehicle != null:
+		if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			_apply_look(event.relative)
+		return
 	if event.is_action_pressed("action_jump"):
 		_jump_buffer_left = jump_buffer_time
 	if event.is_action_pressed("action_crouch"):
@@ -232,6 +238,10 @@ func _physics_process(delta: float) -> void:
 		# Pose comes from apply_net_pose; only the lunge timer runs (host melee waits on it).
 		_lunge_left = maxf(_lunge_left - delta, 0.0)
 		_update_head(delta)
+		return
+	if mounted_vehicle != null:
+		# The humvee snaps this body to the seat. Stick look still aims its gun.
+		_apply_stick_look(delta)
 		return
 	_apply_stick_look(delta)
 	gravity = get_gravity().length()
@@ -343,6 +353,10 @@ func is_dead() -> bool:
 	return dead
 
 
+func is_mounted() -> bool:
+	return mounted_vehicle != null
+
+
 ## Third-person animation getters (CharacterAnimState contract; keep stable).
 func get_aim_pitch() -> float:
 	return head.rotation.x
@@ -371,6 +385,8 @@ func get_respawn_time_left() -> float:
 ## Respawn (or, if alive, reset and teleport) at xform: its origin and the yaw of its -Z.
 ## Full shield and health, starting loadout, collision and input back on.
 func respawn_at(xform: Transform3D) -> void:
+	if mounted_vehicle != null and is_instance_valid(mounted_vehicle) and mounted_vehicle.has_method(&"force_exit"):
+		mounted_vehicle.call(&"force_exit")
 	_life_id += 1
 	_respawn_timer = null
 	var forward := -xform.basis.z
@@ -562,6 +578,9 @@ func _apply_look(relative: Vector2) -> void:
 	# Probe: rotate_y(+) turns -Z toward world -X, and rotate_x(+) looks up.
 	# Mouse right is +x and mouse down is +y, so both axes are negated.
 	var sensitivity := mouse_sensitivity * look_sensitivity_scale * aim_slowdown_scale
+	if mounted_vehicle != null and mounted_vehicle.has_method(&"add_look"):
+		mounted_vehicle.call(&"add_look", relative, sensitivity)
+		return
 	rotate_y(-relative.x * sensitivity)
 	head.rotate_x(-relative.y * sensitivity)
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-PITCH_LIMIT), deg_to_rad(PITCH_LIMIT))
@@ -595,6 +614,9 @@ func _apply_stick_look(delta: float) -> void:
 
 ## Aim nudge in radians (AimAssist magnetism): yaw on the body, pitch on Head, clamped.
 func add_aim_offset(yaw: float, pitch: float) -> void:
+	if mounted_vehicle != null and mounted_vehicle.has_method(&"add_aim_radians"):
+		mounted_vehicle.call(&"add_aim_radians", yaw, pitch)
+		return
 	rotate_y(yaw)
 	head.rotate_x(pitch)
 	head.rotation.x = clampf(head.rotation.x, deg_to_rad(-PITCH_LIMIT), deg_to_rad(PITCH_LIMIT))

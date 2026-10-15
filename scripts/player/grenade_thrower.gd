@@ -72,7 +72,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _input_enabled() -> bool:
-	if _player == null or _player.is_dead() or _player.net_puppet:
+	if _player == null or _player.is_dead() or _player.net_puppet or _player.is_mounted():
 		return false
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"
 

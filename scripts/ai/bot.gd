@@ -47,6 +47,8 @@ const STEP_HEIGHT := 0.35
 const SLOT_COUNT := 2
 const ENEMY_LAYER := 4
 const MOVE_MASK := 1 | 2 | 4
+## Movement capsule only. The humvee masks this bit; weapons and players do not.
+const BOT_BODY_LAYER := 128
 const HURTBOX_HEIGHT := 1.703
 const HURTBOX_MIN_HEIGHT := 0.817
 ## Horizontal reach to take or top up from a WeaponPickup.
@@ -116,7 +118,7 @@ var _hurtbox_stance: int = -1
 
 func _ready() -> void:
 	gravity = get_gravity().length()
-	collision_layer = 0
+	collision_layer = BOT_BODY_LAYER
 	collision_mask = MOVE_MASK
 	floor_snap_length = FLOOR_SNAP
 	floor_max_angle = deg_to_rad(FLOOR_MAX_ANGLE_DEG)
@@ -125,7 +127,7 @@ func _ready() -> void:
 	add_collision_exception_with(hurtbox)
 	for body in get_own_colliders():
 		_layers[body] = body.collision_layer
-	_layers[self] = 0
+	_layers[self] = BOT_BODY_LAYER
 	_stand_probe = CapsuleShape3D.new()
 	_stand_probe.radius = CAPSULE_RADIUS
 	_stand_probe.height = STAND_HEIGHT - 0.06

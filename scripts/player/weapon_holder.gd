@@ -424,7 +424,7 @@ func apply_loadout(entries: Array, active: int) -> void:
 
 
 func _input_enabled() -> bool:
-	if _player != null and (_player.is_dead() or _player.net_puppet):
+	if _player != null and (_player.is_dead() or _player.net_puppet or _player.is_mounted()):
 		return false
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"
 
