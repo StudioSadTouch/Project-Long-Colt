@@ -118,7 +118,7 @@ for name, cx, cz, sx, sz, top, t, group in P:
         center_y = (lo + hi) / 2 - (t / 2) * math.cos(angle)
     mat = LEVEL_NAMES[level_of(top)]
     sid = f"Box_{name}"
-    subs.append(f'[sub_resource type="BoxMesh" id="Mesh_{sid}"]\nmaterial = SubResource("Mat_{mat}")\n'
+    subs.append(f'[sub_resource type="BoxMesh" id="Mesh_{sid}"]\nmaterial = SubResource("Mat_{mat}")\nadd_uv2 = true\n'
                 f'size = Vector3({fmt(size[0])}, {fmt(size[1])}, {fmt(size[2])})\n')
     subs.append(f'[sub_resource type="BoxShape3D" id="Shape_{sid}"]\n'
                 f'size = Vector3({fmt(size[0])}, {fmt(size[1])}, {fmt(size[2])})\n')
@@ -141,7 +141,7 @@ for name, (x0, z0, y0), (x1, z1, y1), w, t, group in RAMPS:
     mat = LEVEL_NAMES[level_of(max(y0, y1))]
     sid = f"Box_{name}"
     for kind in ("BoxMesh", "BoxShape3D"):
-        extra = f'material = SubResource("Mat_{mat}")\n' if kind == "BoxMesh" else ""
+        extra = f'material = SubResource("Mat_{mat}")\nadd_uv2 = true\n' if kind == "BoxMesh" else ""
         subs.append(f'[sub_resource type="{kind}" id="{"Mesh" if kind == "BoxMesh" else "Shape"}_{sid}"]\n{extra}'
                     f'size = Vector3({fmt(w)}, {fmt(t)}, {fmt(ln)})\n')
     nodes.append(f'[node name="{name}" type="StaticBody3D" parent="Geometry"]\n'
@@ -245,20 +245,19 @@ ext = ['[ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn"
        '[ext_resource type="PackedScene" path="res://scenes/pickups/weapon_pickup.tscn" id="3_pickup"]',
        '[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="4_rifle"]',
        '[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="5_pistol"]',
-       '[ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="6_moving"]']
-subs = ['[sub_resource type="Environment" id="Environment_lockout"]\nbackground_mode = 1\n'
-        'background_color = Color(0.07, 0.08, 0.09, 1)\nambient_light_source = 2\n'
-        'ambient_light_color = Color(0.18, 0.19, 0.2, 1)\nambient_light_energy = 0.45\ntonemap_mode = 3\n']
+       '[ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="6_moving"]',
+       '[ext_resource type="PackedScene" path="res://scenes/levels/lockout_lighting.tscn" id="8_lighting"]']
+subs = []
 for pname, pts in PATHS:
     flat = ", ".join(f"0, 0, 0, 0, 0, 0, {fmt(x)}, {fmt(y + 0.05)}, {fmt(z)}" for x, y, z in pts)
     subs.append(f'[sub_resource type="Curve3D" id="Curve_{pname}"]\n_data = {{\n"points": PackedVector3Array({flat}),\n'
                 f'"tilts": PackedFloat32Array({", ".join("0" for _ in pts)})\n}}\npoint_count = {len(pts)}\n')
 nodes = ['[node name="MainLockout" type="Node3D"]\n',
-         '[node name="WorldEnvironment" type="WorldEnvironment" parent="."]\nenvironment = SubResource("Environment_lockout")\n',
-         '[node name="Sun" type="DirectionalLight3D" parent="."]\ntransform = Transform3D(0.866025, -0.353553, 0.353553, 0, '
-         '0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)\nlight_color = Color(0.85, 0.88, 0.95, 1)\n'
-         'light_energy = 1.1\nshadow_enabled = true\n',
-         '[node name="Lockout" parent="." instance=ExtResource("1_level")]\n']
+         # Lighting (environment, sun, fixtures) lives in lockout_lighting.tscn; see tools/lighting/.
+         '[node name="LockoutLighting" parent="." instance=ExtResource("8_lighting")]\n',
+         '[node name="Lockout" parent="." instance=ExtResource("1_level")]\n',
+         # LightmapGI bakes from its parent, so it sits here to cover the level and the fixtures.
+         '[node name="LightmapGI" type="LightmapGI" parent="."]\nquality = 2\nbounces = 3\nuse_denoiser = true\ninterior = false\nenvironment_mode = 1\ngenerate_probes_subdiv = 2\n']
 px, py, pz = SPAWNS[PLAYER_SPAWN]
 nodes.append(f'[node name="Player" parent="." instance=ExtResource("2_player")]\n'
              f'transform = {xform(rot_y(-math.pi / 2), (px, py, pz))}\n')

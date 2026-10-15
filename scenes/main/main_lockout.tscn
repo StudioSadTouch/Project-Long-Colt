@@ -7,14 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="5_pistol"]
 [ext_resource type="PackedScene" path="res://scenes/ai/moving_dummy.tscn" id="6_moving"]
 [ext_resource type="PackedScene" path="res://scenes/ai/target_dummy.tscn" id="7_dummy"]
-
-[sub_resource type="Environment" id="Environment_lockout"]
-background_mode = 1
-background_color = Color(0.07, 0.08, 0.09, 1)
-ambient_light_source = 2
-ambient_light_color = Color(0.18, 0.19, 0.2, 1)
-ambient_light_energy = 0.45
-tonemap_mode = 3
+[ext_resource type="PackedScene" path="res://scenes/levels/lockout_lighting.tscn" id="8_lighting"]
 
 [sub_resource type="Curve3D" id="Curve_Path_TopMid"]
 _data = {
@@ -32,16 +25,17 @@ point_count = 5
 
 [node name="MainLockout" type="Node3D"]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_lockout")
-
-[node name="Sun" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)
-light_color = Color(0.85, 0.88, 0.95, 1)
-light_energy = 1.1
-shadow_enabled = true
+[node name="LockoutLighting" parent="." instance=ExtResource("8_lighting")]
 
 [node name="Lockout" parent="." instance=ExtResource("1_level")]
+
+[node name="LightmapGI" type="LightmapGI" parent="."]
+quality = 2
+bounces = 3
+use_denoiser = true
+interior = false
+environment_mode = 1
+generate_probes_subdiv = 2
 
 [node name="Player" parent="." instance=ExtResource("2_player")]
 transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -18, 4.55, 4)

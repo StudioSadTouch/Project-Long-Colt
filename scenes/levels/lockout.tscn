@@ -21,6 +21,7 @@ roughness = 0.85
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BotMid_Floor"]
 material = SubResource("Mat_Ground")
+add_uv2 = true
 size = Vector3(16, 0.5, 16)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BotMid_Floor"]
@@ -28,6 +29,7 @@ size = Vector3(16, 0.5, 16)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_TopMid_Deck"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(16, 0.5, 16)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_TopMid_Deck"]
@@ -35,6 +37,7 @@ size = Vector3(16, 0.5, 16)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_GreenHall_Floor"]
 material = SubResource("Mat_Ground")
+add_uv2 = true
 size = Vector3(6, 0.5, 14)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_GreenHall_Floor"]
@@ -42,6 +45,7 @@ size = Vector3(6, 0.5, 14)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_GreenWest_Floor"]
 material = SubResource("Mat_Ground")
+add_uv2 = true
 size = Vector3(3, 0.5, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_GreenWest_Floor"]
@@ -49,6 +53,7 @@ size = Vector3(3, 0.5, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BottomBlue_Ledge"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(16, 0.5, 5.4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BottomBlue_Ledge"]
@@ -56,6 +61,7 @@ size = Vector3(16, 0.5, 5.4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_LeftMag"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_LeftMag"]
@@ -63,6 +69,7 @@ size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_RightMag"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_RightMag"]
@@ -70,6 +77,7 @@ size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_TopBlue_Deck"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(12, 0.5, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_TopBlue_Deck"]
@@ -77,6 +85,7 @@ size = Vector3(12, 0.5, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BlueLift_Pad"]
 material = SubResource("Mat_Ground")
+add_uv2 = true
 size = Vector3(3, 0.1, 3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BlueLift_Pad"]
@@ -84,6 +93,7 @@ size = Vector3(3, 0.1, 3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S1_Floor"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(10, 0.5, 12)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S1_Floor"]
@@ -91,6 +101,7 @@ size = Vector3(10, 0.5, 12)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S2_Floor"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(8, 0.5, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S2_Floor"]
@@ -98,6 +109,7 @@ size = Vector3(8, 0.5, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S2_Landing"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.5, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S2_Landing"]
@@ -105,6 +117,7 @@ size = Vector3(2, 0.5, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S2_RampFoot"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(4.5, 0.5, 2)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S2_RampFoot"]
@@ -112,6 +125,7 @@ size = Vector3(4.5, 0.5, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S3_SnipeDeck"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(10, 0.5, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S3_SnipeDeck"]
@@ -119,6 +133,7 @@ size = Vector3(10, 0.5, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S3_EastLanding"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(2.5, 0.5, 2)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S3_EastLanding"]
@@ -126,6 +141,7 @@ size = Vector3(2.5, 0.5, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Elbow_South"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(10, 0.4, 2.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Elbow_South"]
@@ -133,6 +149,7 @@ size = Vector3(10, 0.4, 2.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR1_Floor"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(10, 0.5, 10)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR1_Floor"]
@@ -140,6 +157,7 @@ size = Vector3(10, 0.5, 10)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR2_Floor"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(8, 0.5, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR2_Floor"]
@@ -147,6 +165,7 @@ size = Vector3(8, 0.5, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR2_Landing"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.5, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR2_Landing"]
@@ -154,6 +173,7 @@ size = Vector3(2, 0.5, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR2_BridgeLink"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.5, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR2_BridgeLink"]
@@ -161,6 +181,7 @@ size = Vector3(2, 0.5, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR2_WestLedge"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(9, 0.5, 2)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR2_WestLedge"]
@@ -168,6 +189,7 @@ size = Vector3(9, 0.5, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR3_Roof"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(8, 0.5, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR3_Roof"]
@@ -175,6 +197,7 @@ size = Vector3(8, 0.5, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR3_Landing"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(2, 0.5, 2)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR3_Landing"]
@@ -182,6 +205,7 @@ size = Vector3(2, 0.5, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR_Courtyard"]
 material = SubResource("Mat_Ground")
+add_uv2 = true
 size = Vector3(18, 0.5, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR_Courtyard"]
@@ -189,6 +213,7 @@ size = Vector3(18, 0.5, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_OpenRamp_Top"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2, 0.5, 2)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_OpenRamp_Top"]
@@ -196,6 +221,7 @@ size = Vector3(2, 0.5, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_OpenRamp_Link"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2, 0.5, 2)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_OpenRamp_Link"]
@@ -203,6 +229,7 @@ size = Vector3(2, 0.5, 2)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR_Bridge"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(10, 0.4, 2.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR_Bridge"]
@@ -210,6 +237,7 @@ size = Vector3(10, 0.4, 2.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Sword_Room"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(6, 0.5, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Sword_Room"]
@@ -217,6 +245,7 @@ size = Vector3(6, 0.5, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Sword_Hall_Floor"]
 material = SubResource("Mat_Ground")
+add_uv2 = true
 size = Vector3(2, 0.5, 11)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Sword_Hall_Floor"]
@@ -224,6 +253,7 @@ size = Vector3(2, 0.5, 11)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Library_Floor"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(12, 0.5, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Library_Floor"]
@@ -231,6 +261,7 @@ size = Vector3(12, 0.5, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S1_TopMid_Link"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S1_TopMid_Link"]
@@ -238,6 +269,7 @@ size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR1_TopMid_Link"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR1_TopMid_Link"]
@@ -245,6 +277,7 @@ size = Vector3(5, 0.5, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_N"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(16, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_N"]
@@ -252,6 +285,7 @@ size = Vector3(16, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_SW"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(6, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_SW"]
@@ -259,6 +293,7 @@ size = Vector3(6, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_SE"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(6, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_SE"]
@@ -266,6 +301,7 @@ size = Vector3(6, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_E1"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_E1"]
@@ -273,6 +309,7 @@ size = Vector3(0.3, 1.05, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_E2"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_E2"]
@@ -280,6 +317,7 @@ size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_W1"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_W1"]
@@ -287,6 +325,7 @@ size = Vector3(0.3, 1.05, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopMid_W2"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopMid_W2"]
@@ -294,6 +333,7 @@ size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopBlue_NW"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(4, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopBlue_NW"]
@@ -301,6 +341,7 @@ size = Vector3(4, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopBlue_NE"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(4, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopBlue_NE"]
@@ -308,6 +349,7 @@ size = Vector3(4, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopBlue_W"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopBlue_W"]
@@ -315,6 +357,7 @@ size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_TopBlue_E"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_TopBlue_E"]
@@ -322,6 +365,7 @@ size = Vector3(0.3, 1.05, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_Library_SW"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(3, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_Library_SW"]
@@ -329,6 +373,7 @@ size = Vector3(3, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_Library_SE"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(3, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_Library_SE"]
@@ -336,6 +381,7 @@ size = Vector3(3, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_BRBridge_N"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(10, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_BRBridge_N"]
@@ -343,6 +389,7 @@ size = Vector3(10, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_BRBridge_S"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(6, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_BRBridge_S"]
@@ -350,6 +397,7 @@ size = Vector3(6, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_S3_N"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(10, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_S3_N"]
@@ -357,6 +405,7 @@ size = Vector3(10, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_S3_W"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_S3_W"]
@@ -364,6 +413,7 @@ size = Vector3(0.3, 1.05, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_BR3_W"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(0.3, 1.05, 6)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_BR3_W"]
@@ -371,6 +421,7 @@ size = Vector3(0.3, 1.05, 6)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_BR3_N"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(8, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_BR3_N"]
@@ -378,6 +429,7 @@ size = Vector3(8, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Parapet_Elbow_S"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(10, 1.05, 0.3)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Parapet_Elbow_S"]
@@ -385,6 +437,7 @@ size = Vector3(10, 1.05, 0.3)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BotMid_N"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(16, 4, 0.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BotMid_N"]
@@ -392,6 +445,7 @@ size = Vector3(16, 4, 0.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BotMid_E"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(0.5, 4, 16)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BotMid_E"]
@@ -399,6 +453,7 @@ size = Vector3(0.5, 4, 16)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BotMid_SW"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2, 4, 0.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BotMid_SW"]
@@ -406,6 +461,7 @@ size = Vector3(2, 4, 0.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BotMid_SE"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(5, 4, 0.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BotMid_SE"]
@@ -413,6 +469,7 @@ size = Vector3(5, 4, 0.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BotMid_W1"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(0.5, 4, 4)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BotMid_W1"]
@@ -420,6 +477,7 @@ size = Vector3(0.5, 4, 4)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BotMid_W2"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(0.5, 4, 6.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BotMid_W2"]
@@ -427,6 +485,7 @@ size = Vector3(0.5, 4, 6.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BR1_W"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(0.5, 2.5, 8)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BR1_W"]
@@ -434,6 +493,7 @@ size = Vector3(0.5, 2.5, 8)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_BR1_N"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(10, 2.5, 0.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_BR1_N"]
@@ -441,6 +501,7 @@ size = Vector3(10, 2.5, 0.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_S1_E"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(0.5, 2.5, 9)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_S1_E"]
@@ -448,6 +509,7 @@ size = Vector3(0.5, 2.5, 9)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Wall_S1_N"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(10, 2.5, 0.5)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Wall_S1_N"]
@@ -455,6 +517,7 @@ size = Vector3(10, 2.5, 0.5)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BlueRamp"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(4, 0.4, 7.158911)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BlueRamp"]
@@ -462,6 +525,7 @@ size = Vector3(4, 0.4, 7.158911)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BottomBlue_StairsW"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2, 0.4, 6.708204)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BottomBlue_StairsW"]
@@ -469,6 +533,7 @@ size = Vector3(2, 0.4, 6.708204)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_LeftMag_Ramp"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.4, 6.177378)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_LeftMag_Ramp"]
@@ -476,6 +541,7 @@ size = Vector3(2, 0.4, 6.177378)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_RightMag_Ramp"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.4, 6.177378)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_RightMag_Ramp"]
@@ -483,6 +549,7 @@ size = Vector3(2, 0.4, 6.177378)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Elbow_North"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2.5, 0.4, 7.256204)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Elbow_North"]
@@ -490,6 +557,7 @@ size = Vector3(2.5, 0.4, 7.256204)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_S1_S2_Stairs"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.4, 5.830952)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_S1_S2_Stairs"]
@@ -497,6 +565,7 @@ size = Vector3(2, 0.4, 5.830952)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_SnipeRamp"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(2.5, 0.4, 6.708204)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_SnipeRamp"]
@@ -504,6 +573,7 @@ size = Vector3(2.5, 0.4, 6.708204)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR1_BR2_Stairs"]
 material = SubResource("Mat_Upper")
+add_uv2 = true
 size = Vector3(2, 0.4, 5.830952)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR1_BR2_Stairs"]
@@ -511,6 +581,7 @@ size = Vector3(2, 0.4, 5.830952)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_BR2_BR3_Stairs"]
 material = SubResource("Mat_Top")
+add_uv2 = true
 size = Vector3(2, 0.4, 5.830952)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_BR2_BR3_Stairs"]
@@ -518,6 +589,7 @@ size = Vector3(2, 0.4, 5.830952)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_OpenRamp"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2, 0.4, 12.816006)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_OpenRamp"]
@@ -525,6 +597,7 @@ size = Vector3(2, 0.4, 12.816006)
 
 [sub_resource type="BoxMesh" id="Mesh_Box_Sword_Ramp"]
 material = SubResource("Mat_Mid")
+add_uv2 = true
 size = Vector3(2, 0.4, 4.472136)
 
 [sub_resource type="BoxShape3D" id="Shape_Box_Sword_Ramp"]
