@@ -30,9 +30,16 @@ const LINK_TIMEOUT := 4.0
 const LIP_TRIGGER := 0.3
 const STUCK_TIME := 1.2
 const STUCK_DISTANCE := 0.4
-## Preferred engagement bands (m) per fire mode: AUTO (rifle) / SEMI (pistol).
-const RANGE_AUTO := Vector2(6.0, 18.0)
-const RANGE_SEMI := Vector2(10.0, 35.0)
+## Preferred engagement bands (m). Rifle: AUTO up close, BURST (past burst_switch_range,
+## 16-25 m by preset) at mid range, inside its 15-40 m falloff. Pistol: long range, where it has
+## no falloff until 35 m and the rifle has lost most of its damage.
+const RANGE_RIFLE := Vector2(6.0, 24.0)
+const RANGE_PISTOL := Vector2(12.0, 40.0)
+## Rifle below this distance, pistol above, with +/- WEAPON_SWITCH_HYSTERESIS so a bot near
+## the split doesn't swap back and forth: holding the rifle it switches past 31 m, holding the
+## pistol it switches back under 25 m.
+const WEAPON_SPLIT := 28.0
+const WEAPON_SWITCH_HYSTERESIS := 3.0
 const CORNERED_DISTANCE := 5.0
 const COVER_SEARCH_RADIUS := 25.0
 const PICKUP_SEEK_RADIUS := 40.0
@@ -103,6 +110,7 @@ func _ready() -> void:
 	_bot.damaged.connect(_on_damaged)
 	_bot.respawned.connect(func(_b: Bot) -> void: reset())
 	_bot.health_shield.shield_broken.connect(_on_shield_broken)
+	_bot.health_shield.shield_full.connect(_on_shield_full)
 	_bot.health_shield.shield_damaged.connect(_on_shield_damaged)
 	_bot.nav_agent.link_reached.connect(_on_link_reached)
 	_events = ArenaEvents.find(get_tree())
@@ -286,7 +294,7 @@ func _think() -> void:
 	if _choose_pickup(OPPORTUNISTIC_PICKUP_RADIUS):
 		state = State.SEEK_PICKUP
 		return
-	if weapon != null and weapon.magazine < weapon.data.magazine_size / 2 and weapon.reserve > 0:
+	if weapon != null and weapon.magazine * 2 < weapon.data.magazine_size and weapon.reserve > 0:
 		weapon.reload()  # Halo bots reload out of combat
 	if state != State.PATROL:
 		state = State.PATROL
@@ -330,7 +338,8 @@ func _on_new_target(node: Node3D) -> void:
 
 func _on_engage_start() -> void:
 	_strafe_left = 0.0
-	_spray_left = 0.0
+	# A full first spray (0 would fire one round, then a full pause).
+	_spray_left = _diff.spray_time
 	_pause_left = 0.0
 	_has_goal = false
 	_pickup = null
@@ -370,8 +379,8 @@ func _choose_weapon(dist: float) -> void:
 	var other := _bot.get_other()
 	if other == null or _bot.is_lunging():
 		return
-	var a := _weapon_score(active, dist)
-	var b := _weapon_score(other, dist)
+	var a := _weapon_score(active, dist, true)
+	var b := _weapon_score(other, dist, false)
 	if active != null and active.magazine <= 0 and active.reserve > 0 and other.magazine > 0:
 		# Halo: switching beats reloading under fire, for skilled players.
 		if _rng.randf() < _diff.weapon_switch_skill:
@@ -381,13 +390,17 @@ func _choose_weapon(dist: float) -> void:
 		_bot.switch_weapon()
 
 
-func _weapon_score(w: BotWeapon, dist: float) -> float:
+## `held`: the active weapon gets the hysteresis margin, so switching needs a clear reason.
+func _weapon_score(w: BotWeapon, dist: float, held: bool) -> float:
 	if w == null or w.data == null or _bot.total_ammo(w) <= 0:
 		return -100.0
 	var auto := w.data.fire_mode == WeaponData.FireMode.AUTO
+	var split := WEAPON_SPLIT
+	if held:
+		split += WEAPON_SWITCH_HYSTERESIS if auto else -WEAPON_SWITCH_HYSTERESIS
 	if auto:
-		return 2.0 if dist < RANGE_AUTO.y else -0.5
-	return 2.0 if dist >= RANGE_AUTO.y else 0.5
+		return 2.0 if dist < split else -0.5
+	return 2.0 if dist >= split else 0.5
 
 
 # ------------------------------------------------------------------ states
@@ -456,9 +469,9 @@ func _do_engage(delta: float) -> Vector3:
 			if not points.is_empty() and _bot.try_melee(target, points.body):
 				_release_trigger()
 	# Range keeping, scaled by aggression.
-	var band := RANGE_AUTO
+	var band := RANGE_RIFLE
 	if weapon != null and weapon.data != null and weapon.data.fire_mode != WeaponData.FireMode.AUTO:
-		band = RANGE_SEMI
+		band = RANGE_PISTOL
 	var to_target := target.global_position - _bot.global_position
 	to_target.y = 0.0
 	var fwd := to_target.normalized() if to_target.length_squared() > 0.01 else Vector3.FORWARD
@@ -907,6 +920,11 @@ func _on_shield_damaged(_amount: float) -> void:
 
 func _on_shield_broken() -> void:
 	_consider_retreat()
+
+
+## One retreat roll per shield pop: a full recharge re-arms it.
+func _on_shield_full() -> void:
+	_retreat_rolled = false
 
 
 func _consider_retreat() -> void:

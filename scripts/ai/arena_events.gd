@@ -54,9 +54,17 @@ func track_player(player: Player) -> void:
 func watch_weapon(weapon: Weapon, shooter: Node3D) -> void:
 	if weapon == null or _watched.has(weapon.get_instance_id()):
 		return
+	_prune_watched()
 	_watched[weapon.get_instance_id()] = true
 	weapon.fired.connect(_on_weapon_fired.bind(shooter))
 	weapon.hit_confirmed.connect(record_hit)
+
+
+## Bots build fresh weapons on every respawn; forget the ids of freed ones.
+func _prune_watched() -> void:
+	for id: int in _watched.keys():
+		if not is_instance_id_valid(id):
+			_watched.erase(id)
 
 
 func report_gunfire(source: Node3D) -> void:

@@ -63,6 +63,9 @@ const BODY_AIM_HEIGHT := 0.7
 @export var starting_weapons: Array[PackedScene] = []
 @export var difficulty: BotDifficulty
 @export var drop_weapon_on_death: bool = true
+## Name / state / shield / health above the bot. The rig's Label3D ignores depth, so it shows
+## through walls: debug only.
+@export var show_debug_label: bool = false
 ## Node whose position is get_aim_points().head. A node, not a hard-coded helmet centre, so it
 ## can move if AimAssist's head point moves (e.g. top/back of the helmet).
 @export var head_aim_path: NodePath = ^"Rig/AimHeadPoint"
@@ -90,6 +93,8 @@ var _melee_left: float = 0.0
 var _aim_dir: Vector3 = Vector3.FORWARD
 var _stand_probe: CapsuleShape3D
 var _layers: Dictionary = {}
+## Stance the hurtbox was last sized for (-1 = not yet): resized on stance changes only.
+var _hurtbox_stance: int = -1
 
 @onready var head: Node3D = $Head
 @onready var eye: Node3D = $Head/Eye
@@ -129,6 +134,8 @@ func _ready() -> void:
 	_give_starting_weapons()
 	if difficulty != null:
 		nav_agent.navigation_layers = 1 | (2 if difficulty.use_skill_jumps else 0)
+	if label != null:
+		label.visible = show_debug_label
 	_on_health_changed(health_shield.shield, health_shield.health)
 
 
@@ -232,6 +239,8 @@ func try_melee(target: Node3D, target_point: Vector3) -> bool:
 		return false
 	_melee_left = weapon.data.melee_cooldown
 	if distance <= weapon.data.melee_range:
+		# Halo melee: snap to the body point, no aim error (same as the lunge's arrival swing).
+		set_aim(target_point - eye.global_position)
 		weapon.melee()
 		return true
 	var duration := (distance - weapon.data.melee_range) / weapon.data.melee_lunge_speed + 0.1
@@ -481,8 +490,16 @@ func _apply_pose() -> void:
 	head.position.y = _eye_height
 	var drop := STAND_EYE - _eye_height
 	rig.position.y = -drop
+	# Resizing a shape rebuilds it in the physics server, so only on a stance change; the box
+	# snaps to the stance's height while the eye and rig ease toward it.
+	var stance := 1 if crouched else 0
+	if stance == _hurtbox_stance:
+		return
+	_hurtbox_stance = stance
 	var box := hurtbox_shape.shape as BoxShape3D
-	var height := maxf(HURTBOX_HEIGHT - drop, HURTBOX_MIN_HEIGHT)
+	var height := maxf(
+		HURTBOX_HEIGHT - (STAND_EYE - CROUCH_EYE if crouched else 0.0), HURTBOX_MIN_HEIGHT
+	)
 	box.size = Vector3(box.size.x, height, box.size.z)
 	hurtbox_shape.position = Vector3(0.0, height * 0.5, 0.0)
 

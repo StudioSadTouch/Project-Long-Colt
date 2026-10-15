@@ -46,7 +46,7 @@ Bots join groups `bot` and `aim_target` and implement `get_aim_points()` in Dumm
 | PATROL | default | roam between `ai_roam_point` markers (power positions weighted x2) | sees/hears/damaged |
 | SEARCH | heard gunfire, lost target < 4 s, or hit from unseen | path to last known position, look around 1.5 s | sees target / timeout |
 | ENGAGE | hostile visible | hold preferred range per weapon; ADAD strafe, crouch, jump; fire with aim model; melee | lost target / retreat / low ammo |
-| RETREAT | shield <= `retreat_threshold` and roll < `retreat_chance` (once per shield pop) | path to nearest point with no LOS from the threat; backpedal-fire if seen | shield >= `reengage_shield_fraction`, or cornered (threat < 5 m) |
+| RETREAT | shield <= `retreat_threshold` and roll < `retreat_chance` (once per shield pop: re-armed by `HealthShield.shield_full` and on respawn) | path to nearest point with no LOS from the threat; backpedal-fire if seen | shield >= `reengage_shield_fraction`, or cornered (threat < 5 m) |
 | SEEK_PICKUP | out of ammo, or low and a pickup is near | path to nearest useful WeaponPickup; take or top up | done / pickup gone |
 
 ## Perception
@@ -70,6 +70,13 @@ Memory 4 s; a target lost for > 1 s costs a new reaction delay on reacquire.
    on Heroic+ (spread x0.5 like the player). Aims for the head only when the target's shield is
    down, with probability `headshot_bias` (zone multipliers only touch health).
 5. Recoil from `Weapon.get_recoil()` is applied to the bot's eye like the player's view kick.
+6. **Weapon choice and range**: rifle under 28 m, pistol over, with a +/-3 m hysteresis on the
+   held weapon (rifle → pistol past 31 m, pistol → rifle under 25 m). The rifle covers close
+   (AUTO) and mid (BURST past `burst_switch_range`, 16-25 m) range inside its 15-40 m falloff.
+   The pistol covers long range, where it has no falloff until 35 m. Preferred bands: rifle
+   6-24 m, pistol 12-40 m. Each AUTO engagement opens with a full `spray_time` spray.
+7. **Melee**: Halo-style, aimed at the target's body point with no aim error, both in reach and
+   at the end of a lunge.
 
 ## Difficulty presets (`BotDifficulty` resource; values approximate)
 
@@ -106,7 +113,9 @@ same pickups as main_lockout + Navigation + links + BotGravLift + roam points + 
 distance to living enemies, heavy penalty for enemy LOS or < 8 m. Bots drop **both** weapons on
 death (Halo 2), 2.2 m apart across the bot's facing (pickup triggers have radius 1 m; a wall in
 the way shortens the offset), each with its own magazine and reserve; empty weapons are not
-dropped. Kill feed and K/D tally go to stdout and a debug Label (top left).
+dropped. Kill feed and K/D tally go to stdout and a debug Label (top left). The per-bot
+name / state / S / H label (the rig's Label3D, drawn through walls) is off by default
+(`Bot.show_debug_label`).
 
 Player respawn: SpawnManager adapts to what player.gd exposes, checked with `has_signal` /
 `has_method`, so it needs no player.gd edits:
