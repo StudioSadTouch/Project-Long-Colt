@@ -49,6 +49,12 @@ var _hold_lock: bool = false
 ## Pad X is both reload (tap) and interact (hold). While a pickup is in range, a shared press
 ## defers reload to the release, and only reloads if the hold didn't take a pickup.
 var _reload_on_release: bool = false
+## Scope overlay fade-in, 0..1 over data.zoom_time; 0 at once on unzoom (HUD: get_zoom_blend).
+var _zoom_blend: float = 0.0
+## Viewmodel hidden while scoped: the weapon, and each GeometryInstance3D's original layers.
+## Keys stay untyped (Variant) so a freed mesh can be skipped with is_instance_valid.
+var _hidden_viewmodel: Weapon
+var _hidden_layers: Dictionary = {}
 
 
 func _ready() -> void:
@@ -85,6 +91,8 @@ func on_owner_died(drop: bool) -> void:
 		if w != null:
 			w.release_trigger()
 			w.holster()
+	_zoom_blend = 0.0
+	_restore_viewmodel()
 	if drop and drop_weapons_on_death:
 		_drop_all_on_death.call_deferred()
 
@@ -101,6 +109,8 @@ func reset_loadout() -> void:
 		if w.get_parent() == self:
 			remove_child(w)
 		w.queue_free()
+	_zoom_blend = 0.0
+	_restore_viewmodel()
 	active_index = 0
 	_melee_left = 0.0
 	_hold = 0.0
@@ -502,6 +512,9 @@ func _equip(index: int) -> void:
 	if current != null and index != active_index:
 		current.holster()
 	active_index = index
+	# A new weapon never inherits the previous one's overlay fade.
+	_zoom_blend = 0.0
+	_restore_viewmodel()
 	slots[index].equip()
 	active_weapon_changed.emit(slots[index])
 
@@ -512,7 +525,12 @@ func _on_owner_damaged(_amount: float) -> void:
 		weapon.set_zoom(false)
 
 
-func _on_zoom_changed(_zoomed: bool) -> void:
+func _on_zoom_changed(zoomed_now: bool) -> void:
+	# Unzoom shows the viewmodel at once. Every detach path (switch, pickup swap, loadout,
+	# death drop, respawn) holsters first, so this runs before a weapon leaves the holder.
+	if not zoomed_now:
+		_zoom_blend = 0.0
+		_restore_viewmodel()
 	if _player == null:
 		return
 	var weapon := get_active()
@@ -536,6 +554,54 @@ func _update_zoom_fov(delta: float) -> void:
 	var zoom_fov := weapon.get_zoom_fov(_player.fov) if weapon != null else _player.fov
 	var step := absf(_player.fov - zoom_fov)
 	_camera.fov = move_toward(_camera.fov, target, maxf(step, 1.0) / blend_time * delta)
+	var scoped := (
+		weapon != null
+		and weapon.zoomed
+		and weapon.data.scope_style != WeaponData.ScopeStyle.NONE
+	)
+	# Fade in over zoom_time; snap off on unzoom (the viewmodel is already back).
+	_zoom_blend = move_toward(_zoom_blend, 1.0, delta / blend_time) if scoped else 0.0
+	# Local player only: puppets have no HUD and their holder is hidden anyway.
+	if scoped and _zoom_blend >= 0.5 and not _player.net_puppet:
+		_hide_viewmodel(weapon)
+	elif _hidden_viewmodel != null:
+		_restore_viewmodel()
+
+
+## Scope overlay opacity, 0 (hip) to 1 (fully scoped). Rises with the FOV blend (zoom_time),
+## drops to 0 the frame zoom ends.
+func get_zoom_blend() -> float:
+	return _zoom_blend
+
+
+## Hide the scoped weapon's viewmodel by moving its meshes onto Player.HIDDEN_BODY_LAYER,
+## which the local camera culls. Never touches weapon.visible (it gates Weapon physics) or
+## holder.visible (puppet state). Lights and particles that aren't GeometryInstance3D are left.
+func _hide_viewmodel(weapon: Weapon) -> void:
+	if _hidden_viewmodel == weapon:
+		return
+	_restore_viewmodel()
+	_hidden_viewmodel = weapon
+	_collect_hidden(weapon)
+
+
+func _collect_hidden(node: Node) -> void:
+	for child in node.get_children():
+		var geo := child as GeometryInstance3D
+		if geo != null:
+			_hidden_layers[geo] = geo.layers
+			geo.layers = Player.HIDDEN_BODY_LAYER
+		_collect_hidden(child)
+
+
+func _restore_viewmodel() -> void:
+	for key: Variant in _hidden_layers.keys():
+		if is_instance_valid(key):
+			var geo := key as GeometryInstance3D
+			if geo != null:
+				geo.layers = int(_hidden_layers[key])
+	_hidden_layers.clear()
+	_hidden_viewmodel = null
 
 
 func _first_filled(start: int) -> int:
