@@ -7,17 +7,12 @@ extends Node
 ## 4-player FFA), every bot on its own team, player on team 0. Values marked ~ are approximate
 ## Halo 2 defaults.
 ##
-## Player respawn, picked at runtime from what player.gd exposes (no player.gd edits here):
-##   * signal `died` + method `respawn_at(Transform3D)`: SpawnManager owns the respawn and calls
-##     respawn_at(safe spawn) after respawn_delay. Kill credit uses a Dictionary argument of
-##     `died` with "source" when there is one, else ArenaEvents' recent attacker.
-##   * else signal `respawned`: player.gd times its own respawn; the player is moved to a safe
-##     spawn when it fires.
-##   * else (current origin/main, instant respawn in _on_died): moved right after death.
+## Player respawn: SpawnManager owns it. _hook_player turns off player.gd's auto_respawn and
+## sets its respawn_delay to ours; player.gd runs the one timer and emits respawn_requested,
+## which SpawnManager answers with respawn_at(safe spawn). Kill credit is the killer argument of
+## Player.died(player, killer, info).
 
 signal score_changed(scores: Dictionary)
-
-enum PlayerMode { INSTANT, ON_RESPAWNED, OWNED }
 
 const LOS_MASK := 1
 const PLAYER_TEAM := 0
@@ -43,8 +38,6 @@ var bots: Array[Bot] = []
 var scores: Dictionary = {}
 
 var _player: Player
-## How the player comes back; see the class comment.
-var _player_mode: PlayerMode = PlayerMode.INSTANT
 var _events: ArenaEvents
 var _spawns: Array[Node3D] = []
 var _label: Label
@@ -175,66 +168,19 @@ func _respawn_bot(bot: Bot) -> void:
 
 
 func _hook_player() -> void:
-	if _player.has_signal(&"died") and _player.has_method(&"respawn_at"):
-		_player_mode = PlayerMode.OWNED
-		_player.connect(&"died", _on_player_died)
-		return
-	if _player.has_signal(&"respawned"):
-		_player_mode = PlayerMode.ON_RESPAWNED
-		_player.connect(&"respawned", _on_player_respawned)
-	var hs := _player.get_node_or_null(^"HealthShield") as HealthShield
-	if hs != null:
-		hs.died.connect(_on_player_died)
+	_player.auto_respawn = false
+	_player.respawn_delay = respawn_delay
+	_player.died.connect(_on_player_died)
+	_player.respawn_requested.connect(_on_player_respawn_requested)
 
 
-## Connected to HealthShield.died (no args) or Player.died (args unknown until it lands, so up
-## to three optional ones). Player.gd resets its HealthShield inside `died`, before the killing
-## hit's hit_confirmed; resolve credit after the frame's signals have run.
-func _on_player_died(a: Variant = null, b: Variant = null, c: Variant = null) -> void:
-	var info: Dictionary = {}
-	for arg: Variant in [a, b, c]:
-		if arg is Dictionary:
-			info = arg
-	_resolve_player_death.call_deferred(info)
+func _on_player_died(player: Player, killer: Node, info: Dictionary) -> void:
+	_record_kill(killer, player, info)
 
 
-func _resolve_player_death(signal_info: Dictionary) -> void:
-	if _player == null:
-		return
-	var killer: Node = null
-	var info := signal_info
-	var source: Variant = signal_info.get("source")
-	if source is Node and is_instance_valid(source):
-		killer = source
-	elif _events != null:
-		killer = _events.recent_attacker(_player)
-		if killer != null and info.is_empty():
-			info = _events.recent_hit_info(_player)
-	_record_kill(killer, _player, info)
-	match _player_mode:
-		PlayerMode.OWNED:
-			get_tree().create_timer(respawn_delay, false).timeout.connect(_respawn_player)
-		PlayerMode.INSTANT:
-			# player.gd already put the player back at its scene spawn; use a safe one instead.
-			_move_player_to_safe_spawn()
-
-
-func _respawn_player() -> void:
-	if _player != null and is_instance_valid(_player):
-		_player.call(&"respawn_at", _pick_spawn(_player))
-
-
-func _on_player_respawned(_a: Variant = null, _b: Variant = null) -> void:
-	_move_player_to_safe_spawn.call_deferred()
-
-
-func _move_player_to_safe_spawn() -> void:
-	if _player == null or not is_instance_valid(_player):
-		return
-	var spawn := _pick_spawn(_player)
-	_player.global_position = spawn.origin
-	_player.rotation.y = spawn.basis.get_euler().y
-	_player.velocity = Vector3.ZERO
+func _on_player_respawn_requested(player: Player) -> void:
+	if is_instance_valid(player):
+		player.respawn_at(_pick_spawn(player))
 
 
 func _record_kill(killer: Node, victim: Node, info: Dictionary) -> void:

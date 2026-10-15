@@ -3,20 +3,16 @@ extends Node
 ## Arena event bus and shared helpers. One per arena scene (group "arena_events").
 ##   gunfire   every player and bot shot; bots hear it inside BotDifficulty.hearing_radius.
 ##   kill      emitted by SpawnManager when a kill is resolved.
-## Also tracks live WeaponPickups (placed and dropped) for bots, and the last hit on each victim
-## so SpawnManager can credit player deaths (Player resets its HealthShield inside the died
-## signal, before Weapon emits hit_confirmed, so credit is resolved deferred).
+## Also tracks live WeaponPickups (placed and dropped) for bots. Kill credit comes straight
+## from Player.died / Bot.died (killer argument).
 
 signal gunfire(source: Node3D, position: Vector3)
 signal kill(killer: Node, victim: Node, info: Dictionary)
 
 const GROUP := &"arena_events"
-const PLAYER_HOLDER_PATH := ^"Head/Camera3D/WeaponHolder"
 const PLAYER_EYE_PATH := ^"Head/Camera3D"
 const BODY_HEIGHT := 0.9
 
-## victim instance id -> {"source": Node, "frame": int, "info": Dictionary}
-var _last_hit: Dictionary = {}
 var _pickups: Array[WeaponPickup] = []
 ## Instance ids already connected (bound callables make is_connected unreliable).
 var _watched: Dictionary = {}
@@ -39,7 +35,7 @@ func _ready() -> void:
 
 ## Hooks the player's weapons (current and future) into gunfire and hit tracking.
 func track_player(player: Player) -> void:
-	var holder := player.get_node_or_null(PLAYER_HOLDER_PATH) as WeaponHolder
+	var holder := player.get_weapon_holder()
 	if holder == null:
 		push_warning("ArenaEvents: player has no WeaponHolder")
 		return
@@ -50,14 +46,13 @@ func track_player(player: Player) -> void:
 		holder.active_weapon_changed.connect(_on_player_weapon_changed.bind(player))
 
 
-## Connect a weapon's fired / hit_confirmed signals. Safe to call repeatedly.
+## Connect a weapon's fired signal (gunfire). Safe to call repeatedly.
 func watch_weapon(weapon: Weapon, shooter: Node3D) -> void:
 	if weapon == null or _watched.has(weapon.get_instance_id()):
 		return
 	_prune_watched()
 	_watched[weapon.get_instance_id()] = true
 	weapon.fired.connect(_on_weapon_fired.bind(shooter))
-	weapon.hit_confirmed.connect(record_hit)
 
 
 ## Bots build fresh weapons on every respawn; forget the ids of freed ones.
@@ -70,33 +65,6 @@ func _prune_watched() -> void:
 func report_gunfire(source: Node3D) -> void:
 	if source != null and source.is_inside_tree():
 		gunfire.emit(source, source.global_position)
-
-
-func record_hit(target: Object, info: Dictionary) -> void:
-	var node := target as Node
-	if node == null:
-		return
-	_last_hit[node.get_instance_id()] = {
-		"source": info.get("source"),
-		"frame": Engine.get_physics_frames(),
-		"info": info,
-	}
-
-
-## The shooter whose hit landed on victim during this or the previous physics frame, or null.
-func recent_attacker(victim: Node) -> Node:
-	var entry: Dictionary = _last_hit.get(victim.get_instance_id(), {})
-	if entry.is_empty() or Engine.get_physics_frames() - int(entry.frame) > 1:
-		return null
-	var source: Variant = entry.source
-	if source is Node and is_instance_valid(source):
-		return source
-	return null
-
-
-func recent_hit_info(victim: Node) -> Dictionary:
-	var entry: Dictionary = _last_hit.get(victim.get_instance_id(), {})
-	return entry.get("info", {})
 
 
 func get_pickups() -> Array[WeaponPickup]:

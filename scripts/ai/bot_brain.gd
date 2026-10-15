@@ -287,7 +287,7 @@ func _think() -> void:
 	if not entry.is_empty() and _now - float(entry.seen_at) < MEMORY_TIME:
 		_set_search(entry.pos)
 		return
-	if state == State.SEEK_PICKUP and _pickup != null and _bot.wants_pickup(_pickup):
+	if state == State.SEEK_PICKUP and is_instance_valid(_pickup) and _pickup.is_useful_to(_bot):
 		return
 	if state == State.SEARCH and _has_goal:
 		return
@@ -361,7 +361,7 @@ func _choose_pickup(radius: float) -> bool:
 	var best: WeaponPickup = null
 	var best_d := radius
 	for p in _events.get_pickups():
-		if not _bot.wants_pickup(p):
+		if not p.is_useful_to(_bot):
 			continue
 		var d := _bot.global_position.distance_to(p.global_position)
 		# Prefer pickups that solve the actual problem: ammo for what we carry, or a new gun.
@@ -430,12 +430,12 @@ func _do_search(delta: float) -> Vector3:
 
 
 func _do_seek_pickup() -> Vector3:
-	if _pickup == null or not _bot.wants_pickup(_pickup):
+	if not is_instance_valid(_pickup) or not _pickup.is_useful_to(_bot):
 		_pickup = null
 		state = State.PATROL
 		return Vector3.ZERO
 	_set_goal(_pickup.global_position)
-	if _bot.try_take_pickup(_pickup):
+	if _pickup.is_in_reach(_bot) and _pickup.try_pickup(_bot):
 		_pickup = null
 		state = State.PATROL
 		return Vector3.ZERO

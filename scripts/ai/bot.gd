@@ -12,8 +12,9 @@ extends CharacterBody3D
 ##   Rig heads     HeadArmored / HeadUnarmored on Hitbox (32), from dummy_rig.tscn.
 ## Damage: take_damage on the root only, so Weapon's receiver (nearest ancestor with
 ## take_damage) is always the Bot for hurtbox and head hits alike (keeps the visor probe's
-## same-target check working). KillVolume only checks the body it touched, so the bot applies
-## the same kill itself below FALL_KILL_Y (Lockout's KillVolume spans y -11..-9).
+## same-target check working). KillVolume, GravLift, WeaponPickup and AmmoCrate see the
+## Hurtbox (Enemy layer) and resolve its parent Bot (take_damage / group lift_rider / group
+## pickup_carrier).
 
 signal died(bot: Bot, killer: Node, info: Dictionary)
 signal respawned(bot: Bot)
@@ -46,13 +47,10 @@ const MOVE_MASK := 1 | 2 | 4
 const HURTBOX_HEIGHT := 1.4
 const HURTBOX_MIN_HEIGHT := 0.7
 ## Horizontal reach to take or top up from a WeaponPickup.
-const PICKUP_REACH := 1.3
-const PICKUP_REACH_Y := 1.6
 const DROP_MASK := 1
 ## Half the spacing between the two weapons a dead bot drops (Halo 2 drops both). The pickup
 ## trigger spheres have radius 1.0, so 2 x 1.1 m keeps them apart; walls shorten it.
 const DROP_SPREAD := 1.1
-const FALL_KILL_Y := -9.0
 const BODY_AIM_HEIGHT := 0.7
 
 @export var display_name: String = "Bot"
@@ -66,6 +64,9 @@ const BODY_AIM_HEIGHT := 0.7
 ## Name / state / shield / health above the bot. The rig's Label3D ignores depth, so it shows
 ## through walls: debug only.
 @export var show_debug_label: bool = false
+## AmmoCrates serve every pickup carrier in reach through get_weapons(). Off: bots ignore crates
+## (design decision); weapon pickups still top bots up.
+@export var use_ammo_crates: bool = false
 ## Node whose position is get_aim_points().head. A node, not a hard-coded helmet centre, so it
 ## can move if AimAssist's head point moves (e.g. top/back of the helmet).
 @export var head_aim_path: NodePath = ^"Rig/AimHeadPoint"
@@ -126,8 +127,8 @@ func _ready() -> void:
 	_apply_capsule()
 	add_to_group(&"bot")
 	add_to_group(&"aim_target")
-	# Level GravLift will push this group (LC Programmer); until then BotGravLift does.
-	add_to_group(&"lift_rider")
+	add_to_group(&"lift_rider")  # GravLift pushes this group
+	add_to_group(WeaponPickup.CARRIER_GROUP)  # pickups and crates see the Hurtbox, then the Bot
 	health_shield.died.connect(_on_health_died)
 	health_shield.changed.connect(_on_health_changed)
 	slots.resize(SLOT_COUNT)
@@ -292,17 +293,13 @@ func take_damage(amount: float, info: Dictionary) -> void:
 			weapon.set_zoom(false)
 
 
-## Take a weapon, or top up ammo from it. Mirrors WeaponPickup's walk-over and hold rules
-## through its public API (Area3Ds on the pickup only see Player bodies).
-func try_take_pickup(pickup: WeaponPickup) -> bool:
-	if dead or not is_instance_valid(pickup) or not pickup.available or pickup.weapon == null:
+## Pickup carrier API (WeaponPickup's duck-typed contract, as WeaponHolder): the brain calls
+## pickup.is_useful_to(self) / is_in_reach(self) / try_pickup(self); walk-over ammo from weapon
+## pickups is applied by the pickup itself (it uses find_weapon). Installs a weapon the pickup
+## hands over: an empty slot first, else it replaces the active weapon and drops that one.
+func take_pickup(pickup: WeaponPickup) -> bool:
+	if dead or pickup == null:
 		return false
-	var offset := pickup.global_position - global_position
-	if Vector2(offset.x, offset.z).length() > PICKUP_REACH or absf(offset.y) > PICKUP_REACH_Y:
-		return false
-	var carried := find_weapon(pickup.get_weapon_id())
-	if carried != null:
-		return _top_up(carried, pickup)
 	var taken := pickup.take()
 	if taken == null:
 		return false
@@ -321,14 +318,16 @@ func try_take_pickup(pickup: WeaponPickup) -> bool:
 	return true
 
 
-## True if a pickup would give this bot something (new weapon or ammo it can carry).
-func wants_pickup(pickup: WeaponPickup) -> bool:
-	if not is_instance_valid(pickup) or not pickup.available or pickup.weapon == null:
-		return false
-	var carried := find_weapon(pickup.get_weapon_id())
-	if carried == null:
-		return true
-	return carried.data != null and carried.reserve < carried.data.reserve_max
+## Carried weapons for AmmoCrate, its only caller. Bots ignore ammo crates (Morgon), so this is
+## empty unless use_ammo_crates is set; the crate then has nothing to fill and leaves bots alone.
+func get_weapons() -> Array[Weapon]:
+	var out: Array[Weapon] = []
+	if not use_ammo_crates:
+		return out
+	for w in slots:
+		if w != null:
+			out.append(w)
+	return out
 
 
 func respawn_at(xform: Transform3D) -> void:
@@ -405,8 +404,6 @@ func _physics_process(delta: float) -> void:
 	_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
 	_tick_lunge_melee()
 	_update_eye(delta)
-	if global_position.y < FALL_KILL_Y:
-		take_damage(10000.0, {"bleedthrough": true, "kill_volume": true})
 
 
 func _apply_air(horizontal: Vector3, wish: Vector3, delta: float) -> Vector3:
@@ -608,32 +605,6 @@ func _weapon_from_taken(taken: Weapon) -> BotWeapon:
 		w.reserve = reserve
 	w.ready.connect(restore, CONNECT_ONE_SHOT)
 	return w
-
-
-## Walk-over ammo rules from WeaponPickup._try_ammo, via its public fields and take().
-func _top_up(carried: BotWeapon, pickup: WeaponPickup) -> bool:
-	if pickup.dropped:
-		var source := pickup.weapon
-		var offered := source.reserve + source.magazine
-		var added := carried.add_ammo(offered)
-		if added <= 0:
-			return false
-		if added >= offered:
-			var empty := pickup.take()
-			if empty != null:
-				empty.free()
-			return true
-		var from_reserve := mini(added, source.reserve)
-		source.reserve -= from_reserve
-		source.magazine -= added - from_reserve
-		return true
-	var amount := pickup.ammo_amount if pickup.ammo_amount >= 0 else carried.data.magazine_size
-	if carried.add_ammo(amount) <= 0:
-		return false
-	var spent := pickup.take()
-	if spent != null:
-		spent.free()
-	return true
 
 
 ## Drops weapon as a real pickup (the player weapon scene, so the player can take it).

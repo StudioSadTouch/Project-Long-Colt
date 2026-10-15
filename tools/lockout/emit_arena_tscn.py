@@ -5,7 +5,8 @@ Does NOT touch scenes/levels/lockout.tscn or main_lockout.tscn (emit_lockout_tsc
 those). Reads P, RAMPS, W, S from build_lockout.py with ast (nothing executed) and writes:
   Lockout instance, Player, the same weapon pickups as main_lockout, ArenaEvents,
   Navigation (runtime-baked NavigationRegion3D) + NavigationLink3D lift / drops / jumps,
-  BotGravLift, NavPoints (roam markers), ArenaSpawns (extra spawns), SpawnManager.
+  NavPoints (roam markers), ArenaSpawns (extra spawns), SpawnManager. Bots ride the level's
+  GravLift (group lift_rider), so no bot-side lift is placed.
 Every link endpoint, roam point and spawn is checked to sit on a walkable floor top at least
 one agent radius from the floor's edge and clear of walls/parapets; the script fails otherwise.
 
@@ -191,16 +192,13 @@ ext = [
     ("PackedScene", "res://scenes/ai/bot.tscn", "6_bot"),
     ("Script", "res://scripts/ai/arena_events.gd", "7_events"),
     ("Script", "res://scripts/ai/arena_navigation.gd", "8_nav"),
-    ("Script", "res://scripts/ai/bot_grav_lift.gd", "9_botlift"),
-    ("Script", "res://scripts/ai/spawn_manager.gd", "10_spawns"),
-    ("Resource", "res://resources/ai/bot_difficulty_normal.tres", "11_diff"),
+    ("Script", "res://scripts/ai/spawn_manager.gd", "9_spawns"),
+    ("Resource", "res://resources/ai/bot_difficulty_normal.tres", "10_diff"),
 ]
-lift_h = top("TopBlue_Deck") + 1.0 - pad[5]  # same volume as the level GravLift
 subs = [
     '[sub_resource type="Environment" id="Environment_arena"]\nbackground_mode = 1\n'
     'background_color = Color(0.07, 0.08, 0.09, 1)\nambient_light_source = 2\n'
     'ambient_light_color = Color(0.18, 0.19, 0.2, 1)\nambient_light_energy = 0.45\ntonemap_mode = 3\n',
-    f'[sub_resource type="BoxShape3D" id="Shape_BotLift"]\nsize = Vector3({fmt(pad[3])}, {fmt(lift_h)}, {fmt(pad[4])})\n',
 ]
 nodes = [
     '[node name="ArenaLockout" type="Node3D"]\n',
@@ -233,13 +231,6 @@ for name, kind, a, b, lip, layer, release_y in LINKS:
     if kind == "lift":
         lines.append(f"metadata/release_y = {fmt(release_y)}")
     nodes.append("\n".join(lines) + "\n")
-# TODO(lift_rider): drop BotGravLift (and Shape_BotLift / 9_botlift) once the level GravLift
-# pushes group "lift_rider"; see scripts/ai/bot_grav_lift.gd.
-nodes.append('[node name="BotGravLift" type="Area3D" parent="."]\n'
-             f'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {fmt(pad[1])}, {fmt(pad[5] + lift_h / 2)}, {fmt(pad[2])})\n'
-             'collision_layer = 16\ncollision_mask = 4\nmonitorable = false\nscript = ExtResource("9_botlift")\n'
-             'level_lift = NodePath("../Lockout/GravLift")\n')
-nodes.append('[node name="Shape" type="CollisionShape3D" parent="BotGravLift"]\nshape = SubResource("Shape_BotLift")\n')
 nodes.append('[node name="NavPoints" type="Node3D" parent="."]\n')
 for callout, (x, y, z), weight in ROAM_PTS:
     nodes.append(f'[node name="{callout}" type="Marker3D" parent="NavPoints" groups=["ai_roam_point"]]\n'
@@ -249,9 +240,9 @@ nodes.append('[node name="ArenaSpawns" type="Node3D" parent="."]\n')
 for callout, (x, y, z) in SPAWN_PTS:
     nodes.append(f'[node name="Spawn_{callout}" type="Marker3D" parent="ArenaSpawns"]\n'
                  f'transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, {fmt(x)}, {fmt(y + 0.05)}, {fmt(z)})\n')
-nodes.append('[node name="SpawnManager" type="Node" parent="."]\nscript = ExtResource("10_spawns")\n'
+nodes.append('[node name="SpawnManager" type="Node" parent="."]\nscript = ExtResource("9_spawns")\n'
              'bot_scene = ExtResource("6_bot")\n'
-             f'bot_count = {BOT_COUNT}\ndifficulty = ExtResource("11_diff")\n')
+             f'bot_count = {BOT_COUNT}\ndifficulty = ExtResource("10_diff")\n')
 
 head = f"[gd_scene load_steps={len(ext) + len(subs) + 1} format=3]\n\n"
 head += "\n".join(f'[ext_resource type="{t}" path="{p}" id="{i}"]' for t, p, i in ext) + "\n\n"

@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/levels/lockout.tscn" id="1_level"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
@@ -8,9 +8,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ai/bot.tscn" id="6_bot"]
 [ext_resource type="Script" path="res://scripts/ai/arena_events.gd" id="7_events"]
 [ext_resource type="Script" path="res://scripts/ai/arena_navigation.gd" id="8_nav"]
-[ext_resource type="Script" path="res://scripts/ai/bot_grav_lift.gd" id="9_botlift"]
-[ext_resource type="Script" path="res://scripts/ai/spawn_manager.gd" id="10_spawns"]
-[ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="11_diff"]
+[ext_resource type="Script" path="res://scripts/ai/spawn_manager.gd" id="9_spawns"]
+[ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="10_diff"]
 
 [sub_resource type="Environment" id="Environment_arena"]
 background_mode = 1
@@ -19,9 +18,6 @@ ambient_light_source = 2
 ambient_light_color = Color(0.18, 0.19, 0.2, 1)
 ambient_light_energy = 0.45
 tonemap_mode = 3
-
-[sub_resource type="BoxShape3D" id="Shape_BotLift"]
-size = Vector3(3, 10, 3)
 
 [node name="ArenaLockout" type="Node3D"]
 
@@ -133,17 +129,6 @@ start_position = Vector3(-16.8, 6.5, -9.3)
 end_position = Vector3(-15, 7.5, -9.3)
 metadata/traversal = "jump"
 metadata/lip = Vector3(-16.05, 6.5, -9.3)
-
-[node name="BotGravLift" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 21)
-collision_layer = 16
-collision_mask = 4
-monitorable = false
-script = ExtResource("9_botlift")
-level_lift = NodePath("../Lockout/GravLift")
-
-[node name="Shape" type="CollisionShape3D" parent="BotGravLift"]
-shape = SubResource("Shape_BotLift")
 
 [node name="NavPoints" type="Node3D" parent="."]
 
@@ -269,7 +254,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 7.55, -15)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 3.05, 19)
 
 [node name="SpawnManager" type="Node" parent="."]
-script = ExtResource("10_spawns")
+script = ExtResource("9_spawns")
 bot_scene = ExtResource("6_bot")
 bot_count = 3
-difficulty = ExtResource("11_diff")
+difficulty = ExtResource("10_diff")
