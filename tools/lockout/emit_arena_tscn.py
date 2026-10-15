@@ -194,21 +194,18 @@ ext = [
     ("Script", "res://scripts/ai/arena_navigation.gd", "8_nav"),
     ("Script", "res://scripts/ai/spawn_manager.gd", "9_spawns"),
     ("Resource", "res://resources/ai/bot_difficulty_normal.tres", "10_diff"),
+    ("PackedScene", "res://scenes/levels/lockout_lighting.tscn", "11_lighting"),
 ]
-subs = [
-    '[sub_resource type="Environment" id="Environment_arena"]\nbackground_mode = 1\n'
-    'background_color = Color(0.07, 0.08, 0.09, 1)\nambient_light_source = 2\n'
-    'ambient_light_color = Color(0.18, 0.19, 0.2, 1)\nambient_light_energy = 0.45\ntonemap_mode = 3\n',
-]
+subs = []
 nodes = [
     '[node name="ArenaLockout" type="Node3D"]\n',
-    '[node name="WorldEnvironment" type="WorldEnvironment" parent="."]\nenvironment = SubResource("Environment_arena")\n',
-    '[node name="Sun" type="DirectionalLight3D" parent="."]\ntransform = Transform3D(0.866025, -0.353553, 0.353553, 0, '
-    '0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 20, 0)\nlight_color = Color(0.85, 0.88, 0.95, 1)\n'
-    'light_energy = 1.1\nshadow_enabled = true\n',
+    # Lighting (environment, sun, fixtures) lives in lockout_lighting.tscn; see tools/lighting/.
+    '[node name="LockoutLighting" parent="." instance=ExtResource("11_lighting")]\n',
     # ArenaEvents first so bots and the SpawnManager find it in _ready.
     '[node name="ArenaEvents" type="Node" parent="."]\nscript = ExtResource("7_events")\n',
     '[node name="Lockout" parent="." instance=ExtResource("1_level")]\n',
+    # LightmapGI bakes from its parent, so it sits here to cover the level and the fixtures.
+    '[node name="LightmapGI" type="LightmapGI" parent="."]\nquality = 2\nbounces = 3\nuse_denoiser = true\ninterior = false\nenvironment_mode = 1\ngenerate_probes_subdiv = 2\n',
 ]
 # CHOICE: player starts at level spawn 1 (BR1) facing east, as in main_lockout.
 sx, sz = S[1]

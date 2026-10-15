@@ -1,0 +1,40 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Material" path="res://resources/materials/lighting/fixture_housing.tres" id="1_housing"]
+[ext_resource type="Material" path="res://resources/materials/lighting/emissive_readout.tres" id="3_screen"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_frame"]
+size = Vector3(0.7, 0.5, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_screen"]
+add_uv2 = true
+size = Vector3(0.58, 0.38, 0.02)
+
+[node name="FixtureEmissivePanel" type="Node3D"]
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.03)
+mesh = SubResource("BoxMesh_frame")
+surface_material_override/0 = ExtResource("1_housing")
+gi_mode = 2
+
+[node name="Screen" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.065)
+mesh = SubResource("BoxMesh_screen")
+surface_material_override/0 = ExtResource("3_screen")
+cast_shadow = 0
+
+[node name="Light" type="SpotLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.1)
+light_color = Color(0.5, 0.92, 0.82, 1)
+light_energy = 0.6
+light_volumetric_fog_energy = 1
+light_bake_mode = 1
+shadow_enabled = false
+distance_fade_enabled = true
+distance_fade_begin = 45.0
+distance_fade_length = 10.0
+spot_range = 3.5
+spot_attenuation = 1.2
+spot_angle = 75
+spot_angle_attenuation = 0.8

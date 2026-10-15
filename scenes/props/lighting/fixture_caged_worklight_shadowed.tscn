@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/props/lighting/fixture_caged_worklight.tscn" id="1_base"]
+
+[node name="FixtureCagedWorklightShadowed" instance=ExtResource("1_base")]
+
+[node name="Light" parent="." index="7"]
+light_energy = 6.0
+light_bake_mode = 2
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 1.2
+spot_range = 16.0
