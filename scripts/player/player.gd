@@ -132,6 +132,8 @@ func _ready() -> void:
 	camera.fov = fov
 	camera.current = true
 	add_to_group("player")
+	# GravLift pushes CharacterBody3Ds in this group.
+	add_to_group(&"lift_rider")
 	if hurtbox != null:
 		# Rays hit the Hurtbox and Rig heads instead of the capsule.
 		add_to_group(Weapon.PASSTHROUGH_GROUP)
