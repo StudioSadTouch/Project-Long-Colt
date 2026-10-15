@@ -49,7 +49,7 @@ var _hold_lock: bool = false
 ## Pad X is both reload (tap) and interact (hold). While a pickup is in range, a shared press
 ## defers reload to the release, and only reloads if the hold didn't take a pickup.
 var _reload_on_release: bool = false
-## Scope overlay fade, 0..1 over data.zoom_time (read by the HUD via get_zoom_blend).
+## Scope overlay fade-in, 0..1 over data.zoom_time; 0 at once on unzoom (HUD: get_zoom_blend).
 var _zoom_blend: float = 0.0
 ## Viewmodel hidden while scoped: the weapon, and each GeometryInstance3D's original layers.
 ## Keys stay untyped (Variant) so a freed mesh can be skipped with is_instance_valid.
@@ -529,6 +529,7 @@ func _on_zoom_changed(zoomed_now: bool) -> void:
 	# Unzoom shows the viewmodel at once. Every detach path (switch, pickup swap, loadout,
 	# death drop, respawn) holsters first, so this runs before a weapon leaves the holder.
 	if not zoomed_now:
+		_zoom_blend = 0.0
 		_restore_viewmodel()
 	if _player == null:
 		return
@@ -558,7 +559,8 @@ func _update_zoom_fov(delta: float) -> void:
 		and weapon.zoomed
 		and weapon.data.scope_style != WeaponData.ScopeStyle.NONE
 	)
-	_zoom_blend = move_toward(_zoom_blend, 1.0 if scoped else 0.0, delta / blend_time)
+	# Fade in over zoom_time; snap off on unzoom (the viewmodel is already back).
+	_zoom_blend = move_toward(_zoom_blend, 1.0, delta / blend_time) if scoped else 0.0
 	# Local player only: puppets have no HUD and their holder is hidden anyway.
 	if scoped and _zoom_blend >= 0.5 and not _player.net_puppet:
 		_hide_viewmodel(weapon)
@@ -566,7 +568,8 @@ func _update_zoom_fov(delta: float) -> void:
 		_restore_viewmodel()
 
 
-## Scope overlay opacity, 0 (hip) to 1 (fully scoped). Follows the FOV blend (zoom_time).
+## Scope overlay opacity, 0 (hip) to 1 (fully scoped). Rises with the FOV blend (zoom_time),
+## drops to 0 the frame zoom ends.
 func get_zoom_blend() -> float:
 	return _zoom_blend
 

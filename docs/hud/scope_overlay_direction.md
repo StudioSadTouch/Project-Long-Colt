@@ -1,4 +1,4 @@
-# Project Long Colt: Scope Overlay Direction (v1)
+# Project Long Colt: Scope Overlay Direction (v2)
 
 Owner: Art Director. Branch `artdir/scope-overlays` (worktree `/workspace/lc-scopes`, base reserve/integration 2cbef1c).
 Code: `scripts/ui/scope_overlay.gd`, `scenes/ui/scope_overlay.tscn`. Preview port: `tools/hud/render_scopes.py` (PIL; previews kept out of the repo so Godot does not import them).
@@ -27,106 +27,134 @@ How zoom flows through the code:
 ## 2. Style
 
 The overlays are Bungie-era Halo 2 to Reach in spirit:
-- the readable white reticle floats on glass;
-- a chunky dark bezel has clamp tabs;
-- small amber numerals give range and stadia reads;
-- the mask is near-black rather than pure black.
+- heavy, readable white reticles with a dark halo, floating on glass;
+- a chunky bevelled bezel with clamp tabs;
+- amber readouts on small dark plates;
+- a near-black mask rather than pure black.
 
 The BR, DMR and H2 pistol overlays were used for mood only. Every shape here is original:
 - no circle-in-circle BR ring;
 - no DMR chevron;
 - no H2 pistol bracket.
 
-The early-2000s military-HUD feel comes from three things: the hard rectangular tabs, the flat colour fills, and the under-stroked lines.
+The early-2000s military-HUD feel comes from the hard rectangular tabs, the plated readouts, the flat fills, and the haloed strokes.
 
 ### Units
-- Everything is authored in **reference pixels at 1080p**.
-- At draw time, `u = viewport_height / 1080`, and a line width is `max(1 px, w * u)`.
-- Shapes scale with height only. 16:9, 16:10 and ultrawide keep the same aperture and the extra width becomes mask. Pill and octagon apertures also clamp to about 0.47 of the width, so 4:3 still fits.
-- There are no textures. Everything is drawn with `Control._draw`: polygons, polylines, arcs and `ThemeDB.fallback_font`.
+- Everything is authored in **reference pixels at 1080p**: `u = viewport_height / 1080`.
+- **Reticle** strokes are `max(2 px, w * u)`, and every reticle element (lines, arcs, the dot, numerals) gets a **1.5 u dark halo** on all sides, ends included.
+- **Hardware** (bezel, tabs, plates) uses `max(1 px, w * u)`.
+- Shapes scale with height only. Ultrawide adds mask; the pill and octagon apertures clamp to about 0.45 of the width so 4:3 still fits.
+- There are no textures. Everything is drawn with `Control._draw`: polygons, polylines, arcs, `draw_string_outline` / `draw_string` with `ThemeDB.fallback_font`.
+
+### Weights at 1080p (v2: about 2x heavier than v1)
+
+| Element | Width |
+|---|---|
+| Main posts and outboard bars | 6 to 7 px |
+| Split lines, lower posts, pistol ring | 4 to 5 px |
+| Stadia bars | 4 to 5 px, amber |
+| Duplex fine lines | 2.5 px |
+| Mil ticks | 2 px minor, 3 px major |
+| Centre dots | 6 to 8 px squares |
+| Halo | +1.5 px per side, `#050709` at alpha 0.72 |
+
+### Bezels and hardware (v2: about 1.7x thicker)
+- Bezels are drawn **outside** the aperture as a mitred offset ring, so the glass is not eaten.
+- Thickness: pistol 28 u, rifle and field 24 u, marksman 34 u.
+- Bevel, from the glass outward:
+  - a 2 u lit lip (`#6e8191`);
+  - an inner chamfer band, 30 % of the bezel, in `#3e4c5a`;
+  - the dark body, `#1d2630`;
+  - a 2 u `#3e4c5a` rim edge.
+- Clamp tabs:
+  - pistol 76 x 40 u, rifle 170 x 38 u;
+  - 3 u `#3e4c5a` border and a 2 u lit line on the outer face.
+- Marksman index notches are 44 u wide and 34 u deep, with a lit edge.
+
+### Readouts
+- Magnification sits in amber `#e0a040` on a **plate** set on the bezel.
+- Plate: `#13191f` at alpha 0.94, a 2 u `#3e4c5a` border, a 1.5 u lit top line, and 13 u side padding.
+- Type sizes: magnification 26 u, fire mode 22 u (plated), range and mil numerals 18 u (outlined, not plated, `AMBER_DIM`).
+- All text has a 4 u dark outline.
 
 ### Palette (art board "Frozen blue-grey", plus the sodium amber accent and the HUD palette)
 
-| Role | Colour | Source |
-|---|---|---|
-| Mask | `#0b0f14`, alpha 0.94 to 0.97 | A darker step below board `#1d2630` |
-| Bezel body | `#1d2630` | Board |
-| Bezel inner edge, tabs, notches | `#3e4c5a` | Board |
-| Bezel glass lip, 1 u | `#6e8191` | Board |
-| Reticle | `#dfe6ea`, alpha 0.95 | Board highlight, near HUD `FRAME_COLOR` |
-| Reticle on target | `(1, 0.18, 0.15)` | HUD `RETICLE_TARGET_COLOR`, so the scope goes red like the crosshair |
-| Reticle under-stroke | black, alpha 0.5, line width + 2 u | Readability on snow and on sodium-lit concrete |
-| Readouts (magnification) | `#e0a040` | Sodium amber, lifted for text |
-| Range numerals, labels | `#c47a2c`, alpha 0.8 | Board accent |
-| Glass tint | HUD `SHIELD_FILL` cyan at alpha 0.04 | Barely-there "coated optic" cool |
-| Scanlines (MARKSMAN only) | black, alpha 0.045, 1 u lines every 4 u | Subtle, clipped to the aperture |
+| Role | Colour |
+|---|---|
+| Mask | `#0b0f14`, alpha 0.94 to 0.97 |
+| Bezel body / chamfer / lip | `#1d2630` / `#3e4c5a` / `#6e8191` |
+| Readout plate | `#13191f`, alpha 0.94 |
+| Reticle | `#dfe6ea`, alpha 0.97 |
+| Reticle on target | HUD `RETICLE_TARGET_COLOR` red |
+| Halo and text outline | `#050709`, alpha 0.72 |
+| Readouts | `#e0a040` |
+| Range numerals | `AMBER_DIM` (0.82, 0.53, 0.20) |
+| Glass tint | HUD `SHIELD_FILL` cyan, alpha 0.04 |
+| Rim shade | 8 stacked bands of `#05080a` at alpha 0.035, darkest at the rim (about 0.25), fading inward |
+| Scanlines (marksman only) | black, alpha 0.045, every 4 u |
 
-### Fade timing
-- The overlay alpha follows `WeaponHolder.get_zoom_blend()`, which is 0 to 1 linear over the weapon's `zoom_time`. That is 0.10 s for the pistol and 0.12 s for the rifle and carbine, the same curve as the FOV blend.
-- At blend 0.5, the crosshair hides and the viewmodel is culled.
-- Unzoom shows the viewmodel immediately. The crosshair returns once the blend passes back under 0.5, and the overlay fades out over `zoom_time`.
-- Switching weapons, death and respawn snap the blend to 0, so an overlay never carries over to the next weapon or life.
+### Glass depth
+- Every overlay darkens slightly inside the window rim. Rim depth: pistol 50 u, rifle and field 60 u, marksman 80 u.
+- It is subtle, readable as a lens edge rather than a vignette, and never reaches the reticle.
+
+### Fade timing (v2)
+- **Fade in:** alpha follows `WeaponHolder.get_zoom_blend()`, 0 to 1 linear over the weapon's `zoom_time` (0.10 s pistol, 0.12 s rifle and carbine), the same curve as the FOV blend. At blend 0.5 the crosshair hides and the viewmodel is culled.
+- **Unzoom:** snaps the overlay off the same frame, through the `zoom_changed` signal and in physics. The viewmodel and crosshair come back at once, so the overlay never fades over a visible gun.
+- Switching weapons, death and respawn also snap it to 0.
 
 ### Ranging conventions
 - Stadia are true for the current camera FOV:
   - `px_per_mil = 0.001 / tan(fov/2) * H/2`;
   - `px_for(m, d) = m / d * 1000 * px_per_mil`.
-- They are sized for the project's own targets: Player capsule height **1.8 m** and hurtbox width **0.7 m**.
-- Range bands follow Lockout sightlines (roughly 15 to 75 m, per roster_balance).
-- During the fade, the scale grows with the zoom, which reads as the optic coming up.
+- **Feet-line stadia:** put the target's head on the centre, and its feet land on the bar for its range. The target is the Player capsule, **1.8 m**.
+- Ranges stay inside Lockout's 15 to 75 m band (roster_balance).
 
 ## 3. Identities
 
-### SIDEARM (Service Pistol, 2.0x): compact, fast-read
-- Aperture: small round eyepiece, r = 300 u (about 0.28 H), mask alpha 0.94. You see more of the world around it than with the other optics.
-- Bezel: 16 u thick, with four rectangular clamp tabs (44 x 16 u) at the cardinals.
-- Reticle, built for snap reads with no ranging:
-  - a 6 u centre dot;
-  - a broken inner ring, r = 34 u, 3 u wide, as four 57-degree arcs on the diagonals so the cardinals are open;
-  - four heavy 5 u posts from 50 to 96 u.
-- Readout: "2.0x" in amber, 26 u type, on the inside bottom of the glass.
+### SIDEARM (Service Pistol, 2.0x): fastest read
+- Aperture: compact round eyepiece, r = 300 u, mask alpha 0.94.
+- Bezel 28 u. Tabs left, top and right. The **"2.0x" plate is the bottom tab**.
+- Reticle, nothing else:
+  - a broken ring, r = 38 u, **5 u**, as four 57-degree arcs on the diagonals;
+  - four **7 u** posts from 54 to 106 u;
+  - an 8 u centre dot.
+- No ranging and no numerals in the glass.
 
 ### SERVICE_RIFLE (Standard Issue Rifle, 1.8x, BURST only): service burst optic with a simple ranging read
-- Aperture: wide stadium (pill), 650 x 330 u half-extents, which suggests a squat battle-rifle sight box. Mask alpha 0.95.
-- Bezel: 14 u, with rail-clamp tabs (120 x 14 u) top and bottom centre.
+- Aperture: wide stadium, 650 x 330 u half-extents, mask alpha 0.95. Bezel 24 u, with big rail tabs top and bottom centre.
 - Reticle:
-  - split horizontal lines, 3 u wide, running 20 to 140 u from centre;
-  - heavier 6 u outboard bars at 170 to 260 u;
-  - a short 3 u lower post at 20 to 64 u;
-  - a 5 u centre dot;
-  - no top post, so heads stay clear.
-- Ranging: three amber width bars under the post, 34 u apart, with small end hooks. Each bar's width equals a 0.7 m torso at **20 / 40 / 60 m** (labelled). Fit the target's shoulders to a bar to read its range.
-- Readouts: "1.8x" (amber) and the fire mode, "BURST" (dim amber), at the ends of the flat bottom edge.
+  - split horizontal lines, 4 u, 22 to 150 u from centre;
+  - 6 u outboard bars at 185 to 280 u;
+  - a 4 u lower post running to just past the 20 m bar;
+  - a 6 u dot;
+  - no top post.
+- Ranging, bold and simple: **two** amber feet-line bars on the post, **20 m and 40 m** (about 114 / 57 px at 1080p). Each is 72 u wide, 5 u thick, with 12 u upturned end hooks, and labelled to the right at 18 u.
+- Readouts: a **"1.8x"** plate and a **"BURST"** plate on the flat bottom bezel, either side of the centre tab.
 
-### MARKSMAN (Marksman Carbine, 2.5x): precision stadia and ranging ladder, plus mil ticks
-- Aperture: large round tube, r = 470 u (about 0.44 H), mask alpha 0.97.
-- Bezel: 20 u, with four triangular index notches (28 u wide) pointing in at the cardinals.
-- Glass tint and scanlines are on this one only.
-- Reticle: a duplex.
-  - Heavy 7 u posts run from 0.36 r out to the bezel.
-  - Thin 1.5 u inner lines start 8 u from centre and stop at 0.36 r.
-  - A 4 u centre dot.
-- Mil ticks:
-  - On the thin lines, in true mils at the current FOV.
-  - The step is auto-picked from 1/2/5/10/20/50 mil as the first that is at least 12 u apart. At 2.5x on a 75-degree base this is 10 mil.
-  - Every fifth tick is major (16 u long) and labelled in mils ("50"). Minor ticks are 8 u long.
-  - "MIL" is captioned at the right end of the inner line.
-- Stadia ladder, lower-left quadrant: four amber posts on a common baseline. Each post is the height of a **1.8 m Spartan at 25 / 50 / 75 / 100 m**, with feet on the baseline, and is labelled underneath. Match the target's height to a post to read its range.
-- Readout: "2.5x" in amber, lower-right of the glass.
+### MARKSMAN (Marksman Carbine, 2.5x): precision duplex, mil ticks, stadia stack
+- Aperture: large round tube, r = 470 u, mask alpha 0.97. Bezel 34 u, with four index notches. Glass tint, rim shade (80 u) and scanlines.
+- Reticle:
+  - a duplex: **6 u** heavy posts from 0.36 r to the bezel, 2.5 u fine lines from 10 u out to 0.36 r;
+  - a 6 u dot.
+- **Mil ticks on the horizontal only** (lead reads; there is no bullet drop):
+  - true mils at the current FOV;
+  - the step is auto-picked from 1/2/5/10/20/50 mil, first at least 14 u apart, so 10 mil at 2.5x;
+  - 2 u minor and 3 u major ticks every fifth;
+  - only the right-hand major ("50") is labelled.
+- **Stadia stack hanging from the lower fine post:** amber feet-line bars for **25 / 50 / 75 m** (about 127 / 63 / 42 px at 1080p). They are 4 u thick, graduate 60 / 46 / 32 u wide, and are labelled to the right at 18 u.
+- v1's detached lower-left ladder, the 100 m post, the vertical mil ticks and the "MIL" caption are all cut.
+- Readout: a **"2.5x"** plate on the bezel at the lower-right 45-degree point.
 
 ### FIELD (default for any other zoomer)
-- Aperture: chamfered octagon, 540 x 380 u half-extents with 130 u chamfers. Mask alpha 0.95. Bezel 14 u.
-- Reticle:
-  - a T-post: split horizontal lines (3 u, 18 to 120 u from centre) and a heavy lower post (6 u, 18 to 150 u);
-  - an open centre circle, r = 10 u, 2 u wide.
-- Readout: magnification, bottom centre.
-- Purpose: a new zooming weapon gets a readable optic with zero setup. Give it a bespoke style once it has an identity.
-- `ScopeStyle.NONE` opts a zoomer out. It keeps the hip crosshair and viewmodel and draws no overlay.
+- Aperture: chamfered octagon, 540 x 380 u with 130 u chamfers. Bezel 24 u, rim shade 60 u.
+- Reticle: a T-post, with 4 u split horizontals, a 6 u lower post (20 to 160 u) and a 3 u centre circle, r = 12 u.
+- Readout: a magnification plate on the bottom bezel.
+- `ScopeStyle.NONE` opts a zoomer out entirely.
 
 ## 4. Implementation contract
 - **WeaponData:**
-  - New `enum ScopeStyle { NONE, FIELD, SIDEARM, SERVICE_RIFLE, MARKSMAN }`, stored as an int; append only.
-  - New `@export var scope_style: ScopeStyle = ScopeStyle.FIELD`. It replaces `zoom_overlay`, which was removed from the script and from the three .tres files.
+  - `enum ScopeStyle { NONE, FIELD, SIDEARM, SERVICE_RIFLE, MARKSMAN }`, stored as an int; append only.
+  - `@export var scope_style: ScopeStyle = ScopeStyle.FIELD`. It replaces `zoom_overlay`.
   - Values set: pistol 2, rifle 3, carbine 4.
 - **ScopeOverlay** (Control, full rect, mouse ignore) is instanced as `HUD/Scope`. Each frame the HUD calls:
 
@@ -134,20 +162,33 @@ The early-2000s military-HUD feel comes from three things: the hard rectangular 
   show_scope(style, blend, camera.fov, magnification, fire_mode_name, reticle_on_target)
   ```
 
-  The node hides itself at blend 0 or style NONE.
 - **WeaponHolder:**
-  - Owns the blend (`get_zoom_blend()`).
-  - Hides the viewmodel by moving the active weapon's GeometryInstance3D descendants (the hands are children of the weapon) to `Player.HIDDEN_BODY_LAYER`, and restores their original layers.
-  - Applies to the local player only (`not net_puppet`).
-  - Restore runs on unzoom (signal), switch, death, respawn, and as a physics fallback.
-- The crosshair is hidden when blend is at least 0.5 and the style isn't NONE.
+  - Owns the blend: rise over `zoom_time`, 0 at once on unzoom.
+  - Hides the viewmodel past blend 0.5 by moving the active weapon's GeometryInstance3D descendants to `Player.HIDDEN_BODY_LAYER`.
+  - Restores the original layers on unzoom, switch, death and respawn.
+  - Applies to the local player only.
+- The crosshair hides when blend is at least 0.5 and the style isn't NONE.
+- Preview port: `tools/hud/render_scopes.py`, a 1:1 geometry port in PIL. It is the reference for review; the engine is the truth.
 
 ## 5. Review checklist (in engine)
-- [ ] Each zoomer at 1280x720, 1920x1080, 2560x1440 and 3440x1440: the aperture is the same relative size, lines never drop below 1 px, and text stays crisp.
-- [ ] Rifle: zoom is only available in BURST. Toggling to AUTO while zoomed drops the overlay and restores the crosshair and viewmodel.
-- [ ] Zoom, then reload / melee / take damage / switch / die / respawn: the viewmodel and crosshair come back every time, with no stale overlay.
-- [ ] Pick up a weapon while zoomed: the dropped pickup's meshes are on layer 1 (visible to everyone).
-- [ ] The marksman ladder's 50 post matches a standing player at 50 m (use the Lockout long lane).
+- [ ] Each zoomer at 1280x720, 1920x1080, 2560x1440 and 3440x1440: the aperture is the same relative size, reticle strokes are at least 2 px with a halo, and plates are crisp.
+- [ ] Reticle and numerals read on the bright snow sky **and** on dark `#1d2630` walls.
+- [ ] Unzoom: the overlay, crosshair and viewmodel all swap in the same frame, with no fade over the gun.
+- [ ] Rifle: zoom is only available in BURST. Toggling to AUTO while zoomed drops the overlay at once.
+- [ ] Zoom, then reload / melee / take damage / switch / die / respawn: the viewmodel and crosshair come back every time.
+- [ ] Pick up a weapon while zoomed: the dropped pickup's meshes are on layer 1.
+- [ ] Marksman 50 m bar and rifle 40 m bar: a standing player at that range, head on the centre, has its feet on the bar.
 - [ ] The reticle turns red on target.
-- [ ] Muzzle flash light: lights aren't culled, so the flash still lights the world while scoped. Expected.
-- [ ] Puppets and bots: no layer changes. Remote clients never see a hidden viewmodel.
+- [ ] The muzzle flash light still lights the world while scoped. Expected.
+
+## Changelog
+- **v2 (polish):**
+  - reticle about 2x heavier with a halo;
+  - bezels about 1.7x thicker and bevelled;
+  - bigger tabs;
+  - plated amber readouts (26 / 22 / 18 u);
+  - marksman stadia moved to the lower post and decluttered;
+  - rifle stadia cut to two bold bars;
+  - rim shade on all glass;
+  - the overlay snaps off on unzoom.
+- **v1:** first pass (fe3ef0f).

@@ -1,8 +1,8 @@
 extends CanvasLayer
 ## Combat HUD, Bungie-era: chunky shield meter top centre with segmented health under it,
 ## low-shield flash + beep hook, ammo and fire mode bottom right, a bloom-tracking crosshair,
-## and a per-weapon scope overlay (ScopeOverlay, data.scope_style) that fades with the zoom
-## blend and hides the crosshair while up (the holder hides the viewmodel).
+## and a per-weapon scope overlay (ScopeOverlay, data.scope_style) that fades in with the zoom
+## blend, snaps off on unzoom, and hides the crosshair while up (the holder hides the viewmodel).
 ## No audio here: listen to sfx_event(name) (names: "low_shield_beep", "shield_broken",
 ## "shield_recharge", "shield_full") or low_shield_warning(active).
 ## While the owning Player (the HUD's parent) is dead: no crosshair or scope, and the prompt
@@ -114,7 +114,7 @@ func _scope_blend() -> float:
 	return _holder.get_zoom_blend() if is_instance_valid(_holder) else 0.0
 
 
-## The crosshair hands over to the overlay at the half-way point of the fade.
+## The crosshair hands over to the overlay half-way through the fade-in (back at once on unzoom).
 func _scope_covers_crosshair() -> bool:
 	return _scope_style() != WeaponData.ScopeStyle.NONE and _scope_blend() >= 0.5
 
