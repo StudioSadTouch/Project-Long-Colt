@@ -136,5 +136,6 @@ func _parse(bytes: PackedByteArray, ip: String, now: float) -> Dictionary:
 		"players": int(info.get("players", 0)),
 		"max": int(info.get("max", 0)),
 		"version_ok": int(info.get("v", -1)) == protocol,
+		"bot_refill": bool(info.get("refill", false)),
 		"seen": now,
 	}

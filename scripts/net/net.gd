@@ -35,6 +35,8 @@ var mode: Mode = Mode.OFFLINE
 var players: Dictionary = {}
 ## Host: fill empty slots (of MAX_PLAYERS) with bots.
 var bot_fill: bool = true
+## Host: a human leaving mid-match is replaced by a bot (independent of bot_fill).
+var bot_refill: bool = false
 var match_running: bool = false
 ## Why the last session ended (shown by the main menu).
 var last_end_reason: String = ""
@@ -102,7 +104,7 @@ func start_offline() -> void:
 	_load_scene(ARENA_SCENE)
 
 
-func host(port: int = DEFAULT_PORT, fill_bots: bool = true) -> Error:
+func host(port: int = DEFAULT_PORT, fill_bots: bool = true, refill_bots: bool = false) -> Error:
 	leave()
 	var peer := ENetMultiplayerPeer.new()
 	var err := peer.create_server(port, MAX_PLAYERS - 1)
@@ -111,6 +113,7 @@ func host(port: int = DEFAULT_PORT, fill_bots: bool = true) -> Error:
 	multiplayer.multiplayer_peer = peer
 	mode = Mode.HOST
 	bot_fill = fill_bots
+	bot_refill = refill_bots
 	players = {1: _my_info()}
 	discovery.stop_listening()
 	discovery.start_beacon(_beacon_info.bind(port))
@@ -299,6 +302,7 @@ func _beacon_info(port: int) -> Dictionary:
 		"players": players.size(),
 		"max": MAX_PLAYERS,
 		"port": port,
+		"refill": bot_refill,
 	}
 
 

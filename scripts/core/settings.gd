@@ -28,6 +28,8 @@ var fov: float = -1.0
 var last_join_ip: String = "127.0.0.1"
 var bot_difficulty: String = "Normal"
 var host_bot_fill: bool = true
+## Host: replace a human who leaves mid-match with a bot (Morgon: off unless the host opts in).
+var host_bot_refill: bool = false
 
 
 func _ready() -> void:
@@ -49,6 +51,7 @@ func load_settings() -> void:
 	var diff := str(cfg.get_value("game", "bot_difficulty", bot_difficulty))
 	bot_difficulty = diff if DIFFICULTY_PATHS.has(diff) else "Normal"
 	host_bot_fill = bool(cfg.get_value("game", "bot_fill", true))
+	host_bot_refill = bool(cfg.get_value("game", "bot_refill", false))
 
 
 func save_settings() -> void:
@@ -62,6 +65,7 @@ func save_settings() -> void:
 	cfg.set_value("net", "last_ip", last_join_ip)
 	cfg.set_value("game", "bot_difficulty", bot_difficulty)
 	cfg.set_value("game", "bot_fill", host_bot_fill)
+	cfg.set_value("game", "bot_refill", host_bot_refill)
 	var err := cfg.save(PATH)
 	if err != OK:
 		push_warning("Settings: could not save %s (%s)" % [PATH, error_string(err)])

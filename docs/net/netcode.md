@@ -9,9 +9,9 @@ CharacterAnimState / CharacterAnimDriver (ee83135). All newer APIs are probed wi
 
 * **Topology:** listen server over ENet (`ENetMultiplayerPeer`). There are at most 4 humans, and
   the host plays. Free-for-all on `arena_lockout`, first to 25 kills. The host can fill empty
-  slots with bots.
+  slots with bots, and separately choose to refill slots that humans leave (see Bot slots).
 * **Ports:** game on UDP 7777. LAN discovery on UDP 7778: 1 Hz JSON beacons to 255.255.255.255
-  `{game:"PLC", v, name, map, players, max, port}`.
+  `{game:"PLC", v, name, map, players, max, port, refill}`.
 * **Authority:** the host owns all of these:
   * damage and HealthShield;
   * deaths, kills and scores;
@@ -58,7 +58,7 @@ CharacterAnimState / CharacterAnimDriver (ee83135). All newer APIs are probed wi
    A join during a match loads the arena straight away (late join).
 5. **Client ready:** in the arena, each client's NetMatch sends `_rpc_client_ready`. The host
    then does the following:
-   1. Removes a bot if the slots are full (bot fill).
+   1. Removes a bot if the slots are full (a bot from the initial fill or a refill).
    2. Sends the roster, scores, pickup state and live drops.
    3. Spawns a host-side puppet, registers it with `SpawnManager.register_player` and respawns
       it. The respawn goes to everyone with a teleport seq.
@@ -67,6 +67,21 @@ CharacterAnimState / CharacterAnimDriver (ee83135). All newer APIs are probed wi
    (reloads the arena for everyone); anyone can choose Quit to Menu.
 7. **Disconnects:** a client that drops is unregistered and its puppet is freed. If the host
    drops, every client returns to the menu with the reason shown.
+
+### Bot slots (host only; offline Bot Arena unchanged)
+
+Two independent Host-menu options, both saved in `user://settings.cfg` (`[game]`):
+
+* **Fill empty slots with bots** (`bot_fill`, default on): at match start the host spawns
+  `MAX_PLAYERS - humans` bots.
+* **Refill empty slots with bots** (`bot_refill`, default **off**; Morgon's decision):
+  * On: a human who leaves mid-match is replaced by a bot (`SpawnManager.add_bot()`), so
+    humans + bots stay at 4. A joiner then bumps a bot (`remove_bot()`).
+  * Off: a leaver's slot stays empty until the next human joins it.
+  * In both cases a joiner bumps a bot only if all 4 slots are taken. That only happens with
+    bot fill, or after a refill.
+  * `Net.bot_refill` is host-side. The beacon advertises it as `refill`, and LanDiscovery
+    exposes it as `bot_refill`.
 
 ## Entities
 
@@ -154,6 +169,10 @@ The client's own hits, hit markers and FX stay local predictions; no damage is a
 5. **Charged shots:** accepted only if the client-reported `charge` peaked at ≥ 1.0 since the
    last charged shot. The host never simulates the trigger, so it uses the streamed weapon
    state.
+   * The charge is therefore client-trusted: a modified client could report a full charge
+     early. **Morgon accepted this for LAN play;** don't add host-side charge simulation
+     unless that changes.
+   * Hit zones are unchanged: the neck stays body (Morgon).
 6. **Rewind:** NetLag rewinds every other body's colliders to the client's render tick (at most
    0.25 s back).
 7. **Re-cast** through the host's own weapon, aimed from a proxy node at the request origin and
@@ -254,6 +273,7 @@ copy on clients.
    * DER heat and charge;
    * shotgun blasts;
    * game over and Play Again.
-3. **Four peers on a LAN with bot fill;** a late join; a client quitting mid-match.
+3. **Four peers on a LAN with bot fill;** a late join; a client quitting mid-match, with
+   refill off (the slot stays empty) and on (a bot takes the slot).
 4. **Lag compensation:** add artificial latency (e.g. `tc netem` on Linux) and check moving
    targets.

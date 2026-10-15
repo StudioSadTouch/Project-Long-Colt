@@ -671,10 +671,31 @@ func _rpc_roster(new_roster: Dictionary) -> void:
 func _on_players_changed() -> void:
 	if not _host:
 		return
+	var left := 0
 	for id: int in roster.keys():
 		if id > 1 and not Net.players.has(id):
+			left += 1 if int(roster[id].kind) == KIND_HUMAN else 0
 			roster.erase(id)
 			_remove_entity(id)
+	if Net.bot_refill and left > 0:
+		_refill_bots(left)
+
+
+## Host, "refill empty slots with bots" on: one bot per human who left, up to MAX_PLAYERS.
+## Off (the default), a leaver's slot stays empty for the next joiner.
+func _refill_bots(count: int) -> void:
+	if spawn_manager == null:
+		return
+	var humans := 0
+	for id: int in roster:
+		humans += 1 if int(roster[id].kind) == KIND_HUMAN else 0
+	var alive := 0
+	for bot in spawn_manager.bots:
+		alive += 1 if is_instance_valid(bot) else 0
+	for i in mini(count, Net.MAX_PLAYERS - humans - alive):
+		spawn_manager.add_bot()
+	_refresh_bots()
+	_broadcast_roster(true)
 
 
 func _poll_loadouts() -> void:

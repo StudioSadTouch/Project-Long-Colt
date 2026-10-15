@@ -221,6 +221,23 @@ func unregister_player(player: Player) -> void:
 	_refresh_label()
 
 
+## Net host: spawns one more bot now (NetMatch's refill of a slot a human left), named after
+## the first free "Bot N". Host only; returns false on a client or without a bot scene.
+func add_bot() -> bool:
+	if not multiplayer.is_server() or bot_scene == null:
+		return false
+	var taken := {}
+	for bot in bots:
+		if is_instance_valid(bot):
+			taken[bot.display_name] = true
+	var index := 0
+	while taken.has("Bot %d" % (index + 1)):
+		index += 1
+	_spawn_bot(index)
+	_refresh_label()
+	return true
+
+
 ## Net: removes the newest bot (a late joiner takes its slot). Returns false if none left.
 func remove_bot() -> bool:
 	while not bots.is_empty():

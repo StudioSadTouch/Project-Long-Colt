@@ -15,6 +15,7 @@ var _servers: ItemList
 var _server_data: Array = []
 var _ip_edit: LineEdit
 var _bot_fill: CheckButton
+var _bot_refill: CheckButton
 var _lobby_list: VBoxContainer
 var _lobby_start: Button
 var _lobby_title: Label
@@ -155,6 +156,12 @@ func _build_lan() -> Control:
 	_bot_fill.toggled.connect(func(on: bool) -> void: Settings.host_bot_fill = on)
 	_add_first(Page.LAN, column, MenuTheme.button("Host Game", _host))
 	column.add_child(_bot_fill)
+	_bot_refill = CheckButton.new()
+	_bot_refill.text = "REFILL EMPTY SLOTS WITH BOTS"
+	_bot_refill.tooltip_text = "A player who leaves mid-match is replaced by a bot."
+	_bot_refill.button_pressed = Settings.host_bot_refill
+	_bot_refill.toggled.connect(func(on: bool) -> void: Settings.host_bot_refill = on)
+	column.add_child(_bot_refill)
 	column.add_child(MenuTheme.label("LAN - Join", MenuTheme.HEADER_SIZE))
 	_servers = ItemList.new()
 	_servers.custom_minimum_size = Vector2(720, 180)
@@ -278,7 +285,7 @@ func _start_bots(difficulty: String) -> void:
 
 func _host() -> void:
 	Settings.save_settings()
-	var err := Net.host(Net.DEFAULT_PORT, _bot_fill.button_pressed)
+	var err := Net.host(Net.DEFAULT_PORT, _bot_fill.button_pressed, _bot_refill.button_pressed)
 	if err != OK:
 		_status.text = "COULD NOT HOST ON PORT %d (%s)" % [Net.DEFAULT_PORT, error_string(err)]
 		return
