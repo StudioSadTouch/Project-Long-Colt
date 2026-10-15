@@ -35,17 +35,10 @@ const STUCK_DISTANCE := 0.4
 ## no falloff until 35 m and the rifle has lost most of its damage.
 const RANGE_RIFLE := Vector2(6.0, 24.0)
 const RANGE_PISTOL := Vector2(12.0, 40.0)
-## Rifle below this distance, pistol above, with +/- WEAPON_SWITCH_HYSTERESIS so a bot near
-## the split doesn't swap back and forth: holding the rifle it switches past 31 m, holding the
-## pistol it switches back under 25 m.
-const WEAPON_SPLIT := 28.0
-const WEAPON_SWITCH_HYSTERESIS := 3.0
 const CORNERED_DISTANCE := 5.0
 const COVER_SEARCH_RADIUS := 25.0
 const PICKUP_SEEK_RADIUS := 40.0
 const OPPORTUNISTIC_PICKUP_RADIUS := 8.0
-const BURST_HYSTERESIS := 3.0
-const ZOOM_RANGE := 25.0
 const LOW_AMMO_FRACTION := 0.25
 
 var state: State = State.PATROL
@@ -258,8 +251,8 @@ func _target_entry() -> Dictionary:
 func _think() -> void:
 	_pick_target()
 	var weapon := _bot.get_active()
-	var out_of_ammo := _all_ammo() <= 0
-	var low_ammo := out_of_ammo or _ammo_fraction() < LOW_AMMO_FRACTION
+	var out_of_ammo := BotWeaponPrefs.all_ammo(_bot) <= 0
+	var low_ammo := out_of_ammo or BotWeaponPrefs.ammo_fraction(_bot.slots) < LOW_AMMO_FRACTION
 	var visible := _target_visible()
 	var dist := _target_distance()
 	if state == State.RETREAT:
@@ -371,7 +364,10 @@ func _choose_pickup(radius: float) -> bool:
 		# Prefer pickups that solve the actual problem: ammo for what we carry, or a new gun.
 		# Roster power weapons (BotWeaponPrefs.pickup_weight) are worth a detour.
 		if _bot.find_weapon(p.get_weapon_id()) == null:
-			d *= (1.5 if _all_ammo() > 0 else 1.0) * BotWeaponPrefs.pickup_weight(p)
+			d *= (
+				(1.5 if BotWeaponPrefs.all_ammo(_bot) > 0 else 1.0)
+				* BotWeaponPrefs.pickup_weight(p)
+			)
 		if d < best_d:
 			best_d = d
 			best = p
@@ -384,8 +380,9 @@ func _choose_weapon(dist: float) -> void:
 	var other := _bot.get_other()
 	if other == null or _bot.is_lunging():
 		return
-	var a := _weapon_score(active, dist, true)
-	var b := _weapon_score(other, dist, false)
+	var shielded := _target_shielded()
+	var a := BotWeaponPrefs.score(active, dist, true, shielded, _bot.total_ammo(active))
+	var b := BotWeaponPrefs.score(other, dist, false, shielded, _bot.total_ammo(other))
 	if active != null and active.magazine <= 0 and active.reserve > 0 and other.magazine > 0:
 		# Halo: switching beats reloading under fire, for skilled players.
 		if _rng.randf() < _diff.weapon_switch_skill:
@@ -393,22 +390,6 @@ func _choose_weapon(dist: float) -> void:
 	if b > a + 1.0:
 		_release_trigger()
 		_bot.switch_weapon()
-
-
-## `held`: the active weapon gets the hysteresis margin, so switching needs a clear reason.
-func _weapon_score(w: BotWeapon, dist: float, held: bool) -> float:
-	if w == null or w.data == null or _bot.total_ammo(w) <= 0:
-		return -100.0
-	var roster := BotWeaponPrefs.score(w, dist, held, _target_shielded())
-	if not is_nan(roster):
-		return roster
-	var auto := w.data.fire_mode == WeaponData.FireMode.AUTO
-	var split := WEAPON_SPLIT
-	if held:
-		split += WEAPON_SWITCH_HYSTERESIS if auto else -WEAPON_SWITCH_HYSTERESIS
-	if auto:
-		return 2.0 if dist < split else -0.5
-	return 2.0 if dist >= split else 0.5
 
 
 # ------------------------------------------------------------------ states
@@ -588,7 +569,8 @@ func _fire(weapon: BotWeapon, desired: Vector3, dist: float, delta: float) -> vo
 		if weapon.reserve > 0:
 			weapon.reload()
 		return
-	_manage_modes(weapon, dist)
+	if BotWeaponPrefs.manage_modes(weapon, dist, _diff, _use_charge, target):
+		_press_held = false
 	if _now < _first_shot_at:
 		_release_trigger()
 		return
@@ -632,28 +614,6 @@ func _fire(weapon: BotWeapon, desired: Vector3, dist: float, delta: float) -> vo
 	_next_press_at = _now + cycle / maxf(_diff.semi_cadence, 0.1)
 	weapon.trigger(true, true)
 	_press_held = true
-
-
-## Rifle AUTO <-> BURST by range, pistol zoom.
-func _manage_modes(weapon: BotWeapon, dist: float) -> void:
-	var data := weapon.data
-	var can_burst := (
-		data.fire_mode == WeaponData.FireMode.AUTO
-		and data.alt_fire_mode == WeaponData.FireMode.BURST
-	)
-	if can_burst:
-		var want_alt := (
-			dist > _diff.burst_switch_range + (0.0 if weapon.alt_mode else BURST_HYSTERESIS)
-		)
-		if not weapon.alt_mode and want_alt or weapon.alt_mode and dist < _diff.burst_switch_range:
-			weapon.toggle_fire_mode()
-			_press_held = false
-	if BotWeaponPrefs.sync_charge_mode(weapon, _use_charge, dist, target):
-		_press_held = false
-	if data.secondary == WeaponData.Secondary.ZOOM:
-		var want_zoom := _diff.uses_zoom and dist > ZOOM_RANGE and not weapon.reloading
-		if want_zoom != weapon.zoomed:
-			weapon.set_zoom(want_zoom)
 
 
 ## CHARGE mode: hold to charge (keep holding while off target), release once full and on target.
@@ -729,23 +689,6 @@ func _target_shielded() -> bool:
 func _melee_reach() -> float:
 	var weapon := _bot.get_active()
 	return weapon.data.melee_lunge_range if weapon != null and weapon.data != null else 0.0
-
-
-func _all_ammo() -> int:
-	var total := 0
-	for w in _bot.slots:
-		total += _bot.total_ammo(w)
-	return total
-
-
-func _ammo_fraction() -> float:
-	var have := 0.0
-	var cap := 0.0
-	for w in _bot.slots:
-		if w != null and w.data != null:
-			have += w.magazine + w.reserve
-			cap += w.data.magazine_size + w.data.reserve_max
-	return have / cap if cap > 0.0 else 0.0
 
 
 ## Ground ahead (no ledge drop > 1 m) and no wall at chest height.

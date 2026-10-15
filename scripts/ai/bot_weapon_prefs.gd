@@ -1,8 +1,8 @@
 class_name BotWeaponPrefs
 extends RefCounted
 ## Bot weapon preferences for the five-gun roster (docs/ai/arena_ai_spec.md, "Weapon roles").
-## Static helpers used by BotBrain. The pistol and rifle keep BotBrain's original scoring and
-## range bands (role PISTOL / RIFLE return NAN from score() so the brain uses its legacy path).
+## Static helpers used by BotBrain: weapon scoring, range bands, fire-mode management and ammo
+## totals. The pistol and rifle keep BotBrain's original scoring and range bands.
 ##
 ## Roles come from WeaponData.resource_path (the network weapon id) for the shipped guns, and
 ## from the data's mechanics for anything else (pellets -> SHOTGUN, battery or a shield bonus ->
@@ -40,6 +40,14 @@ const CHARGE_MIN_SHIELD := 0.9
 ## Pickup distance multipliers (< 1 = more attractive) for guns the bot doesn't carry.
 const PICKUP_WEIGHT := {Role.CARBINE: 0.8, Role.SHOTGUN: 0.6, Role.ENERGY: 0.6}
 const HYSTERESIS := 3.0
+## Pistol / rifle: rifle below WEAPON_SPLIT, pistol above, with +/- WEAPON_SWITCH_HYSTERESIS so a
+## bot near the split doesn't swap back and forth: holding the rifle it switches past 31 m,
+## holding the pistol it switches back under 25 m.
+const WEAPON_SPLIT := 28.0
+const WEAPON_SWITCH_HYSTERESIS := 3.0
+## Rifle AUTO <-> BURST hysteresis past BotDifficulty.burst_switch_range, and pistol zoom range.
+const BURST_HYSTERESIS := 3.0
+const ZOOM_RANGE := 25.0
 
 
 static func role_of(w: Weapon) -> int:
@@ -70,9 +78,13 @@ static func band(role: int) -> Vector2:
 
 
 ## Score for holding w at dist (the brain switches when the other gun beats the active one by
-## more than 1). NAN for PISTOL / RIFLE: the brain keeps its original scoring for them, whose
-## values are 2.0 in band and 0.5 / -0.5 out of band.
-static func score(w: Weapon, dist: float, held: bool, target_shielded: bool) -> float:
+## more than 1). `held`: the active weapon gets the hysteresis margin. total_ammo <= 0: -100.
+## PISTOL / RIFLE keep the brain's original scoring: 2.0 in band and 0.5 / -0.5 out of band.
+static func score(
+	w: Weapon, dist: float, held: bool, target_shielded: bool, total_ammo: int
+) -> float:
+	if w == null or w.data == null or total_ammo <= 0:
+		return -100.0
 	var margin := HYSTERESIS if held else 0.0
 	match role_of(w):
 		Role.SHOTGUN:
@@ -88,7 +100,13 @@ static func score(w: Weapon, dist: float, held: bool, target_shielded: bool) -> 
 				# Shield's down: swap to the precision gun for the finish (DER + pistol combo).
 				return -1.5
 			return 3.5 if dist < ENERGY_RANGE + margin else 0.0
-	return NAN
+	var auto := w.data.fire_mode == WeaponData.FireMode.AUTO
+	var split := WEAPON_SPLIT
+	if held:
+		split += WEAPON_SWITCH_HYSTERESIS if auto else -WEAPON_SWITCH_HYSTERESIS
+	if auto:
+		return 2.0 if dist < split else -0.5
+	return 2.0 if dist >= split else 0.5
 
 
 ## True when the gun gives the head no bonus (shotgun, DER): aim centre mass.
@@ -178,3 +196,48 @@ static func sync_charge_mode(w: Weapon, use_charge: bool, dist: float, target: N
 		return false
 	w.toggle_fire_mode()
 	return true
+
+
+## Rifle AUTO <-> BURST by range, DER CHARGE mode (sync_charge_mode), pistol zoom.
+## Returns true if a fire mode toggled (the brain then forgets its held press).
+static func manage_modes(
+	w: Weapon, dist: float, diff: BotDifficulty, use_charge: bool, target: Node
+) -> bool:
+	var data := w.data
+	var toggled := false
+	var can_burst := (
+		data.fire_mode == WeaponData.FireMode.AUTO
+		and data.alt_fire_mode == WeaponData.FireMode.BURST
+	)
+	if can_burst:
+		var want_alt := dist > diff.burst_switch_range + (0.0 if w.alt_mode else BURST_HYSTERESIS)
+		if not w.alt_mode and want_alt or w.alt_mode and dist < diff.burst_switch_range:
+			w.toggle_fire_mode()
+			toggled = true
+	if sync_charge_mode(w, use_charge, dist, target):
+		toggled = true
+	if data.secondary == WeaponData.Secondary.ZOOM:
+		var want_zoom := diff.uses_zoom and dist > ZOOM_RANGE and not w.reloading
+		if want_zoom != w.zoomed:
+			w.set_zoom(want_zoom)
+	return toggled
+
+
+## Rounds carried across all of a bot's slots (Bot.total_ammo per slot).
+static func all_ammo(bot: Bot) -> int:
+	var total := 0
+	for w in bot.slots:
+		total += bot.total_ammo(w)
+	return total
+
+
+## Carried rounds / carry capacity across slots (0 with nothing carried).
+static func ammo_fraction(slots: Array) -> float:
+	var have := 0.0
+	var cap := 0.0
+	for slot in slots:
+		var w := slot as Weapon
+		if w != null and w.data != null:
+			have += w.magazine + w.reserve
+			cap += w.data.magazine_size + w.data.reserve_max
+	return have / cap if cap > 0.0 else 0.0
