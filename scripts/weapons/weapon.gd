@@ -10,7 +10,9 @@ extends Node3D
 ## "hitbox_head_armored" (helmet), and legacy "hitbox_head", treated as armored. Anything
 ## else is body. Shots, the zone probe and the melee sweep hit PhysicsBody3Ds on World (1),
 ## Enemy (3) or Hitbox (6), and Area3Ds only on Hitbox (6), so triggers, pickups and water
-## don't absorb bullets. Put hitbox Areas on layer 6 only.
+## don't absorb bullets. Put hitbox Areas on layer 6 only. Colliders in group
+## PASSTHROUGH_GROUP are skipped too (movement capsules whose owner has its own Hurtbox and
+## head hitboxes, e.g. the Player).
 ## Zone colliders forward to the nearest ancestor that has take_damage.
 ## info carries hit_zone (HitZone), hit_zone_name, and headshot (true for both head zones).
 ## Audio and VFX: connect to fired, dry_fired, reload_started, melee_started, hit_confirmed.
@@ -29,12 +31,15 @@ extends Node3D
 ##   aim_source         Node3D whose global transform is the ray origin and -Z aim direction,
 ##                      the spread basis and the melee sweep origin. null = the player camera.
 ##   exclude_bodies     CollisionObject3Ds never hit (the shooter's own body and hitboxes).
-##                      The Player, when set, is always excluded.
+##                      The Player, when set, is always excluded with its own colliders
+##                      (Player.get_own_colliders(): capsule, Hurtbox, head hitboxes).
 ##   shooter            Node reported as info.source (defaults to player).
 ##   aim_assist         set by WeaponHolder for the human player only; null is fine.
 ## A Weapon works without a Player: lunge, recoil-to-view and zoom FOV are holder/player-side
-## and simply don't happen. The Player itself is damageable by these rays: it is on layer 2
-## (LAYER_PLAYER) with take_damage on the root, and has no zone groups, so hits count as BODY.
+## and simply don't happen. The Player itself is damageable by these rays on layer 2
+## (LAYER_PLAYER): its Hurtbox (body) is on layer 2 and its head hitboxes on Hitbox (6) with
+## the usual zone groups, and rays pass through its capsule (PASSTHROUGH_GROUP), so a mask of
+## HIT_MASK | LAYER_PLAYER scores body, helmet and face on the player exactly as on bots.
 ## Subclass hooks: _can_fire, _consume_ammo, _emit_shots, _on_trigger_released, _alt_fire, _melee.
 
 signal ammo_changed(magazine: int, reserve: int)
@@ -72,6 +77,8 @@ const HIT_MASK := 1 | 4 | LAYER_HITBOX
 const LAYER_PLAYER := 1 << 1
 ## Non-hitbox Areas a single ray may skip before giving up.
 const MAX_AREA_SKIPS := 8
+## Colliders in this group never take or block hits (rays and melee pass through them).
+const PASSTHROUGH_GROUP := &"hitscan_passthrough"
 ## The visor probe only upgrades shots within ~45 degrees of straight into the face:
 ## dot(shot_dir, -face_forward) must exceed this. Face forward is the unarmored collider's -Z.
 const ZONE_PROBE_MIN_FACING := 0.7
@@ -516,7 +523,7 @@ func _melee_sweep(distance: float) -> Dictionary:
 	_melee_surface = {}
 	for i in _melee_cast.get_collision_count():
 		var collider := _melee_cast.get_collider(i)
-		if _is_ignored_area(collider):
+		if is_ignored_collider(collider):
 			continue
 		var point := _melee_cast.get_collision_point(i)
 		var d := _aim().global_position.distance_to(point)
@@ -530,7 +537,7 @@ func _melee_sweep(distance: float) -> Dictionary:
 			}
 	for i in _melee_cast.get_collision_count():
 		var collider := _melee_cast.get_collider(i)
-		if _is_ignored_area(collider):
+		if is_ignored_collider(collider):
 			continue
 		var target := _damage_receiver(collider)
 		if target == null:
@@ -677,7 +684,7 @@ func _cast_ray(from: Vector3, to: Vector3, exclude: Array[RID], from_inside: boo
 	for _i in MAX_AREA_SKIPS:
 		query.exclude = skip
 		var hit := space.intersect_ray(query)
-		if hit.is_empty() or not _is_ignored_area(hit.collider):
+		if hit.is_empty() or not is_ignored_collider(hit.collider):
 			return hit
 		skip.append(hit.rid)
 	return {}
@@ -697,11 +704,21 @@ func _aim() -> Node3D:
 func _excluded_rids() -> Array[RID]:
 	var rids: Array[RID] = []
 	if player != null:
-		rids.append(player.get_rid())
+		for body in player.get_own_colliders():
+			rids.append(body.get_rid())
 	for body in exclude_bodies:
 		if is_instance_valid(body):
 			rids.append(body.get_rid())
 	return rids
+
+
+## Rays and melee skip this collider: an Area3D off the Hitbox layer, or a PASSTHROUGH_GROUP
+## member.
+static func is_ignored_collider(collider: Object) -> bool:
+	if _is_ignored_area(collider):
+		return true
+	var node := collider as Node
+	return node != null and node.is_in_group(PASSTHROUGH_GROUP)
 
 
 static func _is_ignored_area(collider: Object) -> bool:

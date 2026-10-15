@@ -4,6 +4,8 @@ extends CanvasLayer
 ## and a Halo CE-style scope overlay for weapons with data.zoom_overlay.
 ## No audio here: listen to sfx_event(name) (names: "low_shield_beep", "shield_broken",
 ## "shield_recharge", "shield_full") or low_shield_warning(active).
+## While the owning Player (the HUD's parent) is dead: no crosshair or scope, and the prompt
+## line shows the respawn countdown.
 
 signal sfx_event(event: StringName)
 signal low_shield_warning(active: bool)
@@ -54,6 +56,7 @@ var _health_fraction: float = 1.0
 var _low_shield: bool = false
 var _beep_left: float = 0.0
 var _time: float = 0.0
+var _player: Player
 
 @onready var ammo_label: Label = $Ammo
 @onready var mode_label: Label = $FireMode
@@ -65,6 +68,7 @@ var _time: float = 0.0
 
 
 func _ready() -> void:
+	_player = get_parent() as Player
 	crosshair.draw.connect(_draw_crosshair)
 	shield_meter.draw.connect(_draw_shield_meter)
 	scope.draw.connect(_draw_scope)
@@ -89,9 +93,10 @@ func _process(delta: float) -> void:
 	_time += delta
 	_hit_flash = maxf(_hit_flash - delta, 0.0)
 	_update_low_shield(delta)
-	var scoped := _is_scoped()
+	var dead := _player != null and _player.is_dead()
+	var scoped := _is_scoped() and not dead
 	scope.visible = scoped
-	crosshair.visible = not scoped
+	crosshair.visible = not scoped and not dead
 	if scoped:
 		scope.queue_redraw()
 	else:
@@ -125,6 +130,13 @@ func _update_low_shield(delta: float) -> void:
 
 
 func _update_prompt() -> void:
+	if _player != null and _player.is_dead():
+		var left := ceili(_player.get_respawn_time_left())
+		prompt_label.visible = true
+		prompt_label.text = "Respawning in %d" % left if left > 0 else "Respawning..."
+		prompt_bar.visible = false
+		return
+	prompt_bar.visible = true
 	var text := _holder.get_pickup_prompt() if _holder != null else ""
 	prompt_label.visible = text != ""
 	if text == "":

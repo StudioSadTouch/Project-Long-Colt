@@ -13,6 +13,9 @@ const DROP_WALL_MARGIN := 0.4
 const DROP_MIN_DISTANCE := 0.3
 ## How far below chest height to look for floor (covers short ledges, not cliffs).
 const DROP_FLOOR_SEARCH := 2.5
+## Death drops: each weapon lands this far to either side of the body (pickup triggers have a
+## 1 m radius, same spacing as Bot.DROP_SPREAD); a wall in the way shortens it.
+const DEATH_DROP_SPREAD := 1.1
 ## Xbox face-button names for pad prompts (JoyButton index -> label).
 const PAD_BUTTON_NAMES := {0: "A", 1: "B", 2: "X", 3: "Y", 4: "Back", 6: "Start"}
 
@@ -25,6 +28,9 @@ const PAD_BUTTON_NAMES := {0: "A", 1: "B", 2: "X", 3: "Y", 4: "Back", 6: "Start"
 @export var use_aim_assist: bool = true
 ## Pickup choice score = view dot - distance * this. Higher favors the nearest over the aimed-at.
 @export var pickup_distance_weight: float = 0.25
+## Halo: on death, carried weapons with ammo drop as pickups (both, side by side, each with its
+## own magazine and reserve). Never for kill-volume deaths.
+@export var drop_weapons_on_death: bool = true
 
 var slots: Array[Weapon] = []
 var active_index: int = 0
@@ -65,6 +71,53 @@ func get_active() -> Weapon:
 	return slots[active_index]
 
 
+## Owner died: trigger up, everything holstered, and (drop) carried weapons with ammo dropped
+## as pickups. Called by Player._on_died. The drop is deferred (death can happen during a
+## physics flush); until respawn the slots hold whatever wasn't dropped.
+func on_owner_died(drop: bool) -> void:
+	_hold = 0.0
+	_hold_target = null
+	_reload_on_release = false
+	for w in slots:
+		if w != null:
+			w.release_trigger()
+			w.holster()
+	if drop and drop_weapons_on_death:
+		_drop_all_on_death.call_deferred()
+
+
+## Respawn: frees whatever is carried and installs starting_weapons fresh (full ammo), then
+## equips the first. Called by Player.respawn_at.
+func reset_loadout() -> void:
+	for i in SLOT_COUNT:
+		var w := slots[i]
+		if w == null:
+			continue
+		w.holster()
+		slots[i] = null
+		if w.get_parent() == self:
+			remove_child(w)
+		w.queue_free()
+	active_index = 0
+	_melee_left = 0.0
+	_hold = 0.0
+	_hold_target = null
+	_hold_lock = false
+	_reload_on_release = false
+	for i in mini(starting_weapons.size(), SLOT_COUNT):
+		if starting_weapons[i] != null:
+			_install(starting_weapons[i].instantiate() as Weapon, i)
+	if _player != null:
+		_player.look_sensitivity_scale = 1.0
+	if _camera != null and _player != null:
+		_camera.fov = _player.fov
+	var first := _first_filled(0)
+	if first >= 0:
+		_equip(first)
+	else:
+		active_weapon_changed.emit(null)
+
+
 ## Puts weapon in slot (or the active slot) and returns whatever it replaced, already detached.
 func give_weapon(weapon: Weapon, slot: int = -1) -> Weapon:
 	if weapon == null:
@@ -75,6 +128,15 @@ func give_weapon(weapon: Weapon, slot: int = -1) -> Weapon:
 	if slot == active_index:
 		_equip(slot)
 	return old
+
+
+## Carried weapons (non-empty slots). Pickup-carrier API, used by AmmoCrate.
+func get_weapons() -> Array[Weapon]:
+	var out: Array[Weapon] = []
+	for w in slots:
+		if w != null:
+			out.append(w)
+	return out
 
 
 ## Carried weapon with this id (WeaponPickup.weapon_id_of), or null.
@@ -235,30 +297,34 @@ func _update_pickup_hold(delta: float) -> void:
 	if _hold >= pickup_hold_time:
 		_hold = 0.0
 		_hold_lock = true
-		_take_pickup(candidate)
+		take_pickup(candidate)
 
 
 ## Empty slot: fill it and switch to it. Otherwise swap with the active weapon and drop it.
-func _take_pickup(pickup: WeaponPickup) -> void:
+## Pickup-carrier API (WeaponPickup.try_pickup); also the hold-to-take path. True if taken.
+func take_pickup(pickup: WeaponPickup) -> bool:
+	if pickup == null or (_player != null and _player.is_dead()):
+		return false
 	var weapon := pickup.take()
 	if weapon == null:
-		return
+		return false
 	var empty := slots.find(null)
 	if empty >= 0:
 		_install(weapon, empty)
 		_equip(empty)
-		return
+		return true
 	var old := give_weapon(weapon, active_index)
 	if old == null:
-		return
+		return true
 	var parent: Node = get_tree().current_scene if is_inside_tree() else null
 	if parent == null and is_inside_tree():
 		parent = get_tree().root
 	if _player == null or parent == null:
 		# Nowhere to drop it: free it rather than leak an orphan Weapon.
 		old.queue_free()
-		return
+		return true
 	WeaponPickup.drop(old, parent, _drop_position())
+	return true
 
 
 ## In front of the player, short of walls, on the floor. Falls back to the player's feet when
@@ -292,7 +358,63 @@ func _drop_position() -> Vector3:
 
 
 func _input_enabled() -> bool:
+	if _player != null and _player.is_dead():
+		return false
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or DisplayServer.get_name() == "headless"
+
+
+func _drop_all_on_death() -> void:
+	if _player == null or not _player.is_dead() or not is_inside_tree():
+		return
+	var parent: Node = get_tree().current_scene
+	if parent == null:
+		parent = get_tree().root
+	var carried: Array[Weapon] = []
+	for i in SLOT_COUNT:
+		var index := (active_index + i) % SLOT_COUNT
+		var w := slots[index]
+		if w == null or w.magazine + w.reserve <= 0:
+			continue
+		slots[index] = null
+		if w.zoom_changed.is_connected(_on_zoom_changed):
+			w.zoom_changed.disconnect(_on_zoom_changed)
+		remove_child(w)
+		carried.append(w)
+	if carried.is_empty():
+		return
+	var sides: Array[float] = [0.0] if carried.size() == 1 else [1.0, -1.0]
+	for i in carried.size():
+		WeaponPickup.drop(carried[i], parent, _death_drop_position(sides[i]))
+	if get_active() == null:
+		active_weapon_changed.emit(null)
+
+
+## Floor under the body, offset side x DEATH_DROP_SPREAD along its right (short of walls).
+func _death_drop_position(side: float) -> Vector3:
+	var feet := _player.global_position
+	var space := _player.get_world_3d().direct_space_state
+	var chest := feet + Vector3.UP * DROP_CHEST_HEIGHT
+	var from := chest
+	if side != 0.0:
+		var right := _player.global_transform.basis.x
+		right.y = 0.0
+		right = right.normalized() if right.length_squared() > 0.0001 else Vector3.RIGHT
+		var target := chest + right * side * DEATH_DROP_SPREAD
+		var wall := space.intersect_ray(
+			PhysicsRayQueryParameters3D.create(chest, target, DROP_WORLD_MASK)
+		)
+		if wall.is_empty():
+			from = target
+		else:
+			var reach := maxf(chest.distance_to(wall.position) - DROP_WALL_MARGIN, 0.0)
+			from = chest + right * side * reach
+	var down := PhysicsRayQueryParameters3D.create(
+		from, from + Vector3.DOWN * DROP_FLOOR_SEARCH, DROP_WORLD_MASK
+	)
+	var floor_hit := space.intersect_ray(down)
+	if floor_hit.is_empty():
+		return Vector3(from.x, feet.y, from.z)
+	return floor_hit.position
 
 
 ## Swaps weapon into slot without equipping. Returns the detached previous weapon.

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/player/weapon_holder.gd" id="2_holder"]
@@ -13,6 +13,19 @@ resource_local_to_scene = true
 radius = 0.35
 height = 1.8
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_hurt"]
+resource_local_to_scene = true
+size = Vector3(0.7, 1.4, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_helmet"]
+size = Vector3(0.36, 0.34, 0.36)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_visor"]
+size = Vector3(0.24, 0.14, 0.04)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_neck"]
+size = Vector3(0.16, 0.07, 0.16)
+
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2
 collision_mask = 5
@@ -22,6 +35,37 @@ script = ExtResource("1_player")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("CapsuleShape3D_body")
+
+[node name="Hurtbox" type="AnimatableBody3D" parent="."]
+collision_layer = 2
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Shape" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("BoxShape3D_hurt")
+
+[node name="Rig" type="Node3D" parent="."]
+
+[node name="HeadArmored" type="StaticBody3D" parent="Rig" groups=["hitbox_head_armored"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.64, 0)
+collision_layer = 32
+collision_mask = 0
+
+[node name="HelmetShape" type="CollisionShape3D" parent="Rig/HeadArmored"]
+shape = SubResource("BoxShape3D_helmet")
+
+[node name="HeadUnarmored" type="StaticBody3D" parent="Rig" groups=["hitbox_head_unarmored"]]
+collision_layer = 32
+collision_mask = 0
+
+[node name="VisorShape" type="CollisionShape3D" parent="Rig/HeadUnarmored"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -0.2)
+shape = SubResource("BoxShape3D_visor")
+
+[node name="NeckShape" type="CollisionShape3D" parent="Rig/HeadUnarmored"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.435, 0)
+shape = SubResource("BoxShape3D_neck")
 
 [node name="Head" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)

@@ -12,13 +12,29 @@ extends Node3D
 ## consumed only if any ammo was actually added. A dropped pickup hands over its own
 ## reserve then magazine and disappears only once it's empty (Halo behavior).
 ##
-## The Area3D sits on the Pickup layer (7), masks only Player (2), and is not monitorable.
-## Weapon rays use HIT_MASK (1 | 4 | Hitbox 6), so bullets and the melee sweep never see it.
+## The Area3D sits on the Pickup layer (7), masks Player (2) and Enemy (4), and is not
+## monitorable. Weapon rays use HIT_MASK (1 | 4 | Hitbox 6), so bullets and melee never see it.
+##
+## Carriers (public API, not tied to Player or input; bots use the same calls as the player):
+## a carrier is whatever holds the weapons. Duck-typed:
+##   find_weapon(weapon_id: String) -> Weapon   required (WeaponHolder, Bot)
+##   get_weapons() -> Array                     carried Weapons, for AmmoCrate
+##   register_pickup(p) / unregister_pickup(p)  optional: told when an available pickup is in
+##                                              reach (WeaponHolder's hold-to-take list)
+##   take_pickup(p) -> bool                     optional: install p.take(); used by try_pickup
+## carrier_of(body) finds the carrier for a body entering the trigger: walking up from the
+## body, a node with get_pickup_carrier() (Player -> its WeaponHolder, null while dead) or a
+## node in group CARRIER_GROUP (skipped while is_dead()). Carriers in reach get walk-over ammo
+## automatically every physics tick; can_take / take / ammo_for / give_ammo / is_useful_to /
+## is_in_reach / try_pickup let an AI decide and act without touching privates.
 
 const SCENE_PATH := "res://scenes/pickups/weapon_pickup.tscn"
 const BOB_HEIGHT := 0.08
 const BOB_SPEED := 2.0
 const SPIN_SPEED := 0.6
+const CARRIER_GROUP := &"pickup_carrier"
+## How many ancestors carrier_of() climbs from the touching collider.
+const CARRIER_SEARCH_DEPTH := 4
 
 ## Placed pickups: the weapon scene to spawn. Leave empty for dropped pickups.
 @export var weapon_scene: PackedScene
@@ -35,7 +51,10 @@ var dropped: bool = false
 
 var _time: float = 0.0
 var _visual: Node3D
-var _holders: Array[WeaponHolder] = []
+## Carrier -> number of its bodies inside the trigger (a Player has a capsule and a Hurtbox).
+var _carriers: Dictionary = {}
+## Body inside the trigger -> its carrier (exit lookup works even while the owner is dead).
+var _bodies: Dictionary = {}
 
 @onready var area: Area3D = $Area
 @onready var pivot: Node3D = $Pivot
@@ -86,7 +105,86 @@ static func weapon_id_of(w: Weapon) -> String:
 	return w.scene_file_path
 
 
-## Called by WeaponHolder when interact is held long enough. Returns the weapon to equip.
+## The carrier for a body touching a pickup trigger, or null. See the class comment.
+static func carrier_of(body: Node) -> Object:
+	var node := body
+	for _i in CARRIER_SEARCH_DEPTH:
+		if node == null:
+			return null
+		if node.has_method(&"get_pickup_carrier"):
+			return node.call(&"get_pickup_carrier")
+		if node.is_in_group(CARRIER_GROUP):
+			if node.has_method(&"is_dead") and node.call(&"is_dead"):
+				return null
+			return node
+		node = node.get_parent()
+	return null
+
+
+## A weapon is here to take.
+func can_take() -> bool:
+	return available and weapon != null
+
+
+## Rounds walk-over would add to carrier right now (0: not carried, full, or unavailable).
+func ammo_for(carrier: Object) -> int:
+	var carried := _carried_match(carrier)
+	if carried == null or carried.data == null:
+		return 0
+	var space := carried.data.reserve_max - carried.reserve
+	var offered := _ammo_offered()
+	return clampi(mini(offered, space), 0, offered)
+
+
+## Walk-over ammo (rules in the class comment). Returns rounds added; may consume the pickup.
+func give_ammo(carrier: Object) -> int:
+	var carried := _carried_match(carrier)
+	if carried == null:
+		return 0
+	if dropped:
+		var offered := weapon.reserve + weapon.magazine
+		var added := carried.add_ammo(offered)
+		if added <= 0:
+			return 0
+		var from_reserve := mini(added, weapon.reserve)
+		weapon.reserve -= from_reserve
+		weapon.magazine -= added - from_reserve
+		if weapon.reserve + weapon.magazine <= 0:
+			_consume()
+		return added
+	var amount := ammo_amount if ammo_amount >= 0 else weapon.data.magazine_size
+	var given := carried.add_ammo(amount)
+	if given > 0:
+		_consume()
+	return given
+
+
+## Worth going for: a weapon the carrier doesn't have, or ammo it can take.
+func is_useful_to(carrier: Object) -> bool:
+	if not can_take() or carrier == null:
+		return false
+	return _find(carrier, get_weapon_id()) == null or ammo_for(carrier) > 0
+
+
+## carrier has a body inside the trigger.
+func is_in_reach(carrier: Object) -> bool:
+	return carrier != null and _carriers.has(carrier)
+
+
+## In reach: top up if carried (true if any ammo moved), else hand the weapon to
+## carrier.take_pickup(self) when it has one. False otherwise.
+func try_pickup(carrier: Object) -> bool:
+	if not can_take() or not is_in_reach(carrier):
+		return false
+	if _find(carrier, get_weapon_id()) != null:
+		return give_ammo(carrier) > 0
+	if carrier.has_method(&"take_pickup"):
+		return bool(carrier.call(&"take_pickup", self))
+	return false
+
+
+## Hands over the weapon (the caller installs it) and consumes the pickup. Used by
+## WeaponHolder.take_pickup and by bots.
 func take() -> Weapon:
 	if not available or weapon == null:
 		return null
@@ -100,40 +198,41 @@ func _physics_process(delta: float) -> void:
 	_time += delta
 	pivot.position.y = 0.45 + sin(_time * BOB_SPEED) * BOB_HEIGHT
 	pivot.rotation.y += SPIN_SPEED * delta
-	if available:
-		for holder in _holders:
-			if is_instance_valid(holder):
-				_try_ammo(holder)
-
-
-func _try_ammo(holder: WeaponHolder) -> void:
-	if weapon == null or weapon.data == null:
+	if not available:
 		return
-	var carried := holder.find_weapon(get_weapon_id())
-	if carried == null:
-		return
-	if dropped:
-		var offered := weapon.reserve + weapon.magazine
-		var added := carried.add_ammo(offered)
-		if added <= 0:
+	for carrier: Object in _carriers.keys():
+		if not available:
 			return
-		var from_reserve := mini(added, weapon.reserve)
-		weapon.reserve -= from_reserve
-		weapon.magazine -= added - from_reserve
-		if weapon.reserve + weapon.magazine <= 0:
-			_consume()
-		return
-	var amount := ammo_amount if ammo_amount >= 0 else weapon.data.magazine_size
-	if carried.add_ammo(amount) > 0:
-		_consume()
+		if is_instance_valid(carrier):
+			give_ammo(carrier)
+		else:
+			_carriers.erase(carrier)
+
+
+func _carried_match(carrier: Object) -> Weapon:
+	if not available or weapon == null or weapon.data == null:
+		return null
+	return _find(carrier, get_weapon_id())
+
+
+static func _find(carrier: Object, weapon_id: String) -> Weapon:
+	if carrier == null or not is_instance_valid(carrier) or not carrier.has_method(&"find_weapon"):
+		return null
+	return carrier.call(&"find_weapon", weapon_id) as Weapon
+
+
+func _ammo_offered() -> int:
+	if dropped:
+		return weapon.reserve + weapon.magazine
+	return ammo_amount if ammo_amount >= 0 else weapon.data.magazine_size
 
 
 func _consume() -> void:
 	available = false
 	pivot.visible = false
-	for holder in _holders:
-		if is_instance_valid(holder):
-			holder.unregister_pickup(self)
+	for carrier: Object in _carriers.keys():
+		if is_instance_valid(carrier) and carrier.has_method(&"unregister_pickup"):
+			carrier.call(&"unregister_pickup", self)
 	if dropped or weapon_scene == null:
 		queue_free()
 		return
@@ -147,9 +246,9 @@ func _respawn() -> void:
 	weapon = weapon_scene.instantiate() as Weapon
 	available = true
 	pivot.visible = true
-	for holder in _holders:
-		if is_instance_valid(holder):
-			holder.register_pickup(self)
+	for carrier: Object in _carriers.keys():
+		if is_instance_valid(carrier) and carrier.has_method(&"register_pickup"):
+			carrier.call(&"register_pickup", self)
 
 
 func _on_despawn() -> void:
@@ -158,26 +257,28 @@ func _on_despawn() -> void:
 
 
 func _on_body_entered(body: Node3D) -> void:
-	var holder := _holder_of(body)
-	if holder == null or _holders.has(holder):
+	var carrier := carrier_of(body)
+	if carrier == null or _bodies.has(body):
 		return
-	_holders.append(holder)
-	if available:
-		holder.register_pickup(self)
+	_bodies[body] = carrier
+	var count: int = _carriers.get(carrier, 0)
+	_carriers[carrier] = count + 1
+	if count == 0 and available and carrier.has_method(&"register_pickup"):
+		carrier.call(&"register_pickup", self)
 
 
 func _on_body_exited(body: Node3D) -> void:
-	var holder := _holder_of(body)
-	if holder == null:
+	if not _bodies.has(body):
 		return
-	_holders.erase(holder)
-	holder.unregister_pickup(self)
-
-
-func _holder_of(body: Node3D) -> WeaponHolder:
-	if not body is Player:
-		return null
-	return body.find_child("WeaponHolder", true, false) as WeaponHolder
+	var carrier: Object = _bodies[body]
+	_bodies.erase(body)
+	var count: int = _carriers.get(carrier, 1) - 1
+	if count > 0:
+		_carriers[carrier] = count
+		return
+	_carriers.erase(carrier)
+	if is_instance_valid(carrier) and carrier.has_method(&"unregister_pickup"):
+		carrier.call(&"unregister_pickup", self)
 
 
 ## Visual-only copy of the weapon scene: the script is stripped, so no weapon logic runs.

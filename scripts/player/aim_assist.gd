@@ -88,6 +88,11 @@ func bend_scale() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	if _player.is_dead():
+		reticle_on_target = false
+		_player.aim_slowdown_scale = 1.0
+		_tracked = null
+		return
 	var active := _active_data()
 	reticle_on_target = active != null and _camera != null and _reticle_on_target(active)
 	if not using_controller:
@@ -134,10 +139,13 @@ func _reticle_on_target(data: WeaponData) -> bool:
 	var reach := data.aim_assist_range if data.aim_assist_range > 0.0 else data.max_range
 	var to := from - _camera.global_transform.basis.z * reach
 	var mask := weapon.get_hit_mask() if weapon != null else Weapon.HIT_MASK
-	var exclude: Array[RID] = [_player.get_rid()]
+	# The player's own capsule, Hurtbox and head hitboxes (the camera sits inside the helmet).
+	var exclude: Array[RID] = []
+	for body in _player.get_own_colliders():
+		exclude.append(body.get_rid())
 	var space := _player.get_world_3d().direct_space_state
 	var collider: CollisionObject3D = null
-	# Same rule as Weapon._cast_ray: areas only count on the Hitbox layer.
+	# Same rule as Weapon._cast_ray: areas only count on the Hitbox layer; passthrough skipped.
 	for _i in 8:
 		var query := PhysicsRayQueryParameters3D.create(from, to, mask, exclude)
 		query.collide_with_areas = true
@@ -147,7 +155,7 @@ func _reticle_on_target(data: WeaponData) -> bool:
 		collider = hit.collider as CollisionObject3D
 		if collider == null:
 			return false
-		if collider is Area3D and not (collider.collision_layer & Weapon.LAYER_HITBOX):
+		if Weapon.is_ignored_collider(collider):
 			exclude.append(hit.rid)
 			collider = null
 			continue

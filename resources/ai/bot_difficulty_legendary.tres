@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="BotDifficulty" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/bot_difficulty.gd" id="1_diff"]
+
+[resource]
+script = ExtResource("1_diff")
+preset_name = "Legendary"
+fov_deg = 120.0
+sight_range = 70.0
+hearing_radius = 35.0
+reaction_time = 0.2
+aim_error_deg = 2.5
+min_error_deg = 0.4
+convergence = 2.5
+tracking_lag = 0.09
+max_turn_rate_deg = 480.0
+lead_skill = 0.85
+strafe_error_bump = 0.3
+fire_tolerance_deg = 0.6
+headshot_bias = 0.7
+uses_zoom = true
+semi_cadence = 0.9
+spray_time = 0.4
+burst_pause = 0.25
+burst_switch_range = 16.0
+weapon_switch_skill = 0.9
+strafe_frequency = 0.8
+strafe_min_time = 0.25
+strafe_max_time = 0.6
+crouch_chance = 0.2
+jump_chance = 0.1
+use_skill_jumps = true
+aggression = 0.8
+retreat_threshold = 0.0
+retreat_chance = 0.35
+reengage_shield_fraction = 0.7
+melee_eagerness = 0.8

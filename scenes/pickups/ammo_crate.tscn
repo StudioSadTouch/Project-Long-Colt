@@ -39,7 +39,7 @@ mesh = SubResource("BoxMesh_stripe")
 [node name="Area" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 collision_layer = 64
-collision_mask = 2
+collision_mask = 6
 monitorable = false
 
 [node name="Shape" type="CollisionShape3D" parent="Area"]
