@@ -153,7 +153,8 @@ func get_net_state() -> Dictionary:
 
 
 ## Applies any subset of get_net_state()'s keys. Overheated without vent_left derives it from
-## heat, so the vent continues from the corrected value.
+## heat, so the vent continues from the corrected value. charging starts (charge_started) or
+## stops (dropped unfired) the charge to match.
 func apply_net_state(state: Dictionary) -> void:
 	var data := _w.data
 	_w.heat = clampf(float(state.get("heat", _w.heat)), 0.0, 1.0)
@@ -166,6 +167,9 @@ func apply_net_state(state: Dictionary) -> void:
 		vent_left = 0.0
 	if state.has("charging") and not bool(state.charging) and _w.charging:
 		release(false)
+	if state.has("charging") and bool(state.charging) and not _w.charging:
+		_w.charging = true
+		_w.charge_started.emit()
 	charge_held = float(state.get("charge_held", charge_held))
 	if _w.charging and data != null:
 		_w.charge = clampf(charge_held / maxf(data.charge_time, 0.001), 0.0, 1.0)
