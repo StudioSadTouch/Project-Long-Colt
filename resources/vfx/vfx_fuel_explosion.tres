@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="VFXDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/editor/effects/vfx_definition.gd" id="1_vfx"]
+
+[resource]
+script = ExtResource("1_vfx")
+effect_id = "vfx_fuel_explosion"
+display_name = "Fuel Tank Explosion"
+category = "Explosives"
+screenshake_trauma = 0.5
+has_gameplay_damage = true
+damage_radius = 7.0
+max_damage = 140.0
+impulse_force = 22.0
+armor_spalling = true

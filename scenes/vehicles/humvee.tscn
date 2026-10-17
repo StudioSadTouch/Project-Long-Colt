@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicles/humvee.gd" id="1_humvee"]
+
+[node name="Humvee" type="CharacterBody3D"]
+collision_layer = 1
+collision_mask = 131
+floor_snap_length = 0.45
+floor_max_angle = 0.872665
+script = ExtResource("1_humvee")

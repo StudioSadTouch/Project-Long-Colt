@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/levels/custom/custom_arena.gd" id="1_arena"]
+
+; A custom (Level Editor) level as a match: CustomArena builds every node from the level data as it
+; enters the tree (see scripts/levels/custom/custom_arena.gd).
+[node name="ArenaCustom" type="Node3D"]
+script = ExtResource("1_arena")

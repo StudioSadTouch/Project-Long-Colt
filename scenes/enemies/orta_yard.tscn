@@ -1,0 +1,32 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/orta_yard.gd" id="1_yard"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/ai/arena_events.gd" id="3_events"]
+[ext_resource type="Environment" path="res://resources/environments/outdoor_environment.tres" id="4_env"]
+[ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="5_diff"]
+[ext_resource type="Script" path="res://scripts/net/net_match.gd" id="6_net"]
+
+; New Ottoman orta encounter test (scripts/enemies/orta_yard.gd builds the yard and the orta).
+[node name="OrtaYard" type="Node3D"]
+script = ExtResource("1_yard")
+difficulty = ExtResource("5_diff")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("4_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, 0.40558, -0.579228, 0, 0.819152, 0.573576, 0.707107, -0.40558, 0.579228, 0, 40, 0)
+light_color = Color(1, 0.94, 0.85, 1)
+light_energy = 1.2
+shadow_enabled = true
+directional_shadow_max_distance = 120.0
+
+[node name="ArenaEvents" type="Node" parent="."]
+script = ExtResource("3_events")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 26)
+
+[node name="NetMatch" type="Node" parent="."]
+script = ExtResource("6_net")

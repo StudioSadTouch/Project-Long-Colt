@@ -1,0 +1,77 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://scripts/weapons/grenade_data.gd" id="2_blast"]
+
+[sub_resource type="Resource" id="Resource_blast"]
+script = ExtResource("2_blast")
+display_name = "Humbara Launcher"
+short_name = "HMB"
+damage = 45.0
+inner_radius = 1.2
+blast_radius = 4.5
+shield_damage_multiplier = 1.0
+bleedthrough = true
+flash_color = Color(0.55, 0.9, 0.85, 1)
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Humbara Launcher"
+anim_type = &"der"
+power_weapon = false
+damage = 0.0
+headshot_armored_multiplier = 1.0
+headshot_unarmored_multiplier = 1.0
+shield_damage_multiplier = 1.0
+health_damage_multiplier = 1.0
+bleedthrough = true
+max_range = 80.0
+falloff_start = 150.0
+falloff_end = 150.0
+min_damage_multiplier = 1.0
+fire_mode = 0
+fire_rate = 0.6
+trigger_buffer = 0.15
+pellet_count = 1
+pellet_spread = 0.0
+magazine_size = 4
+reserve_max = 16
+reserve_start = 12
+reload_time = 2.2
+reload_insert_fraction = 0.8
+equip_time = 0.7
+battery = false
+heat_per_shot = 0.0
+recoil_pitch = 4.0
+recoil_yaw = 0.8
+recoil_recovery = 6.0
+spread_base = 0.0
+bloom_per_shot = 0.0
+spread_max = 0.0
+bloom_recovery = 3.0
+spread_air_add = 0.0
+secondary = 0
+zoom_fov = 37.5
+zoom_sensitivity = 0.6
+zoom_spread_multiplier = 1.0
+zoom_time = 0.15
+zoom_magnification = 2.0
+scope_style = 1
+fire_select = false
+aim_magnetism = 0.1
+aim_slowdown = 0.8
+aim_assist_cone = 3.0
+aim_bend_angle = 0.0
+aim_assist_range = 60.0
+melee_damage = 70.0
+melee_range = 2.0
+melee_lunge_range = 3.5
+melee_lunge_speed = 10.0
+melee_cooldown = 0.8
+melee_shield_damage_multiplier = 1.0
+melee_bleedthrough = false
+projectile_speed = 20.0
+blast = SubResource("Resource_blast")
+projectile_color = Color(0.23, 0.25, 0.27, 1)
+projectile_glow = Color(0.165, 0.616, 0.592, 1)
+projectile_gravity = 12.0

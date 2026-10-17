@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/new_ottoman_lineup.gd" id="1_lineup"]
+[ext_resource type="Environment" path="res://resources/environments/outdoor_environment.tres" id="2_env"]
+
+; Every New Ottoman rank at true scale next to a Marine block. B = black-fill test.
+[node name="NewOttomanLineup" type="Node3D"]
+script = ExtResource("1_lineup")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("2_env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.25, -0.433013, 0, 0.866025, 0.5, 0.5, -0.433013, 0.75, 0, 20, 0)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 17)
+fov = 50.0
+current = true

@@ -1,0 +1,63 @@
+[gd_resource type="AnimationLibrary" load_steps=3 format=3]
+
+[sub_resource type="Animation" id="Animation_fire"]
+resource_name = &"fire"
+length = 0.08
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Bolt:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.025, 0.033333, 0.066667, 0.07, 0.08),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.028, 0.012, 0), Vector3(0.028, 0.012, 0.035), Vector3(0.028, 0.012, 0.031844), Vector3(0.028, 0.012, 0.00054768), Vector3(0.028, 0.012, 0), Vector3(0.028, 0.012, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_fire_empty"]
+resource_name = &"fire_empty"
+length = 0.06
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Bolt:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.025, 0.06),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0.028, 0.012, 0), Vector3(0.028, 0.012, 0.035), Vector3(0.028, 0.012, 0.035)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("PortCover:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.02, 0.06),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0.0315, 0.012, 0), Vector3(0.04, -0.002, 0), Vector3(0.04, -0.002, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("PortCover:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.02, 0.06),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, -1.396), Vector3(0, 0, -1.396)]
+}
+
+[resource]
+_data = {
+&"fire": SubResource("Animation_fire"),
+&"fire_empty": SubResource("Animation_fire_empty")
+}

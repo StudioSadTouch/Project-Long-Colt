@@ -1,0 +1,160 @@
+[gd_scene load_steps=23 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/scifi_panel_albedo.png" id="ext_tex_panel_5"]
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/metal_deck_albedo.png" id="ext_tex_metal_6"]
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/scifi_trim_albedo.png" id="ext_tex_trim_7"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon.gd" id="1_weapon"]
+[ext_resource type="Resource" path="res://resources/weapons/directed_energy_rifle.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_fx.gd" id="3_fx"]
+[ext_resource type="AudioStreamWAV" path="res://assets/audio/weapons/der_fire.wav" id="4_fire_sound"]
+[ext_resource type="AnimationLibrary" path="res://assets/weapons/viewmodel/directed_energy_rifle.tres" id="vm_lib"]
+[ext_resource type="Script" path="res://scripts/weapons/viewmodel_reload.gd" id="vm_reload"]
+[ext_resource type="Script" path="res://scripts/weapons/viewmodel_melee.gd" id="vm_melee"]
+[ext_resource type="Script" path="res://scripts/weapons/viewmodel_fire.gd" id="vm_fire"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
+albedo_color = Color(0.3, 0.34, 0.27, 1)
+albedo_texture = ExtResource("ext_tex_panel_5")
+uv1_triplanar = true
+uv1_scale = Vector3(12, 12, 12)
+metallic = 0.3
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dark"]
+albedo_color = Color(0.09, 0.1, 0.12, 1)
+albedo_texture = ExtResource("ext_tex_metal_6")
+uv1_triplanar = true
+uv1_scale = Vector3(16, 16, 16)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_skin"]
+albedo_color = Color(0.72, 0.55, 0.42, 1)
+albedo_texture = ExtResource("ext_tex_trim_7")
+uv1_triplanar = true
+uv1_scale = Vector3(10, 10, 10)
+roughness = 0.8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_tube"]
+material = SubResource("StandardMaterial3D_body")
+top_radius = 0.055
+bottom_radius = 0.055
+height = 0.72
+radial_segments = 12
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rim"]
+material = SubResource("StandardMaterial3D_dark")
+top_radius = 0.065
+bottom_radius = 0.065
+height = 0.04
+radial_segments = 12
+
+[sub_resource type="BoxMesh" id="BoxMesh_sight"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.03, 0.05, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_grip"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.032, 0.09, 0.042)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hand"]
+material = SubResource("StandardMaterial3D_skin")
+size = Vector3(0.05, 0.05, 0.09)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rocket_tip"]
+material = SubResource("StandardMaterial3D_dark")
+size = Vector3(0.05, 0.05, 0.03)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pack"]
+albedo_color = Color(0.32, 0.36, 0.26, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_pack"]
+material = SubResource("StandardMaterial3D_pack")
+size = Vector3(0.075, 0.075, 0.2)
+
+[node name="DirectedEnergyRifle" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, -0.19, -0.37)
+script = ExtResource("1_weapon")
+data = ExtResource("2_data")
+
+[node name="Tube" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.02, -0.05)
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_tube")
+
+[node name="RimFront" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.02, -0.4)
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_rim")
+
+[node name="RimBack" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.02, 0.3)
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_rim")
+
+[node name="RocketTip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, -0.39)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_rocket_tip")
+
+[node name="Sight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.07, 0.06, -0.05)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_sight")
+
+[node name="Grip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0, -0.07, 0.1)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_grip")
+
+[node name="RightHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0.01, -0.08, 0.13)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="LeftHand" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, -0.06, -0.12)
+cast_shadow = 0
+mesh = SubResource("BoxMesh_hand")
+
+[node name="ReloadRocket" type="MeshInstance3D" parent="." groups=["viewmodel_only"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0.34)
+visible = false
+cast_shadow = 0
+mesh = SubResource("BoxMesh_pack")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, -0.43)
+
+[node name="MuzzleLight" type="OmniLight3D" parent="Muzzle" groups=["viewmodel_only"]]
+visible = false
+light_color = Color(1, 0.6, 0.25, 1)
+light_energy = 3.0
+omni_range = 3.0
+
+[node name="WeaponFx" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("muzzle_light")]
+script = ExtResource("3_fx")
+fire_sound = ExtResource("4_fire_sound")
+muzzle_light = NodePath("../Muzzle/MuzzleLight")
+pitch_jitter = 0.04
+flash_time = 0.08
+flash_energy = 3.0
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." groups=["viewmodel_only"]]
+libraries = {
+&"": ExtResource("vm_lib")
+}
+
+[node name="ViewmodelReload" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("animation_player")]
+script = ExtResource("vm_reload")
+animation_player = NodePath("../AnimationPlayer")
+
+[node name="ViewmodelMelee" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("animation_player")]
+script = ExtResource("vm_melee")
+animation_player = NodePath("../AnimationPlayer")
+hit_time = 0.1
+impact_kick_deg = 1.2
+
+[node name="ViewmodelFire" type="Node" parent="." groups=["viewmodel_only"] node_paths=PackedStringArray("animation_player")]
+script = ExtResource("vm_fire")
+animation_player = NodePath("../AnimationPlayer")

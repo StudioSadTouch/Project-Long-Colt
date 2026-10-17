@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/editor/level_editor.gd" id="1_editor"]
+
+; Level Editor. The sky, sun and ground come from the level's settings (LevelWorld);
+; the panels, gizmo and grid are built by LevelEditor.
+[node name="LevelEditor" type="Node3D"]
+script = ExtResource("1_editor")
+
+[node name="EditorCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.906308, 0.422618, 0, -0.422618, 0.906308, 0, 9, 18)
+current = true
+fov = 75.0
+
+[node name="MapObjects" type="Node3D" parent="."]

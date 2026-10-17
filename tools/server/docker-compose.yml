@@ -1,0 +1,22 @@
+# Project Long Colt dedicated server. From the project root, after exporting the Linux build:
+#   docker compose -f tools/server/docker-compose.yml up -d --build
+# Then edit the config in the volume (or bind-mount a folder instead) and restart:
+#   docker compose -f tools/server/docker-compose.yml restart
+# For internet play forward UDP 7777 on the router to this machine (or set upnp=true in the
+# config; UPnP from inside Docker needs network_mode: host).
+services:
+  longcolt-server:
+    build:
+      context: ../..
+      dockerfile: tools/server/Dockerfile
+    image: longcolt-server
+    container_name: longcolt-server
+    restart: unless-stopped
+    ports:
+      - "7777:7777/udp"
+    volumes:
+      - longcolt-config:/config
+    stop_grace_period: 5s
+
+volumes:
+  longcolt-config:

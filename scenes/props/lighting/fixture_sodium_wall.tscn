@@ -1,0 +1,49 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Material" path="res://resources/materials/lighting/fixture_housing.tres" id="1_housing"]
+[ext_resource type="Material" path="res://resources/materials/lighting/emissive_sodium.tres" id="3_lens"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_plate"]
+size = Vector3(0.36, 0.3, 0.06)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hood"]
+size = Vector3(0.4, 0.08, 0.32)
+
+[sub_resource type="BoxMesh" id="BoxMesh_lens"]
+add_uv2 = true
+size = Vector3(0.3, 0.06, 0.24)
+
+[node name="FixtureSodiumWall" type="Node3D"]
+
+[node name="Plate" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.03)
+mesh = SubResource("BoxMesh_plate")
+surface_material_override/0 = ExtResource("1_housing")
+gi_mode = 2
+
+[node name="Hood" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -0.19)
+mesh = SubResource("BoxMesh_hood")
+surface_material_override/0 = ExtResource("1_housing")
+gi_mode = 2
+
+[node name="Lens" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, -0.19)
+mesh = SubResource("BoxMesh_lens")
+surface_material_override/0 = ExtResource("3_lens")
+cast_shadow = 0
+
+[node name="Light" type="SpotLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.766044, 0.642788, 0, -0.642788, 0.766044, 0, -0.06, -0.2)
+light_color = Color(1, 0.6, 0.26, 1)
+light_energy = 2.5
+light_volumetric_fog_energy = 1.5
+light_bake_mode = 0
+shadow_enabled = false
+distance_fade_enabled = true
+distance_fade_begin = 45.0
+distance_fade_length = 10.0
+spot_range = 9
+spot_attenuation = 1.2
+spot_angle = 55
+spot_angle_attenuation = 0.8

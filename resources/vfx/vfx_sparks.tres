@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="VFXDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/editor/effects/vfx_definition.gd" id="1_vfx"]
+
+[resource]
+script = ExtResource("1_vfx")
+effect_id = "vfx_sparks"
+display_name = "Electrical Short Circuit"
+category = "Sparks"
+screenshake_trauma = 0.1
+has_gameplay_damage = true
+damage_radius = 2.5
+max_damage = 25.0
+impulse_force = 4.0
+armor_spalling = false

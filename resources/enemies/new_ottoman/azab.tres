@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_type.gd" id="1_type"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/new_ottoman/glaive_rifle.tscn" id="w0"]
+
+[resource]
+script = ExtResource("1_type")
+id = &"azab"
+display_name = "Azab"
+native_name = "Azap"
+corps = 1
+role = 0
+height = 1.75
+hurtbox_size = Vector2(0.6, 0.4)
+hitbox_scale = 1.3
+speed_scale = 0.95
+health = 50.0
+starting_weapons = Array[PackedScene]([ExtResource("w0")])
+aggression = 0.35
+melee_eagerness = 0.3
+aim_error_scale = 2.4
+reaction_scale = 1.15
+sight_range = 45.0
+fire_rate_scale = 0.9
+strafe_scale = 0.5
+rank_color = Color(0.612, 0.184, 0.173, 1)
+plate_color = Color(0.353, 0.380, 0.420, 1)
+cloth_color = Color(0.420, 0.365, 0.290, 1)

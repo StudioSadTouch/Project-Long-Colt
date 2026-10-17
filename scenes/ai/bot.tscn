@@ -1,0 +1,81 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/bot.gd" id="1_bot"]
+[ext_resource type="Script" path="res://scripts/ai/bot_brain.gd" id="2_brain"]
+[ext_resource type="Script" path="res://scripts/components/health_shield.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://scenes/ai/dummy_rig.tscn" id="4_rig"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/standard_issue_rifle.tscn" id="5_rifle"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/service_pistol.tscn" id="6_pistol"]
+[ext_resource type="Resource" path="res://resources/ai/bot_difficulty_normal.tres" id="7_diff"]
+[ext_resource type="PackedScene" path="res://scenes/characters/player_body.tscn" id="8_body"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_move"]
+resource_local_to_scene = true
+radius = 0.408
+height = 2.1
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hurt"]
+resource_local_to_scene = true
+size = Vector3(0.817, 1.703, 0.467)
+
+[node name="Bot" type="CharacterBody3D"]
+collision_layer = 0
+collision_mask = 7
+floor_snap_length = 0.3
+script = ExtResource("1_bot")
+starting_weapons = Array[PackedScene]([ExtResource("5_rifle"), ExtResource("6_pistol")])
+difficulty = ExtResource("7_diff")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+shape = SubResource("CapsuleShape3D_move")
+
+[node name="Hurtbox" type="AnimatableBody3D" parent="."]
+collision_layer = 4
+collision_mask = 0
+sync_to_physics = false
+
+[node name="Shape" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.852, 0)
+shape = SubResource("BoxShape3D_hurt")
+
+[node name="Rig" parent="." instance=ExtResource("4_rig")]
+
+[node name="AimHeadPoint" type="Marker3D" parent="Rig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.913, 0)
+
+[node name="BodyMesh" parent="Rig"]
+visible = false
+
+[node name="HelmetMesh" parent="Rig/HeadArmored"]
+visible = false
+
+[node name="VisorMesh" parent="Rig/HeadUnarmored"]
+visible = false
+
+[node name="NeckMesh" parent="Rig/HeadUnarmored"]
+visible = false
+
+[node name="PlayerModel" parent="." instance=ExtResource("8_body")]
+transform = Transform3D(1.166667, 0, 0, 0, 1.166667, 0, 0, 0, 1.166667, 0, 0, 0)
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.89, 0)
+
+[node name="Eye" type="Node3D" parent="Head"]
+
+[node name="WeaponMount" type="Node3D" parent="Head/Eye"]
+
+[node name="HealthShield" type="Node" parent="."]
+script = ExtResource("3_health")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+path_desired_distance = 0.6
+target_desired_distance = 0.8
+height = 2.1
+radius = 0.408
+
+[node name="Brain" type="Node" parent="."]
+script = ExtResource("2_brain")
+
+[editable path="Rig"]

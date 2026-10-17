@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapons/weapon_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Standard Issue Rifle"
+anim_type = &"rifle"
+damage = 9.0
+headshot_armored_multiplier = 2.0
+headshot_unarmored_multiplier = 2.0
+shield_damage_multiplier = 1.0
+bleedthrough = false
+max_range = 150.0
+falloff_start = 15.0
+falloff_end = 40.0
+min_damage_multiplier = 0.5
+fire_mode = 1
+fire_rate = 10.0
+trigger_buffer = 0.1
+burst_count = 3
+burst_interval = 0.06
+burst_cooldown = 0.35
+magazine_size = 32
+reserve_max = 192
+reserve_start = 128
+reload_time = 2.1
+reload_insert_fraction = 0.6
+equip_time = 0.5
+recoil_pitch = 0.45
+recoil_yaw = 0.2
+recoil_recovery = 15.0
+spread_base = 0.5
+bloom_per_shot = 0.25
+spread_max = 2.6
+bloom_recovery = 1.1
+spread_air_add = 0.6
+secondary = 1
+zoom_fov = 46.2
+zoom_sensitivity = 0.65
+zoom_spread_multiplier = 1.0
+zoom_time = 0.12
+zoom_magnification = 1.8
+zoom_only_in_mode = 2
+scope_style = 3
+fire_select = true
+alt_fire_mode = 2
+alt_spread_multiplier = 0.4
+alt_bloom_multiplier = 0.5
+alt_falloff_start = 35.0
+alt_falloff_end = 70.0
+alt_min_damage_multiplier = 0.6
+aim_magnetism = 0.25
+aim_slowdown = 0.7
+aim_assist_cone = 5.0
+aim_bend_angle = 1.5
+aim_assist_range = 40.0
+melee_damage = 70.0
+melee_range = 2.0
+melee_lunge_range = 3.5
+melee_lunge_speed = 10.0
+melee_cooldown = 0.8
+melee_shield_damage_multiplier = 1.0
+melee_bleedthrough = false

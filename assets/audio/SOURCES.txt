@@ -1,0 +1,91 @@
+Weapon gunshot SFX are multi-layered acoustic studio takes and field recordings
+mastered into punchy, high-energy 16-bit 44.1kHz mono WAVs (via tools/audio/generate_weapon_sounds.py).
+Sources:
+  1. The Free Firearm Sound Library by Ben Jaszczak (CC0):
+     https://github.com/buddingmonkey/FreeFirearmsSFXLibrary
+  2. Tabasco Field Gunshots by Vincent Sevedge (CC-BY 3.0):
+     https://opengameart.org/content/tabasco-sounds
+  3. 25 CC0 Bang / Firework SFX by rubberduck (CC0):
+     https://opengameart.org/content/25-cc0-bang-firework-sfx
+  4. Kenney Sci-Fi & Impact Sounds by Kenney (CC0):
+     https://kenney.nl
+
+  standard_issue_rifle_fire.wav
+    AR-15 5.56x45 near-distance hypersonic crack (D_32P) layered with SKS 7.62x39
+    concussive body (sks.wav) and AK-47 bolt clatter (C_27P). 150Hz low-end thump boost,
+    analog-style soft saturation, peak-limited to -0.3 dBFS, 0.420s duration.
+  marksman_carbine_fire.wav
+    Tikka T3 .30-06 near-distance supersonic report (W_29P) fused with Mosin Nagant
+    7.62x54 near-distance punch (M_21P) and outdoor rolling acoustic decay (mosin.wav).
+    130Hz resonant bass reinforcement, 0.720s duration.
+  combat_shotgun_fire.wav
+    Benelli Nova 12-gauge close-mic blast (O_21P) layered with Mossberg 190 (N_30P)
+    and field 12ga blast (shotty.wav). 90Hz concussive pressure-wave boost (+9.7 dB RMS jump),
+    0.850s room-clearing boom.
+  combat_shotgun_pump.wav
+    Authentic Benelli Nova 12ga full steel pump cycle (O_6) featuring slide rack-back
+    and forward lock, reinforced with Tikka steel locking lug sear click (W_13). 0.550s.
+  service_pistol_fire.wav
+    Walther PPQ 9mm near-distance shot (X_39P) combined with CZ-52 Tokarev 7.62x25
+    field take (cz.wav) for sharp mechanical slide snap and 180Hz punchy bark. 0.480s.
+  der_fire.wav
+    Heavy artillery cannon launch blast (cannon_04 + cannon_01) blended with deep
+    rocket thruster ignition roar (thruster_fire_000) and 70Hz sub-bass launch thump. 0.950s.
+  der_charged_fire.wav
+    Supercharged heavy artillery detonation (cannon_02 + cannon_04) with sustained
+    thruster exhaust rumble. 0.850s.
+
+The hit / hurt / death stingers and grenade placeholders are Kenney Sci-fi Sounds
+and Kenney Impact Sounds (CC0), www.kenney.nl. Credit is not required.
+  Hit marker             impactGeneric_light_002
+  Shield damage          forceField_000 high-passed, plus a short impactMetal_light_004 crack
+  Health damage          impactPunch_heavy_000, plus a short impactMetal_light_002 crack
+  Death                  impactPlate_medium_001, high-passed (not the sub-bass explosion)
+  Grenade throw          impactGeneric_light_000, pitched up (placeholder)
+  Grenade switch         impactGeneric_light_003, pitched up (placeholder)
+  Frag bounce            impactMetal_light_001 (placeholder)
+  Frag explosion         lowFrequency_explosion_000 + explosionCrunch_002 (placeholder)
+  Sticky stick           slime_000 (placeholder)
+  Sticky fuse hiss       spaceEngineSmall_000, high-passed (placeholder)
+  Sticky explosion       explosionCrunch_003 + forceField_002 (placeholder)
+
+Menu, pause, and game-over music (ducked during a live match) is Sanctuary OS
+by Dusqk, published 11 Jan 2025 by Heaven/11. Free download:
+https://dusqk.bandcamp.com/album/sanctuary-os
+The album is a concept mix for a console idling on its menu. Tracks play in
+album order on the Music bus and then loop. Credit Dusqk if a build ships.
+  sanctuary_os.mp3       Sanctuary OS
+  sanctuary_01.mp3       Sanctuary 1
+  sanctuary_02.mp3       Sanctuary 2
+  sanctuary_03.mp3       Sanctuary 3
+  sanctuary_04.mp3       Sanctuary 4
+  sanctuary_05.mp3       Sanctuary 5
+  sanctuary_06.mp3       Sanctuary 6
+  sanctuary_07.mp3       Sanctuary 7
+  sanctuary_08.mp3       Sanctuary 8
+  sanctuary_09.mp3       Sanctuary 9
+  sanctuary_10.mp3       Sanctuary 10
+  sanctuary_11.mp3       Sanctuary 11
+
+New Ottoman enemy (NOE) audio cues are real acoustic takes and foley trimmed
+and mastered from CC0 public domain libraries (processed via
+tools/audio/process_library_noe_sounds.py):
+  horn_advance.wav       War Horns by Eldritch Grim (CC0), opengameart.org/content/war-horns
+                         Climactic rising brass battle horn call, live recording.
+  horn_withdraw.wav      War Horns by Eldritch Grim (CC0), opengameart.org/content/war-horns
+                         Solemn descending brass retreat horn call, live recording.
+  cymbal.wav             100 CC0 SFX (gong_01.ogg) by rubberduck (CC0), opengameart.org/content/100-cc0-sfx
+                         Layered with 100-CC0-wood-metal-SFX (metal_sheet_01.ogg). Heavy bronze clash.
+  glint.wav              Tikka Model T3 Bolt Action Rifle Action / Dry Fire (W_13.wav) from
+                         The Free Firearm Sound Library by Ben Jaszczak (CC0). Razor-sharp mechanical
+                         sear release and optic lock.
+  hum.wav                space_engine_low_000 from Kenney Sci-Fi Sounds (CC0), kenney.nl.
+                         Seamless low-frequency industrial turbine/motor vibration loop.
+  ricochet.wav           metal_hit_01.ogg + metal_sheet_01.ogg by rubberduck (CC0) combined with
+                         impact_plate_heavy_000 (Kenney, CC0). Ballistic armor plate deflection crack & ring.
+  humbara_fire.wav       cannon_03.ogg + cannon_04.ogg from 25 CC0 bang / firework SFX by rubberduck (CC0),
+                         opengameart.org/content/25-cc0-bang-firework-sfx. Concussive artillery/mortar launch.
+  hydraulic_vent.wav     thruster_fire_000 from Kenney Sci-Fi Sounds (CC0), kenney.nl + metal_hit_01.ogg.
+                         High-pressure pneumatic relief valve burst.
+  armor_spall.wav        bfh1_rock_breaking_01.ogg from sfx_breaking_and_falling by rubberduck (CC0) +
+                         impact_plate_heavy_000 (Kenney, CC0). Ceramic armor fracture & debris clatter.

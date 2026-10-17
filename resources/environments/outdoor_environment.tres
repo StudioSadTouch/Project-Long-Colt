@@ -1,0 +1,46 @@
+[gd_resource type="Environment" load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://resources/shaders/lockout_sky.gdshader" id="1_sky"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
+shader = ExtResource("1_sky")
+
+[sub_resource type="Sky" id="Sky_lockout"]
+sky_material = SubResource("ShaderMaterial_sky")
+
+[resource]
+resource_name = "outdoor_environment"
+background_mode = 2
+sky = SubResource("Sky_lockout")
+ambient_light_source = 3
+ambient_light_color = Color(0.43, 0.506, 0.569, 1)
+ambient_light_sky_contribution = 0.5
+ambient_light_energy = 1.8
+reflected_light_source = 2
+tonemap_mode = 3
+tonemap_exposure = 0.95
+tonemap_white = 10.0
+ssao_enabled = true
+ssao_radius = 1.0
+ssao_intensity = 1.0
+ssao_power = 1.5
+ssao_detail = 0.0
+ssil_enabled = false
+glow_enabled = true
+glow_intensity = 0.35
+glow_strength = 0.8
+glow_bloom = 0.0
+glow_hdr_threshold = 1.6
+fog_enabled = true
+fog_light_color = Color(0.6, 0.68, 0.76, 1)
+fog_light_energy = 1.0
+fog_sun_scatter = 0.0
+fog_density = 0.0012
+fog_aerial_perspective = 0.3
+fog_sky_affect = 0.15
+volumetric_fog_enabled = false
+volumetric_fog_density = 0.004
+volumetric_fog_albedo = Color(0.85, 0.9, 1, 1)
+volumetric_fog_anisotropy = 0.35
+volumetric_fog_length = 48.0
+volumetric_fog_sky_affect = 0.0

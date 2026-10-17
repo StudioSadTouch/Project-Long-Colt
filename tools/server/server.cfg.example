@@ -1,0 +1,42 @@
+; Project Long Colt dedicated server. Run the Linux build headless:
+;   "Project Long Colt.x86_64" --headless -- --server --server-config /path/to/server.cfg
+; Players join with the server's address (IP or domain) and port, e.g. longcolt.example.com:7777.
+; Forward UDP <port> on your router (or set upnp=true) to let players in from the internet.
+
+[server]
+name="Long Colt Server"
+port=7777
+password=""
+upnp=false
+lan_beacon=true
+start_delay=10.0
+next_delay=15.0
+; Custom levels (Level Editor .json files) for the rotation, as map="custom:<file name>".
+; Players don't need them: the server sends each level when its match starts.
+levels_dir=""
+
+[bots]
+fill=true
+count=3
+difficulty="Normal"
+
+; The rotation: one [match_N] per match, played in order, then it loops.
+; maps: lockout, headlong, ivory_tower, zanzibar, kamino, range, custom:<level file name>
+; modes: ffa, team_4v4, team_slayer      rules: slayer, swat, ctf, horde, range
+[match_1]
+map="lockout"
+mode="ffa"
+rules="slayer"
+time_limit_minutes=15.0
+
+[match_2]
+map="zanzibar"
+mode="team_4v4"
+rules="ctf"
+time_limit_minutes=20.0
+
+[match_3]
+map="headlong"
+mode="ffa"
+rules="horde"
+time_limit_minutes=0.0

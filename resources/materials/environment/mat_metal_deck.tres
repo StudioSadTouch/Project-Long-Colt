@@ -1,0 +1,21 @@
+[gd_resource type="StandardMaterial3D" load_steps=5 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/metal_deck_albedo.png" id="1_albedo"]
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/metal_deck_roughness.png" id="2_rough"]
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/metal_deck_metallic.png" id="3_metal"]
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/metal_deck_normal.png" id="4_norm"]
+
+[resource]
+resource_name = "mat_metal_deck"
+albedo_texture = ExtResource("1_albedo")
+roughness = 1.0
+roughness_texture = ExtResource("2_rough")
+metallic = 1.0
+metallic_texture = ExtResource("3_metal")
+normal_enabled = true
+normal_scale = 1.0
+normal_texture = ExtResource("4_norm")
+uv1_scale = Vector3(1.0, 1.0, 1.0)
+uv1_triplanar = true
+uv1_world_triplanar = true
+texture_filter = 5

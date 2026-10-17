@@ -1,0 +1,297 @@
+```markdown
+# LEVEL EDITOR ARCHITECTURE & CLI IMPLEMENTATION SPECIFICATION
+**Project:** Project Long Colt[cite: 2]  
+**Target Engine:** Godot 4 (GDScript / 3D)[cite: 2, 5]  
+**Subsystems:** Modular Geometry, Entity Grouping, Asset Ingestion, Visual Scripting, Extensible VFX, AI Navigation[cite: 5, 6]
+
+---
+
+## 1. Project Context & Implementation Status
+
+Project Long Colt already contains the core plumbing for the level editor[cite: 5]. This specification is formatted for autonomous or semi-autonomous execution by a coding agent or CLI tool operating on the Godot 4 repository[cite: 2, 5].
+
+### Verified Implemented Features
+- [x] **Tool Selection & Switching Infrastructure:** Debugged input and mode-handling plumbing in `scenes/` and `scripts/` (commit `e4bf445`)[cite: 5].
+- [x] **Multiplayer Map Replication:** Custom level layout serialization and network synchronization across lobby clients (commit `475a7b9`)[cite: 5].
+- [x] **Arena & Greybox Pipeline:** Map selection architecture supporting built-in slices (Forward Outpost 7, Headlong) and custom slots (commit `1ed16fa`)[cite: 2, 5].
+- [x] **Core Combat Entities:** Five-weapon sandbox (Service Rifle, Marksman Carbine, Combat Shotgun, Pistol, Directed Energy Rifle) and frag grenade pickups (commits `475a7b9`, `1ed16fa`)[cite: 2, 5].
+- [x] **Bot & AI Navigation Foundation:** Basic navigation and pathing routines debugged (commit `e4bf445`)[cite: 5].
+- [x] **New Ottoman Enemy Architecture:** Three-tier enemy ecology framework (Azab conscript, Akinji flanker, Janissary anchor) and Horde mode loop (commit `18bfcaa`)[cite: 5, 6].
+
+### Remaining Roadmap Epics
+- [ ] **Dual-Mode Playtest Hotkey (`Tab`):** Instant swap between free-fly drone cam and Hospitaller controller[cite: 2, 4].
+- [ ] **3D Transform Gizmos & Snapping:** Multi-axis translate/rotate handles with grid and surface-normal alignment.
+- [ ] **Grouping & Assemblies (`Ctrl + G`):** Multi-instance bundling into single selectable entities and custom prefabs.
+- [ ] **Runtime Asset Ingestion:** Disk loading of `.glb`/`.gltf` meshes, `.png`/`.webp` textures, and `.wav`/`.ogg` audio at runtime.
+- [ ] **Extensible VFX Architecture:** Data-driven `VFXDefinition` registry and placeable `EffectEmitter3D` nodes.
+- [ ] **Visual Event Graph ("Wires"):** Spatial node-based trigger/action system for codeless campaign assembly.
+- [ ] **Runtime Dynamic NavMesh Baking:** Real-time `NavigationServer3D` recalculation over placed colliders.
+
+---
+
+## 2. Target File Tree & System Layout
+
+```text
+res://
+├── resources/
+│   └── vfx/
+│       ├── vfx_fuel_explosion.tres
+│       └── vfx_steam_leak.tres
+├── scenes/
+│   └── editor/
+│       ├── editor_viewport.tscn
+│       ├── gizmo_handles.tscn
+│       └── nodes/
+│           ├── trigger_volume_node.tscn
+│           ├── door_actuator_node.tscn
+│           └── spawner_node.tscn
+└── scripts/
+    └── editor/
+        ├── core/
+        │   ├── editor_controller.gd        # Drone fly-cam, tool switching, Tab playtest toggle
+        │   ├── editor_selection.gd         # Raycast picking, multi-select, marquee box select
+        │   ├── editor_gizmo.gd             # 3-axis translate, rotate, scale handles
+        │   └── editor_undo.gd              # UndoRedo manager integration
+        ├── grouping/
+        │   ├── assembly_root.gd            # Node3D wrapper for grouped entities
+        │   └── assembly_serializer.gd      # Reads/writes custom user prefabs
+        ├── ingestion/
+        │   ├── asset_importer.gd           # Scans and indexes user asset directories
+        │   ├── mesh_loader.gd              # GLTFDocument/GLTFState mesh parsing + collision hulls
+        │   ├── texture_loader.gd           # Image.load_from_file -> ImageTexture/Decals
+        │   └── audio_loader.gd             # Runtime AudioStream loading (.ogg, .wav)
+        ├── effects/
+        │   ├── vfx_definition.gd           # Resource defining FX visuals, audio, and damage
+        │   ├── vfx_registry.gd             # Catalog autoload indexing res:// and user://
+        │   └── effect_emitter_3d.gd        # In-world entity executing a VFXDefinition
+        ├── events/
+        │   ├── logic_node_base.gd          # Base class for visual script nodes
+        │   ├── event_manager.gd            # Binds signal connections on map initialization
+        │   ├── logic_wire_renderer.gd      # ImmediateMesh/Spline line renderer for editor wires
+        │   └── nodes/
+        │       ├── trigger_volume.gd       # Area3D volume (player enter/exit)
+        │       ├── orta_tracker.gd         # Monitors AI health, morale, and casualties
+        │       ├── delay_relay.gd          # Timer relay node
+        │       ├── radio_transmitter.gd    # Displays subtitles and plays radio audio
+        │       ├── objective_marker.gd     # Waypoint manager for navigation HUD
+        │       └── door_actuator.gd        # Controls mechanical doors and locks
+        └── serialization/
+            ├── map_format_v1.gd            # Serializer/deserializer for JSON & TRES maps
+            └── map_migrator.gd             # Schema upgrade pipeline
+
+```
+
+---
+
+## 3. Data Contracts & Serialization Schemas
+
+### A. Custom Map Schema (`map_data.json`)
+
+The canonical file format serialized to disk under `user://maps/` and replicated across network peers:
+
+```json
+{
+  "format_version": 1,
+  "metadata": {
+    "title": "Forward Outpost 7 Exterior",
+    "author": "Hospitaller_4",
+    "environment_preset": "forward_outpost_7_rain",
+    "sun_azimuth": 45.0,
+    "sun_elevation": 30.0,
+    "fog_density": 0.015
+  },
+  "entities": [
+    {
+      "uid": "ent_slab_001",
+      "type": "geometry",
+      "asset_source": "builtin",
+      "asset_id": "ferrocrete_wall_4x4",
+      "transform": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 10.0, 0.0, -12.0],
+      "properties": {
+        "cast_shadow": true
+      }
+    },
+    {
+      "uid": "ent_custom_crate",
+      "type": "geometry",
+      "asset_source": "custom",
+      "asset_id": "industrial_shipping_crate.glb",
+      "transform": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 4.0, 0.0, -2.0],
+      "properties": {
+        "collision_type": "convex"
+      }
+    },
+    {
+      "uid": "vfx_barrel_ignite",
+      "type": "effect_emitter",
+      "effect_id": "vfx_fuel_explosion",
+      "transform": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 8.5, 0.0, -5.0],
+      "properties": {
+        "trigger_mode": "on_signal",
+        "damage_override": 140.0,
+        "radius_override": 6.5
+      }
+    }
+  ],
+  "assemblies": [
+    {
+      "assembly_uid": "group_gate_chokepoint",
+      "root_transform": [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 8.0, 0.0, -8.0],
+      "member_uids": ["ent_slab_001", "vfx_barrel_ignite"]
+    }
+  ],
+  "event_graph": [
+    {
+      "source_uid": "trigger_breach_zone",
+      "signal_name": "on_player_entered",
+      "target_uid": "orta_spawner_courtyard",
+      "target_action": "spawn_wave",
+      "params": {
+        "squad_composition": "azab_screen"
+      }
+    },
+    {
+      "source_uid": "orta_spawner_courtyard",
+      "signal_name": "on_squad_wiped",
+      "target_uid": "door_inner_sanctum",
+      "target_action": "unlock_and_open",
+      "params": {}
+    }
+  ]
+}
+
+```
+
+### B. VFX Data Resource (`scripts/editor/effects/vfx_definition.gd`)
+
+```gdscript
+class_name VFXDefinition
+extends Resource
+
+@export_group("Identifiers")
+@export var effect_id: String = "vfx_fuel_explosion"
+@export var display_name: String = "Fuel Tank Explosion"
+@export_enum("Explosives", "Fire", "Atmospheric", "Sparks") var category: String = "Explosives"
+
+@export_group("Visuals & Audio")
+@export var effect_scene: PackedScene
+@export var sound_effect: AudioStream
+@export var screenshake_trauma: float = 0.4
+
+@export_group("Gameplay Impact")
+@export var has_gameplay_damage: bool = true
+@export var damage_radius: float = 6.0
+@export var max_damage: float = 120.0
+@export var impulse_force: float = 22.0
+@export var armor_spalling: bool = true
+
+```
+
+---
+
+## 4. Subsystem Specifications
+
+### 4.1. Assembly & Grouping System
+
+* **Runtime Node:** `AssemblyRoot3D` inherits `Node3D`. When grouped, child nodes retain world transforms while reparenting to `AssemblyRoot3D`.
+* **Selection State:**
+* Clicking an entity within an active assembly selects the `AssemblyRoot3D` by default.
+* Double-clicking or holding `Alt` enters "Sub-Selection Mode" to adjust child transforms relative to the group.
+
+
+* **Prefab Packaging:** Assemblies export to `user://prefabs/[name].json` preserving internal relative transforms and exposed component fields.
+
+### 4.2. Runtime Asset Loader Subsystem
+
+* **Directory Structure:** Scans `user://custom_assets/` subfolders (`meshes/`, `textures/`, `audio/`).
+* **Meshes (`.glb`, `.gltf`):**
+* Handled via Godot's `GLTFDocument` and `GLTFState` APIs.
+* Traverses instantiated mesh trees and binds physics hulls:
+* Static architecture $\rightarrow$ Concave static trimesh.
+* Interactive props / covers $\rightarrow$ Simplified convex hull.
+
+
+
+
+* **Textures (`.png`, `.jpg`, `.webp`):**
+* Ingested into `Image` instances and converted to `ImageTexture`.
+* Instantiates either dynamic `Decal` projectors or assigns materials to primitive brush geometry.
+
+
+* **Audio (`.wav`, `.ogg`):**
+* `.ogg` processed through `AudioStreamOggVorbis.load_from_file()`.
+* `.wav` processed through low-level `AudioStreamWAV` buffer loader.
+* Direct attachment to `RadioTransmitterNode` and localized 3D positional players.
+
+
+
+### 4.3. Visual Logic & Event Wire System
+
+* **Spatial Nodes:** Placed entities that expose typed input callable methods and output Godot signals. Visualized as color-coded billboard holograms in Edit Mode; automatically disabled/hidden in Playtest Mode.
+* **Wiring Tool:**
+* User selects output socket on Source Node, drags a visual spline in 3D space, and clicks an input socket on Target Node.
+* Connection persists in `event_graph` array.
+
+
+* **Standard Logic Nodes:**
+* `VolumeTrigger`: Bounded `Area3D` checking player collision filters.
+
+
+* `OrtaTracker`: Hooks into New Ottoman AI controllers; monitors squad casualties and Çorbacı status.
+
+
+* `DelayRelay`: Pauses signal flow by $N$ seconds.
+* `RadioTransmitter`: Pushes callsign, audio stream, and subtitles to the UI HUD layer.
+
+
+* `DoorActuator`: Coordinates sliding/blast door states (`Open`, `Close`, `Lock`, `Unlock`).
+
+
+
+### 4.4. Runtime NavMesh Dynamic Generation
+
+* **Architecture:** Map template contains a base `NavigationRegion3D`.
+* **Baking Routine:** One-click action calls `NavigationRegion3D.bake_navigation_mesh(true)`.
+* **Layer Filtering:**
+* Static geometry, custom imported meshes, and closed blast doors bake as obstacles.
+
+
+* Bot pathfinding nodes dynamically refresh path routes across newly placed structures (commit `e4bf445`).
+
+
+
+
+
+---
+
+## 5. Sequential CLI Execution Plan
+
+Follow this exact sequence when instructing the CLI agent to build out the editor modules:
+
+### Prompt 01: Assembly & Grouping Engine
+
+> Implement `scripts/editor/grouping/assembly_root.gd` and `assembly_serializer.gd`. Support multi-selection bundling via `Ctrl + G` into an `AssemblyRoot3D` node, centering the root origin to the selection's aggregate `AABB`. Implement `Ctrl + Shift + G` to disband assemblies while keeping global transforms intact. Add export/import of assemblies to `user://prefabs/[name].json`.
+
+### Prompt 02: VFX Definition & Emitter Subsystem
+
+> Implement `scripts/editor/effects/vfx_definition.gd` as an `@export` Resource. Create `scripts/editor/effects/vfx_registry.gd` to autoload and scan `res://resources/vfx/`. Create `scripts/editor/effects/effect_emitter_3d.gd` as a placeable editor entity that instances the configured particle scene and audio stream upon receiving a trigger, with an optional radial overlap query applying damage and impulse to nearby actors.
+
+### Prompt 03: Runtime Asset Ingestion
+
+> Implement `scripts/editor/ingestion/asset_importer.gd`, `mesh_loader.gd`, `texture_loader.gd`, and `audio_loader.gd`. Utilize `GLTFDocument` to load `.glb`/`.gltf` files from `user://custom_assets/meshes/` with dynamic convex collision hulls. Ingest `.png` images into `ImageTexture` resources for decals, and stream `.ogg`/`.wav` audio tracks for in-world playback without requiring Godot editor recompilation.
+
+### Prompt 04: Visual Logic Nodes & Event Graph
+
+> Implement `scripts/editor/events/logic_node_base.gd` and the node library (`trigger_volume.gd`, `door_actuator.gd`, `radio_transmitter.gd`, `orta_tracker.gd`). Implement `scripts/editor/events/event_manager.gd` to parse the map's `event_graph` on level start and dynamically connect output signals to target callables via `source.connect(signal_name, Callable(target, action))`.
+
+### Prompt 05: Viewport Wire Spline Renderer
+
+> Implement `scripts/editor/events/logic_wire_renderer.gd`. When the user is in "Linker / Wiring Mode", render 3D line splines using `ImmediateMesh` between connected logic nodes in the editor viewport. Ensure the splines update in real time if linked nodes are translated or rotated.
+
+### Prompt 06: Dynamic NavMesh Baking Integration
+
+> Update the level editor controller to support runtime navigation re-baking. Hook a UI button to `NavigationRegion3D.bake_navigation_mesh()`, ensuring user-placed geometry and custom meshes are correctly parsed on the collision mask so enemy bots and New Ottoman infantry can pathfind over user-created layouts.
+
+```
+
+```

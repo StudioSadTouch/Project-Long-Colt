@@ -1,0 +1,4 @@
+# Docker build context for tools/server/Dockerfile: only the exported Linux build goes in (the
+# project itself is gigabytes of source assets).
+*
+!build/linux/Project Long Colt.x86_64

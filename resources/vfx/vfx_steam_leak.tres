@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="VFXDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/editor/effects/vfx_definition.gd" id="1_vfx"]
+
+[resource]
+script = ExtResource("1_vfx")
+effect_id = "vfx_steam_leak"
+display_name = "Steam Vent / Pressure Leak"
+category = "Atmospheric"
+screenshake_trauma = 0.05
+has_gameplay_damage = false
+damage_radius = 0.0
+max_damage = 0.0
+impulse_force = 0.0
+armor_spalling = false

@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/pickups/grenade_pickup.gd" id="1_pickup"]
+[ext_resource type="Resource" path="res://resources/weapons/frag_grenade.tres" id="2_frag"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pad"]
+top_radius = 0.34
+bottom_radius = 0.38
+height = 0.04
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_trigger"]
+radius = 0.9
+
+[node name="GrenadePickup" type="Node3D"]
+script = ExtResource("1_pickup")
+grenade = ExtResource("2_frag")
+
+[node name="Pad" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("CylinderMesh_pad")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Area" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+collision_layer = 64
+collision_mask = 6
+monitorable = false
+
+[node name="Shape" type="CollisionShape3D" parent="Area"]
+shape = SubResource("SphereShape3D_trigger")

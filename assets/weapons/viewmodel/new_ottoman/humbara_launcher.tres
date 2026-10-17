@@ -1,0 +1,703 @@
+[gd_resource type="AnimationLibrary" load_steps=8 format=3]
+
+[sub_resource type="Animation" id="Animation_RESET"]
+resource_name = &"RESET"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3)]
+}
+
+[sub_resource type="Animation" id="Animation_idle"]
+resource_name = &"idle"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3)]
+}
+
+[sub_resource type="Animation" id="Animation_reload_tactical"]
+resource_name = &"reload_tactical"
+length = 2.2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.28, 1.96, 1.9667, 2, 2.0333, 2.0667, 2.1, 2.1333, 2.1667, 2.18, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4), Vector3(0.16922, -0.19883, -0.4), Vector3(0.16714, -0.19571, -0.4), Vector3(0.16417, -0.19125, -0.4), Vector3(0.16071, -0.18607, -0.4), Vector3(0.15718, -0.18077, -0.4), Vector3(0.15397, -0.17595, -0.4), Vector3(0.15148, -0.17222, -0.4), Vector3(0.15013, -0.1702, -0.4), Vector3(0.15, -0.17, -0.4), Vector3(0.15, -0.17, -0.4), Vector3(0.15005, -0.17008, -0.4), Vector3(0.15174, -0.17261, -0.4), Vector3(0.15519, -0.17778, -0.4), Vector3(0.15955, -0.18432, -0.4), Vector3(0.16399, -0.19098, -0.4), Vector3(0.16768, -0.19652, -0.4), Vector3(0.16979, -0.19968, -0.4), Vector3(0.17, -0.2, -0.4), Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.28, 1.96, 1.9667, 2, 2.0333, 2.0667, 2.1, 2.1333, 2.1667, 2.18, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.0039143, 0.0031314, -0.017614), Vector3(0.014307, 0.011446, -0.064383), Vector3(0.029155, 0.023324, -0.1312), Vector3(0.046431, 0.037145, -0.20894), Vector3(0.064113, 0.05129, -0.28851), Vector3(0.080175, 0.06414, -0.36079), Vector3(0.092593, 0.074074, -0.41667), Vector3(0.099341, 0.079473, -0.44704), Vector3(0.1, 0.08, -0.45), Vector3(0.1, 0.08, -0.45), Vector3(0.09973, 0.079784, -0.44879), Vector3(0.091285, 0.073028, -0.41078), Vector3(0.074074, 0.059259, -0.33333), Vector3(0.052272, 0.041818, -0.23522), Vector3(0.030053, 0.024042, -0.13524), Vector3(0.01159, 0.0092718, -0.052154), Vector3(0.0010574, 0.00084592, -0.0047583), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 2.2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.44, 0.46667, 0.5, 0.53333, 0.56, 0.56667, 0.58, 0.9, 0.93333, 0.96667, 1, 1.0333, 1.0667, 1.1, 1.1333, 1.1667, 1.2, 1.2333, 1.2667, 1.3, 1.3333, 1.3667, 1.4, 1.4, 1.4333, 1.4667, 1.5, 1.5333, 1.5667, 1.6, 1.6333, 1.6667, 1.7, 1.7333, 1.76, 1.7667, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07), Vector3(-0.0071537, -0.042307, -0.068569), Vector3(-0.023216, -0.074431, -0.065357), Vector3(-0.040087, -0.10817, -0.061983), Vector3(-0.049671, -0.12734, -0.060066), Vector3(-0.05, -0.128, -0.06), Vector3(-0.060096, -0.15576, -0.05369), Vector3(-0.09, -0.238, -0.035), Vector3(-0.1199, -0.32024, -0.01631), Vector3(-0.13, -0.348, -0.01), Vector3(-0.13519, -0.37185, 0.018519), Vector3(-0.15, -0.44, 0.1), Vector3(-0.15, -0.44, 0.1), Vector3(-0.1486, -0.43615, 0.098089), Vector3(-0.14465, -0.42533, 0.092711), Vector3(-0.13856, -0.40859, 0.0844), Vector3(-0.13071, -0.38703, 0.073689), Vector3(-0.12148, -0.3617, 0.061111), Vector3(-0.11128, -0.3337, 0.0472), Vector3(-0.10049, -0.30408, 0.032489), Vector3(-0.089508, -0.27392, 0.017511), Vector3(-0.07872, -0.2443, 0.0028), Vector3(-0.068519, -0.2163, -0.011111), Vector3(-0.059295, -0.19097, -0.023689), Vector3(-0.05144, -0.16941, -0.0344), Vector3(-0.045345, -0.15267, -0.042711), Vector3(-0.041401, -0.14185, -0.048089), Vector3(-0.04, -0.138, -0.05), Vector3(-0.04, -0.138, -0.05), Vector3(-0.039035, -0.13535, -0.050483), Vector3(-0.036393, -0.12808, -0.051804), Vector3(-0.032455, -0.11725, -0.053772), Vector3(-0.027604, -0.10391, -0.056198), Vector3(-0.022218, -0.0891, -0.058891), Vector3(-0.01668, -0.073871, -0.06166), Vector3(-0.011371, -0.059271, -0.064314), Vector3(-0.0066717, -0.046347, -0.066664), Vector3(-0.002963, -0.036148, -0.068519), Vector3(-0.00062592, -0.029721, -0.069687), Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 2.2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.57, 0.9, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [true, false, true, true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.24, 0.26667, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.44, 0.46667, 0.5, 0.53333, 0.56667, 0.6, 0.63333, 0.66667, 0.7, 0.73333, 0.76667, 0.8, 0.83333, 0.86, 0.86667, 0.9, 0.93333, 0.96667, 1, 1.0333, 1.0667, 1.1, 1.1333, 1.1667, 1.2, 1.2333, 1.2667, 1.3, 1.3333, 1.3667, 1.4, 1.4, 1.4333, 1.4667, 1.5, 1.5333, 1.5667, 1.6, 1.6333, 1.6667, 1.7, 1.7333, 1.76, 1.7667, 1.8, 1.8333, 1.86, 1.8667, 1.9, 1.92, 1.9333, 1.9667, 2, 2.0333, 2.0667, 2.1, 2.11, 2.1333, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3), Vector3(-0.0071005, -0.071733, -0.28792), Vector3(-0.012545, -0.076224, -0.25662), Vector3(-0.020046, -0.082413, -0.21348), Vector3(-0.02832, -0.089239, -0.16591), Vector3(-0.036079, -0.09564, -0.1213), Vector3(-0.042037, -0.10056, -0.087037), Vector3(-0.044909, -0.10293, -0.070523), Vector3(-0.045, -0.103, -0.07), Vector3(-0.04743, -0.10786, -0.069514), Vector3(-0.0558, -0.1246, -0.06784), Vector3(-0.067504, -0.14801, -0.065499), Vector3(-0.079763, -0.17253, -0.063047), Vector3(-0.0898, -0.1926, -0.06104), Vector3(-0.094837, -0.20267, -0.060033), Vector3(-0.095, -0.203, -0.06), Vector3(-0.097963, -0.21041, -0.057778), Vector3(-0.10766, -0.23464, -0.050508), Vector3(-0.11995, -0.26538, -0.041285), Vector3(-0.13052, -0.29179, -0.033364), Vector3(-0.135, -0.303, -0.03), Vector3(-0.13771, -0.31256, -0.024138), Vector3(-0.14481, -0.33767, -0.0087421), Vector3(-0.1548, -0.37296, 0.012899), Vector3(-0.16615, -0.41308, 0.037499), Vector3(-0.17736, -0.45266, 0.061771), Vector3(-0.18689, -0.48634, 0.082426), Vector3(-0.19324, -0.50877, 0.096178), Vector3(-0.195, -0.515, 0.1), Vector3(-0.19495, -0.51486, 0.099932), Vector3(-0.19328, -0.51027, 0.097653), Vector3(-0.18947, -0.4998, 0.092452), Vector3(-0.18382, -0.4843, 0.084754), Vector3(-0.17665, -0.46463, 0.074981), Vector3(-0.16828, -0.44163, 0.063557), Vector3(-0.159, -0.41616, 0.050905), Vector3(-0.14913, -0.38906, 0.037449), Vector3(-0.13898, -0.3612, 0.023611), Vector3(-0.12887, -0.33343, 0.0098161), Vector3(-0.11909, -0.30659, -0.0035132), Vector3(-0.10997, -0.28155, -0.015953), Vector3(-0.10181, -0.25914, -0.027081), Vector3(-0.09492, -0.24023, -0.036473), Vector3(-0.089616, -0.22567, -0.043706), Vector3(-0.086206, -0.21631, -0.048356), Vector3(-0.085, -0.213, -0.05), Vector3(-0.085, -0.213, -0.05), Vector3(-0.084035, -0.21035, -0.050483), Vector3(-0.081393, -0.20308, -0.051804), Vector3(-0.077455, -0.19225, -0.053772), Vector3(-0.072604, -0.17891, -0.056198), Vector3(-0.067218, -0.1641, -0.058891), Vector3(-0.06168, -0.14887, -0.06166), Vector3(-0.056371, -0.13427, -0.064314), Vector3(-0.051672, -0.12135, -0.066664), Vector3(-0.047963, -0.11115, -0.068519), Vector3(-0.045626, -0.10472, -0.069687), Vector3(-0.045, -0.103, -0.07), Vector3(-0.045, -0.10285, -0.07), Vector3(-0.045, -0.098776, -0.07), Vector3(-0.045, -0.093105, -0.07), Vector3(-0.045, -0.091, -0.07), Vector3(-0.045, -0.091412, -0.07), Vector3(-0.045, -0.099889, -0.07), Vector3(-0.045, -0.103, -0.07), Vector3(-0.044437, -0.10254, -0.073239), Vector3(-0.038946, -0.098006, -0.10481), Vector3(-0.029697, -0.090375, -0.15799), Vector3(-0.019282, -0.081783, -0.21788), Vector3(-0.010293, -0.074367, -0.26957), Vector3(-0.0053207, -0.070265, -0.29816), Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3)]
+}
+tracks/7/type = "method"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("ViewmodelReload")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0.26, 0.44, 0.62, 0.9, 1.76, 2.08),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"values": [{
+"args": [&"sfx_mag_release", 0.3],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_out", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_drop", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_pouch", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_seat", 1],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_regrip", 0],
+"method": &"_anim_event"
+}]
+}
+
+[sub_resource type="Animation" id="Animation_reload_empty"]
+resource_name = &"reload_empty"
+length = 2.2
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.28, 1.96, 1.9667, 2, 2.0333, 2.0667, 2.1, 2.1333, 2.1667, 2.18, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4), Vector3(0.16922, -0.19883, -0.4), Vector3(0.16714, -0.19571, -0.4), Vector3(0.16417, -0.19125, -0.4), Vector3(0.16071, -0.18607, -0.4), Vector3(0.15718, -0.18077, -0.4), Vector3(0.15397, -0.17595, -0.4), Vector3(0.15148, -0.17222, -0.4), Vector3(0.15013, -0.1702, -0.4), Vector3(0.15, -0.17, -0.4), Vector3(0.15, -0.17, -0.4), Vector3(0.15005, -0.17008, -0.4), Vector3(0.15174, -0.17261, -0.4), Vector3(0.15519, -0.17778, -0.4), Vector3(0.15955, -0.18432, -0.4), Vector3(0.16399, -0.19098, -0.4), Vector3(0.16768, -0.19652, -0.4), Vector3(0.16979, -0.19968, -0.4), Vector3(0.17, -0.2, -0.4), Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.28, 1.96, 1.9667, 2, 2.0333, 2.0667, 2.1, 2.1333, 2.1667, 2.18, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.0039143, 0.0031314, -0.017614), Vector3(0.014307, 0.011446, -0.064383), Vector3(0.029155, 0.023324, -0.1312), Vector3(0.046431, 0.037145, -0.20894), Vector3(0.064113, 0.05129, -0.28851), Vector3(0.080175, 0.06414, -0.36079), Vector3(0.092593, 0.074074, -0.41667), Vector3(0.099341, 0.079473, -0.44704), Vector3(0.1, 0.08, -0.45), Vector3(0.1, 0.08, -0.45), Vector3(0.09973, 0.079784, -0.44879), Vector3(0.091285, 0.073028, -0.41078), Vector3(0.074074, 0.059259, -0.33333), Vector3(0.052272, 0.041818, -0.23522), Vector3(0.030053, 0.024042, -0.13524), Vector3(0.01159, 0.0092718, -0.052154), Vector3(0.0010574, 0.00084592, -0.0047583), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 2, 2.0333, 2.0667, 2.08, 2.1, 2.1333, 2.16, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.068808), Vector3(0.031, -0.01, 0.096296), Vector3(0.031, -0.01, 0.1), Vector3(0.031, -0.01, 0.092188), Vector3(0.031, -0.01, 0.062963), Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.44, 0.46667, 0.5, 0.53333, 0.56, 0.56667, 0.58, 0.9, 0.93333, 0.96667, 1, 1.0333, 1.0667, 1.1, 1.1333, 1.1667, 1.2, 1.2333, 1.2667, 1.3, 1.3333, 1.3667, 1.4, 1.4, 1.4333, 1.4667, 1.5, 1.5333, 1.5667, 1.6, 1.6333, 1.6667, 1.7, 1.7333, 1.76, 1.7667, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07), Vector3(-0.0071537, -0.042307, -0.068569), Vector3(-0.023216, -0.074431, -0.065357), Vector3(-0.040087, -0.10817, -0.061983), Vector3(-0.049671, -0.12734, -0.060066), Vector3(-0.05, -0.128, -0.06), Vector3(-0.060096, -0.15576, -0.05369), Vector3(-0.09, -0.238, -0.035), Vector3(-0.1199, -0.32024, -0.01631), Vector3(-0.13, -0.348, -0.01), Vector3(-0.13519, -0.37185, 0.018519), Vector3(-0.15, -0.44, 0.1), Vector3(-0.15, -0.44, 0.1), Vector3(-0.1486, -0.43615, 0.098089), Vector3(-0.14465, -0.42533, 0.092711), Vector3(-0.13856, -0.40859, 0.0844), Vector3(-0.13071, -0.38703, 0.073689), Vector3(-0.12148, -0.3617, 0.061111), Vector3(-0.11128, -0.3337, 0.0472), Vector3(-0.10049, -0.30408, 0.032489), Vector3(-0.089508, -0.27392, 0.017511), Vector3(-0.07872, -0.2443, 0.0028), Vector3(-0.068519, -0.2163, -0.011111), Vector3(-0.059295, -0.19097, -0.023689), Vector3(-0.05144, -0.16941, -0.0344), Vector3(-0.045345, -0.15267, -0.042711), Vector3(-0.041401, -0.14185, -0.048089), Vector3(-0.04, -0.138, -0.05), Vector3(-0.04, -0.138, -0.05), Vector3(-0.039035, -0.13535, -0.050483), Vector3(-0.036393, -0.12808, -0.051804), Vector3(-0.032455, -0.11725, -0.053772), Vector3(-0.027604, -0.10391, -0.056198), Vector3(-0.022218, -0.0891, -0.058891), Vector3(-0.01668, -0.073871, -0.06166), Vector3(-0.011371, -0.059271, -0.064314), Vector3(-0.0066717, -0.046347, -0.066664), Vector3(-0.002963, -0.036148, -0.068519), Vector3(-0.00062592, -0.029721, -0.069687), Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 2.2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.57, 0.9, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [true, false, true, true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.24, 0.26667, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.44, 0.46667, 0.5, 0.53333, 0.56667, 0.6, 0.63333, 0.66667, 0.7, 0.73333, 0.76667, 0.8, 0.83333, 0.86, 0.86667, 0.9, 0.93333, 0.96667, 1, 1.0333, 1.0667, 1.1, 1.1333, 1.1667, 1.2, 1.2333, 1.2667, 1.3, 1.3333, 1.3667, 1.4, 1.4, 1.4333, 1.4667, 1.5, 1.5333, 1.5667, 1.6, 1.6333, 1.6667, 1.7, 1.7333, 1.76, 1.7667, 1.8, 1.8333, 1.86, 1.8667, 1.9, 1.92, 1.9333, 1.9667, 2, 2.0333, 2.0667, 2.1, 2.11, 2.1333, 2.2),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3), Vector3(-0.0071005, -0.071733, -0.28792), Vector3(-0.012545, -0.076224, -0.25662), Vector3(-0.020046, -0.082413, -0.21348), Vector3(-0.02832, -0.089239, -0.16591), Vector3(-0.036079, -0.09564, -0.1213), Vector3(-0.042037, -0.10056, -0.087037), Vector3(-0.044909, -0.10293, -0.070523), Vector3(-0.045, -0.103, -0.07), Vector3(-0.04743, -0.10786, -0.069514), Vector3(-0.0558, -0.1246, -0.06784), Vector3(-0.067504, -0.14801, -0.065499), Vector3(-0.079763, -0.17253, -0.063047), Vector3(-0.0898, -0.1926, -0.06104), Vector3(-0.094837, -0.20267, -0.060033), Vector3(-0.095, -0.203, -0.06), Vector3(-0.097963, -0.21041, -0.057778), Vector3(-0.10766, -0.23464, -0.050508), Vector3(-0.11995, -0.26538, -0.041285), Vector3(-0.13052, -0.29179, -0.033364), Vector3(-0.135, -0.303, -0.03), Vector3(-0.13771, -0.31256, -0.024138), Vector3(-0.14481, -0.33767, -0.0087421), Vector3(-0.1548, -0.37296, 0.012899), Vector3(-0.16615, -0.41308, 0.037499), Vector3(-0.17736, -0.45266, 0.061771), Vector3(-0.18689, -0.48634, 0.082426), Vector3(-0.19324, -0.50877, 0.096178), Vector3(-0.195, -0.515, 0.1), Vector3(-0.19495, -0.51486, 0.099932), Vector3(-0.19328, -0.51027, 0.097653), Vector3(-0.18947, -0.4998, 0.092452), Vector3(-0.18382, -0.4843, 0.084754), Vector3(-0.17665, -0.46463, 0.074981), Vector3(-0.16828, -0.44163, 0.063557), Vector3(-0.159, -0.41616, 0.050905), Vector3(-0.14913, -0.38906, 0.037449), Vector3(-0.13898, -0.3612, 0.023611), Vector3(-0.12887, -0.33343, 0.0098161), Vector3(-0.11909, -0.30659, -0.0035132), Vector3(-0.10997, -0.28155, -0.015953), Vector3(-0.10181, -0.25914, -0.027081), Vector3(-0.09492, -0.24023, -0.036473), Vector3(-0.089616, -0.22567, -0.043706), Vector3(-0.086206, -0.21631, -0.048356), Vector3(-0.085, -0.213, -0.05), Vector3(-0.085, -0.213, -0.05), Vector3(-0.084035, -0.21035, -0.050483), Vector3(-0.081393, -0.20308, -0.051804), Vector3(-0.077455, -0.19225, -0.053772), Vector3(-0.072604, -0.17891, -0.056198), Vector3(-0.067218, -0.1641, -0.058891), Vector3(-0.06168, -0.14887, -0.06166), Vector3(-0.056371, -0.13427, -0.064314), Vector3(-0.051672, -0.12135, -0.066664), Vector3(-0.047963, -0.11115, -0.068519), Vector3(-0.045626, -0.10472, -0.069687), Vector3(-0.045, -0.103, -0.07), Vector3(-0.045, -0.10285, -0.07), Vector3(-0.045, -0.098776, -0.07), Vector3(-0.045, -0.093105, -0.07), Vector3(-0.045, -0.091, -0.07), Vector3(-0.045, -0.091412, -0.07), Vector3(-0.045, -0.099889, -0.07), Vector3(-0.045, -0.103, -0.07), Vector3(-0.044437, -0.10254, -0.073239), Vector3(-0.038946, -0.098006, -0.10481), Vector3(-0.029697, -0.090375, -0.15799), Vector3(-0.019282, -0.081783, -0.21788), Vector3(-0.010293, -0.074367, -0.26957), Vector3(-0.0053207, -0.070265, -0.29816), Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3)]
+}
+tracks/7/type = "method"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("ViewmodelReload")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0.26, 0.44, 0.62, 0.9, 1.76, 2.08, 2.16),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"values": [{
+"args": [&"sfx_mag_release", 0.3],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_out", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_drop", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_pouch", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_mag_seat", 1],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_regrip", 0],
+"method": &"_anim_event"
+}, {
+"args": [&"sfx_bolt_release", 0.5],
+"method": &"_anim_event"
+}]
+}
+
+[sub_resource type="Animation" id="Animation_melee"]
+resource_name = &"melee"
+length = 0.8
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.067, 0.1, 0.13333, 0.15, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.46667, 0.5, 0.53333, 0.56667, 0.6, 0.63333, 0.66667, 0.7, 0.8),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4), Vector3(0.18493, -0.19502, -0.3801), Vector3(0.19985, -0.19005, -0.3602), Vector3(0.2, -0.19, -0.36), Vector3(0.05, -0.14, -0.54), Vector3(0.053333, -0.142, -0.53667), Vector3(0.055, -0.143, -0.535), Vector3(0.064444, -0.14822, -0.52333), Vector3(0.083333, -0.15867, -0.5), Vector3(0.10222, -0.16911, -0.47667), Vector3(0.12111, -0.17956, -0.45333), Vector3(0.14, -0.19, -0.43), Vector3(0.14567, -0.19233, -0.424), Vector3(0.15133, -0.19467, -0.418), Vector3(0.157, -0.197, -0.412), Vector3(0.16267, -0.19933, -0.406), Vector3(0.16833, -0.20167, -0.4), Vector3(0.174, -0.204, -0.394), Vector3(0.17333, -0.20333, -0.395), Vector3(0.17267, -0.20267, -0.396), Vector3(0.172, -0.202, -0.397), Vector3(0.17133, -0.20133, -0.398), Vector3(0.17067, -0.20067, -0.399), Vector3(0.17, -0.2, -0.4), Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.067, 0.1, 0.13333, 0.15, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.46667, 0.5, 0.53333, 0.56667, 0.6, 0.63333, 0.66667, 0.7, 0.8),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.069468, 0.1042, -0.086831), Vector3(0.13894, 0.2084, -0.17366), Vector3(0.13963, 0.20944, -0.17453), Vector3(0.2618, -0.69813, 0.61087), Vector3(0.25017, -0.67486, 0.5876), Vector3(0.24435, -0.66323, 0.57596), Vector3(0.22496, -0.60893, 0.52748), Vector3(0.18617, -0.50033, 0.43052), Vector3(0.14738, -0.39173, 0.33355), Vector3(0.1086, -0.28313, 0.23659), Vector3(0.069813, -0.17453, 0.13963), Vector3(0.053814, -0.13672, 0.10763), Vector3(0.037815, -0.0989, 0.075633), Vector3(0.021816, -0.061085, 0.043635), Vector3(0.0058177, -0.02327, 0.011637), Vector3(-0.010181, 0.014545, -0.020362), Vector3(-0.02618, 0.05236, -0.05236), Vector3(-0.021817, 0.043633, -0.043633), Vector3(-0.017453, 0.034907, -0.034907), Vector3(-0.01309, 0.02618, -0.02618), Vector3(-0.0087267, 0.017453, -0.017453), Vector3(-0.0043633, 0.0087267, -0.0087267), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.8),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.8),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.8),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.8),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": [true, true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.066667, 0.067, 0.1, 0.15, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.8),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.072488, -0.30498), Vector3(-0.005, -0.074975, -0.30995), Vector3(-0.005, -0.075, -0.31), Vector3(-0.005, -0.065, -0.28), Vector3(-0.005, -0.065, -0.28), Vector3(-0.005, -0.065556, -0.28222), Vector3(-0.005, -0.066667, -0.28667), Vector3(-0.005, -0.067778, -0.29111), Vector3(-0.005, -0.068889, -0.29556), Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3)]
+}
+tracks/7/type = "method"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("ViewmodelMelee")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0.1),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"_on_hit_frame"
+}]
+}
+
+[sub_resource type="Animation" id="Animation_fire"]
+resource_name = &"fire"
+length = 0.45
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4), Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.05, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.45),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.066667, 0, -0.022222), Vector3(0.09, 0, -0.03), Vector3(0.089544, 0, -0.029848), Vector3(0.086133, 0, -0.028711), Vector3(0.079909, 0, -0.026636), Vector3(0.071497, 0, -0.023832), Vector3(0.061523, 0, -0.020508), Vector3(0.050612, 0, -0.016871), Vector3(0.039388, 0, -0.013129), Vector3(0.028477, 0, -0.0094922), Vector3(0.018503, 0, -0.0061675), Vector3(0.010091, 0, -0.0033637), Vector3(0.0038672, 0, -0.0012891), Vector3(0.00045573, 0, -0.00015191), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.001, 0.12, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.45),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 1.5708), Vector3(0, 0, 1.5708), Vector3(0, 0, 1.5462), Vector3(0, 0, 1.3088), Vector3(0, 0, 0.91576), Vector3(0, 0, 0.48681), Vector3(0, 0, 0.14165), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": [true, true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3)]
+}
+
+[sub_resource type="Animation" id="Animation_fire_empty"]
+resource_name = &"fire_empty"
+length = 0.45
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.17, -0.2, -0.4), Vector3(0.17, -0.2, -0.4)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.033333, 0.05, 0.066667, 0.1, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.33333, 0.36667, 0.4, 0.43333, 0.45),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.066667, 0, -0.022222), Vector3(0.09, 0, -0.03), Vector3(0.089544, 0, -0.029848), Vector3(0.086133, 0, -0.028711), Vector3(0.079909, 0, -0.026636), Vector3(0.071497, 0, -0.023832), Vector3(0.061523, 0, -0.020508), Vector3(0.050612, 0, -0.016871), Vector3(0.039388, 0, -0.013129), Vector3(0.028477, 0, -0.0094922), Vector3(0.018503, 0, -0.0061675), Vector3(0.010091, 0, -0.0033637), Vector3(0.0038672, 0, -0.0012891), Vector3(0.00045573, 0, -0.00015191), Vector3(0, 0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("ChargingHandle:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.031, -0.01, 0.05), Vector3(0.031, -0.01, 0.05)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Drum:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, -0.028, -0.07), Vector3(0, -0.028, -0.07)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Drum:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.001, 0.12, 0.13333, 0.16667, 0.2, 0.23333, 0.26667, 0.3, 0.45),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, 1.5708), Vector3(0, 0, 1.5708), Vector3(0, 0, 1.5462), Vector3(0, 0, 1.3088), Vector3(0, 0, 0.91576), Vector3(0, 0, 0.48681), Vector3(0, 0, 0.14165), Vector3(0, 0, 0), Vector3(0, 0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Drum:visible")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": [true, true]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("LeftHand:position")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.45),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(-0.005, -0.07, -0.3), Vector3(-0.005, -0.07, -0.3)]
+}
+
+[resource]
+_data = {
+&"RESET": SubResource("Animation_RESET"),
+&"idle": SubResource("Animation_idle"),
+&"reload_tactical": SubResource("Animation_reload_tactical"),
+&"reload_empty": SubResource("Animation_reload_empty"),
+&"melee": SubResource("Animation_melee"),
+&"fire": SubResource("Animation_fire"),
+&"fire_empty": SubResource("Animation_fire_empty")
+}

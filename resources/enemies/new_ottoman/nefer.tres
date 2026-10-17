@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_type.gd" id="1_type"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/new_ottoman/tufek.tscn" id="w0"]
+[ext_resource type="PackedScene" path="res://scenes/weapons/new_ottoman/yatagan.tscn" id="w1"]
+
+[resource]
+script = ExtResource("1_type")
+id = &"nefer"
+display_name = "Nefer"
+native_name = "Nefer"
+corps = 0
+role = 5
+height = 2.6
+hurtbox_size = Vector2(0.78, 0.5)
+speed_scale = 0.82
+armor = 150.0
+health = 100.0
+spall_fraction = 0.5
+exposed_speed_scale = 1.35
+starting_weapons = Array[PackedScene]([ExtResource("w0"), ExtResource("w1")])
+aggression = 0.45
+melee_eagerness = 0.35
+aim_error_scale = 1.4
+reaction_scale = 0.9
+sight_range = 60.0
+fire_rate_scale = 0.65
+strafe_scale = 0.35
+rank_color = Color(0.431, 0.122, 0.133, 1)
+plate_color = Color(0.227, 0.247, 0.275, 1)
+cloth_color = Color(0.137, 0.149, 0.169, 1)

@@ -1,0 +1,80 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Material" path="res://resources/materials/lighting/fixture_housing.tres" id="1_housing"]
+[ext_resource type="Material" path="res://resources/materials/lighting/fixture_cage.tres" id="2_cage"]
+[ext_resource type="Material" path="res://resources/materials/lighting/emissive_halogen.tres" id="3_lens"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_mount"]
+size = Vector3(0.12, 0.12, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(0.3, 0.26, 0.24)
+
+[sub_resource type="BoxMesh" id="BoxMesh_lens"]
+add_uv2 = true
+size = Vector3(0.24, 0.2, 0.04)
+
+[sub_resource type="BoxMesh" id="BoxMesh_bar_v"]
+size = Vector3(0.025, 0.28, 0.025)
+
+[sub_resource type="BoxMesh" id="BoxMesh_bar_h"]
+size = Vector3(0.28, 0.025, 0.025)
+
+[node name="FixtureCagedWorklight" type="Node3D"]
+
+[node name="Mount" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.05)
+mesh = SubResource("BoxMesh_mount")
+surface_material_override/0 = ExtResource("2_cage")
+gi_mode = 2
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.12)
+mesh = SubResource("BoxMesh_body")
+surface_material_override/0 = ExtResource("1_housing")
+gi_mode = 2
+
+[node name="Lens" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.27)
+mesh = SubResource("BoxMesh_lens")
+surface_material_override/0 = ExtResource("3_lens")
+cast_shadow = 0
+
+[node name="CageBar0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, 0, -0.33)
+mesh = SubResource("BoxMesh_bar_v")
+surface_material_override/0 = ExtResource("2_cage")
+gi_mode = 2
+
+[node name="CageBar1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13, 0, -0.33)
+mesh = SubResource("BoxMesh_bar_v")
+surface_material_override/0 = ExtResource("2_cage")
+gi_mode = 2
+
+[node name="CageBar2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.13, -0.33)
+mesh = SubResource("BoxMesh_bar_h")
+surface_material_override/0 = ExtResource("2_cage")
+gi_mode = 2
+
+[node name="CageBar3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.13, -0.33)
+mesh = SubResource("BoxMesh_bar_h")
+surface_material_override/0 = ExtResource("2_cage")
+gi_mode = 2
+
+[node name="Light" type="SpotLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.3)
+light_color = Color(1, 0.88, 0.72, 1)
+light_energy = 3
+light_volumetric_fog_energy = 1
+light_bake_mode = 0
+shadow_enabled = false
+distance_fade_enabled = true
+distance_fade_begin = 45.0
+distance_fade_length = 10.0
+spot_range = 14
+spot_attenuation = 1.2
+spot_angle = 38
+spot_angle_attenuation = 0.8

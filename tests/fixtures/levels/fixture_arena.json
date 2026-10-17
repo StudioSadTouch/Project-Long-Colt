@@ -1,0 +1,184 @@
+{
+	"format_version": 2,
+	"level_name": "fixture_arena",
+	"next_uid": 12,
+	"objects": [
+		{
+			"catalog_id": "geo_wall",
+			"pos": [
+				0,
+				0,
+				-12
+			],
+			"size": [
+				24,
+				3,
+				0.4
+			],
+			"uid": 1
+		},
+		{
+			"catalog_id": "geo_wall",
+			"pos": [
+				0,
+				0,
+				12
+			],
+			"size": [
+				24,
+				3,
+				0.4
+			],
+			"uid": 2
+		},
+		{
+			"catalog_id": "geo_wall",
+			"pos": [
+				-12,
+				0,
+				0
+			],
+			"rot": [
+				0,
+				90,
+				0
+			],
+			"size": [
+				24,
+				3,
+				0.4
+			],
+			"uid": 3
+		},
+		{
+			"catalog_id": "geo_wall",
+			"pos": [
+				12,
+				0,
+				0
+			],
+			"rot": [
+				0,
+				90,
+				0
+			],
+			"size": [
+				24,
+				3,
+				0.4
+			],
+			"uid": 4
+		},
+		{
+			"catalog_id": "geo_box",
+			"pos": [
+				0,
+				0,
+				0
+			],
+			"size": [
+				3,
+				1.2,
+				3
+			],
+			"uid": 5
+		},
+		{
+			"catalog_id": "geo_wedge",
+			"pos": [
+				0,
+				0,
+				3.0
+			],
+			"rot": [
+				0,
+				180,
+				0
+			],
+			"size": [
+				3,
+				1.2,
+				3
+			],
+			"uid": 6
+		},
+		{
+			"catalog_id": "spawn_ffa",
+			"pos": [
+				-8,
+				0,
+				-8
+			],
+			"rot": [
+				0,
+				-135,
+				0
+			],
+			"uid": 7
+		},
+		{
+			"catalog_id": "spawn_ffa",
+			"pos": [
+				8,
+				0,
+				8
+			],
+			"rot": [
+				0,
+				45,
+				0
+			],
+			"uid": 8
+		},
+		{
+			"catalog_id": "spawn_ffa",
+			"pos": [
+				8,
+				0,
+				-8
+			],
+			"rot": [
+				0,
+				135,
+				0
+			],
+			"uid": 9
+		},
+		{
+			"catalog_id": "spawn_ffa",
+			"pos": [
+				-8,
+				0,
+				8
+			],
+			"rot": [
+				0,
+				-45,
+				0
+			],
+			"uid": 10
+		},
+		{
+			"catalog_id": "weapon:res://scenes/weapons/marksman_carbine.tscn",
+			"pos": [
+				0,
+				1.2,
+				0
+			],
+			"uid": 11
+		}
+	],
+	"settings": {
+		"description": "Test fixture: a small walled yard for the dedicated server check.",
+		"enemies_in_matches": false,
+		"enemy_respawn": 60.0,
+		"environment": "outdoor",
+		"ground": true,
+		"ground_material": "mat_grid_dark_1m",
+		"ground_size": 120.0,
+		"kill_height": -25.0,
+		"sun_energy": 1.2,
+		"sun_pitch": -50.0,
+		"sun_yaw": 30.0
+	}
+}

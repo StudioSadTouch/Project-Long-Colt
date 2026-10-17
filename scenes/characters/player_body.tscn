@@ -1,0 +1,32 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/characters/player/player_model.tscn" id="1_model"]
+[ext_resource type="AnimationLibrary" path="res://assets/characters/player/anims/character_anims.tres" id="2_anims"]
+[ext_resource type="Script" path="res://scripts/characters/character_anim_driver.gd" id="3_driver"]
+[ext_resource type="Script" path="res://scripts/characters/character_anim_source.gd" id="4_source"]
+[ext_resource type="Script" path="res://scripts/characters/character_weapon_props.gd" id="5_props"]
+[ext_resource type="Script" path="res://scripts/audio/footsteps.gd" id="6_steps"]
+
+[node name="PlayerModel" instance=ExtResource("1_model")]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+root_node = NodePath("..")
+libraries = {
+&"": ExtResource("2_anims")
+}
+
+[node name="CharacterAnimDriver" type="Node" parent="." node_paths=PackedStringArray("animation_player")]
+script = ExtResource("3_driver")
+animation_player = NodePath("../AnimationPlayer")
+upper_body_paths = Array[NodePath]([NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_Neck"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_Neck/PB_Head"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_UpperArm_L"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_UpperArm_L/PB_Forearm_L"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_UpperArm_L/PB_Forearm_L/PB_Hand_L"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_UpperArm_R"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_UpperArm_R/PB_Forearm_R"), NodePath("Blockout/BodyMesh/PB_Pelvis/PB_Abdomen/PB_Chest/PB_UpperArm_R/PB_Forearm_R/PB_Hand_R")])
+
+[node name="CharacterAnimSource" type="Node" parent="." node_paths=PackedStringArray("driver")]
+script = ExtResource("4_source")
+driver = NodePath("../CharacterAnimDriver")
+
+[node name="CharacterWeaponProps" type="Node" parent="." node_paths=PackedStringArray("driver")]
+script = ExtResource("5_props")
+driver = NodePath("../CharacterAnimDriver")
+
+[node name="Footsteps" type="Node3D" parent="."]
+script = ExtResource("6_steps")

@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/characters/character_anim_preview.gd" id="1_preview"]
+[ext_resource type="PackedScene" path="res://scenes/characters/player_body.tscn" id="2_body"]
+
+[node name="CharacterAnimPreview" type="Node3D" node_paths=PackedStringArray("body")]
+script = ExtResource("1_preview")
+body = NodePath("PlayerModel")
+
+[node name="PlayerModel" parent="." instance=ExtResource("2_body")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.868243, 0.0907504, -0.487769, -0, 0.983129, 0.182913, 0.496139, -0.158813, 0.853595, -1.6, 1.6, 2.8)
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 5, 0)
+shadow_enabled = true

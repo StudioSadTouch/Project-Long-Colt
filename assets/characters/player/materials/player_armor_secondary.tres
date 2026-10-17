@@ -1,0 +1,12 @@
+[gd_resource type="StandardMaterial3D" load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/prototype/metal_deck_albedo.png" id="1_tex"]
+
+[resource]
+resource_name = "mat_undersuit"
+albedo_color = Color(0.2, 0.21, 0.23, 1)
+albedo_texture = ExtResource("1_tex")
+roughness = 0.85
+metallic = 0.1
+uv1_triplanar = true
+uv1_scale = Vector3(6, 6, 6)
