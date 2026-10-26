@@ -23,8 +23,10 @@ const RECENT_MAX := 8
 var player_name: String = "Spartan"
 var primary_color: Color = PlayerColor.default_color()
 var visor_color: Color = PlayerColor.default_visor()
-## Shoulder accent (left pauldron + helmet stripe).
+## Shoulder accent (left shoulder piece + the helmet's left ear pivot).
 var accent_color: Color = PlayerColor.default_accent()
+## Hospitaller armor modules, slot -> variant (ArmorLoadout).
+var armor_loadout: Dictionary = ArmorLoadout.default_loadout()
 var mouse_sensitivity_scale: float = 1.0
 var stick_sensitivity_scale: float = 1.0
 var mouse_aim_assist: bool = true
@@ -113,6 +115,7 @@ func load_settings() -> void:
 	visor_color = Color.from_string(visor_html, visor_color)
 	var accent_html := str(cfg.get_value("profile", "accent", accent_color.to_html(false)))
 	accent_color = Color.from_string(accent_html, accent_color)
+	armor_loadout = ArmorLoadout.decode(str(cfg.get_value("profile", "armor", "")))
 	mouse_sensitivity_scale = float(cfg.get_value("controls", "mouse_scale", 1.0))
 	stick_sensitivity_scale = float(cfg.get_value("controls", "stick_scale", 1.0))
 	mouse_aim_assist = bool(cfg.get_value("controls", "mouse_aim_assist", true))
@@ -151,6 +154,7 @@ func save_settings() -> void:
 	cfg.set_value("profile", "color", primary_color.to_html(false))
 	cfg.set_value("profile", "visor", visor_color.to_html(false))
 	cfg.set_value("profile", "accent", accent_color.to_html(false))
+	cfg.set_value("profile", "armor", ArmorLoadout.encode(armor_loadout))
 	cfg.set_value("controls", "mouse_scale", mouse_sensitivity_scale)
 	cfg.set_value("controls", "stick_scale", stick_sensitivity_scale)
 	cfg.set_value("controls", "mouse_aim_assist", mouse_aim_assist)

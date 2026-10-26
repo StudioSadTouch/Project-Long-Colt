@@ -553,6 +553,11 @@ func set_accent_color(color: Color) -> void:
 	PlayerColor.apply_accent(self, color)
 
 
+## Hospitaller armor modules (ArmorLoadout.apply).
+func set_armor_loadout(loadout: Dictionary) -> void:
+	ArmorLoadout.apply(self, loadout)
+
+
 func get_model() -> Node3D:
 	return get_node_or_null(^"PlayerModel") as Node3D
 

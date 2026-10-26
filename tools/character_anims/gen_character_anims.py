@@ -280,11 +280,14 @@ def shoulder_mid(pose):
 
 # Weapon holds in the aim frame (origin = shoulder midpoint, -Z along the aim).
 HOLDS = {
-    "rifle": {"R": (0.14, -0.08, -0.22), "L": (0.05, -0.06, -0.40), "pole_R": (0.5, -0.7, 0.2),
-              "pole_L": (-0.2, -1.0, 0.1), "roll_L": -20.0, "mag": (0.0, -0.17, -0.06),
+    # v1.8 (Hospitaller): the rifle is shouldered properly: grip 36 cm out (stock in the
+    # shoulder pocket, clear of the bulky vest), the support hand far out on the handguard,
+    # elbows out so the bracers clear the chest. v1.7 held it at 22 / 40 cm: scrunched.
+    "rifle": {"R": (0.13, -0.05, -0.36), "L": (0.03, -0.06, -0.55), "pole_R": (0.6, -0.7, 0.3),
+              "pole_L": (-0.5, -0.9, 0.1), "roll_L": -20.0, "mag": (0.0, -0.17, -0.06),
               "handle": (0.06, 0.02, 0.0)},
-    "pistol": {"R": (0.07, -0.10, -0.40), "L": (0.03, -0.11, -0.38), "pole_R": (0.6, -0.8, 0.1),
-               "pole_L": (-0.6, -0.8, 0.1), "roll_L": -10.0, "mag": (0.0, -0.13, 0.075)},
+    "pistol": {"R": (0.07, -0.09, -0.48), "L": (0.03, -0.10, -0.46), "pole_R": (0.6, -0.8, 0.2),
+               "pole_L": (-0.6, -0.8, 0.2), "roll_L": -10.0, "mag": (0.0, -0.13, 0.075)},
     # v1.6 melee holds. "rot": the hand's turn in the aim frame (the prop's -Z follows it);
     # "pitch_share": how much of the aim pitch the hold follows (a guard stays a guard).
     # Longsword side guard: sword hand low at the right hip, blade angled up and forward and a
@@ -471,8 +474,16 @@ FEET_STAND = (np.array([-0.12, 0.12, -0.13]), np.array([0.15, 0.12, 0.15]))
 FEET_STAND_ROT = (ry(-8.0), ry(-30.0))
 STANCE_HIP_YAW = -10.0
 FEET_LOCO = (np.array([-0.12, 0.12, 0.0]), np.array([0.12, 0.12, 0.0]))
-CROUCH_PELVIS = np.array([0.0, 0.30, 0.22])
-CROUCH_LEAN = -22.0
+# v1.8: the crouch keeps its head height (the crouch hitbox / eye) with the pelvis 10 cm higher
+# and a deeper lean, so the legs are not folded flat (v1.7: pelvis 0.30, lean 22: scrunched).
+CROUCH_PELVIS = np.array([0.0, 0.3825, 0.35])
+CROUCH_LEAN = -38.0
+# Crouch idle is a tactical kneel: right knee down, sitting back toward the right heel, toes
+# tucked behind; left foot planted forward. Same lean as the crouch walk, so the crouch upper
+# layer (authored on ref_crouch) fits both.
+KNEEL_PELVIS = np.array([0.02, 0.39, 0.36])
+FEET_KNEEL = (np.array([-0.15, 0.12, -0.24]), np.array([0.15, 0.20, 0.48]))
+FEET_KNEEL_ROT = (ry(-8.0), ry(-10.0) @ rx(-35.0))
 FEET_CROUCH = (np.array([-0.15, 0.12, -0.13]), np.array([0.16, 0.12, 0.13]))
 FEET_CROUCH_ROT = (ry(-8.0), ry(-28.0))
 FEET_CROUCH_LOCO = (np.array([-0.15, 0.12, -0.06]), np.array([0.15, 0.12, 0.04]))
@@ -488,8 +499,9 @@ def stand_lower(pose, dy=0.0, dx=0.0, dz=0.0, tilt=I3, hip_yaw=0.0):
     solve_legs(pose, FEET_STAND, FEET_STAND_ROT)
 
 
-def crouch_lower(pose, dy=0.0, dx=0.0, extra=I3, feet=FEET_CROUCH, foot_rots=FEET_CROUCH_ROT):
-    pose.pelvis = CROUCH_PELVIS + np.array([dx, dy, 0])
+def crouch_lower(pose, dy=0.0, dx=0.0, extra=I3, feet=FEET_CROUCH, foot_rots=FEET_CROUCH_ROT,
+                 pelvis=None):
+    pose.pelvis = (CROUCH_PELVIS if pelvis is None else pelvis) + np.array([dx, dy, 0])
     pose.rot["Pelvis"] = rx(CROUCH_LEAN) @ extra
     solve_legs(pose, feet, foot_rots, knee_out=0.3)
 
@@ -772,7 +784,8 @@ def idle_fn(t):
 def crouch_idle_fn(t):
     p = Pose()
     w = 2 * math.pi * t / 2.0
-    crouch_lower(p, dy=0.004 * math.sin(2 * w), dx=0.008 * math.sin(w))
+    crouch_lower(p, dy=0.004 * math.sin(2 * w), dx=0.008 * math.sin(w), feet=FEET_KNEEL,
+                 foot_rots=FEET_KNEEL_ROT, pelvis=KNEEL_PELVIS)
     upper_aim(p, "rifle", 0.0, spine_extra=CROUCH_SPINE, lower=0.03)
     return p
 

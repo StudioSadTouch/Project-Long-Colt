@@ -101,3 +101,9 @@ Test: `tests/third_person_camera_self_test.gd`.
 `tests/anim_self_test.gd` drives the body and player scenes headless: turn steps, throw,
 crouched death, fire clip per model, props, every weapon's viewmodel set, motion bounds, and
 that the running body keeps its gun level and its head on the hitbox.
+
+## v1.8 (Hospitaller fit, 2026-10-25)
+Rifle hold pushed out to a shouldered grip (R 36 cm / L 55 cm from the shoulder line, elbows
+out) and the crouch re-posed (pelvis 0.38, lean 38 deg; crouch idle = right-knee kneel) so the
+bulky Hospitaller armor does not scrunch. Head windows, floor and IK checks unchanged and
+passing. See docs/characters/hospitaller.md.

@@ -1,8 +1,16 @@
-# Player model (block-out v4)
+# Player model: the Hospitaller
 
 - `player_model.tscn`: root `PlayerModel` (Node3D, `player_model.gd`), instancing
-  `res://assets/models/characters/player_blockout.glb` as `Blockout`.
-- Geometry source: `tools/player_blockout/build_player_blockout.py` (headless Blender 4.2).
+  `res://assets/models/characters/hospitaller.glb` as `Blockout` (the block-out's node name, so
+  every path below holds), plus `BodySkinSync` (drives the skinned BDU from the joints).
+- Geometry source: `tools/hospitaller/build_hospitaller.py`; modular armor, slots, rebuild and
+  credits in `docs/characters/hospitaller.md`.
+- The Hospitaller keeps the block-out's joint contract below (node tree, pivots, markers, key
+  heights); the armor is new (AR_<slot>_<variant>_<piece> + CORE_*), so the block-out's part
+  list, budget and materials notes describe the old `player_blockout.glb` (kept in the repo,
+  built by `tools/player_blockout/build_player_blockout.py`).
+
+# Block-out (v4, previous model; joint contract still current)
   Rebuild (glb + previews + crouch check) with
   `blender -b --factory-startup --python tools/player_blockout/build_player_blockout.py -- --previews <dir>`.
 - Space: metres, +Y up, -Z forward, origin at the feet. Crown 1.81, visor centre 1.600.

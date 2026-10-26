@@ -45,9 +45,9 @@ var local_player: Player
 var spawn_manager: SpawnManager
 ## id -> Node3D: the local player, puppets and (host) bots.
 var entities: Dictionary = {}
-## id -> {"name", "color", "visor", "accent", "kind", "team"}; host-authored. Team modes: color
-## is the team colour (accent stays the player's own) and team is GameMode.TEAM_RED / TEAM_BLUE.
-## Bots carry no accent (the model default).
+## id -> {"name", "color", "visor", "accent", "armor", "kind", "team"}; host-authored. Team
+## modes: color is the team colour (accent stays the player's own) and team is
+## GameMode.TEAM_RED / TEAM_BLUE. Bots carry no accent or armor (the model defaults).
 var roster: Dictionary = {}
 var scores: Dictionary = {}
 var is_game_over: bool = false
@@ -139,6 +139,7 @@ func _setup_local() -> void:
 		local_player.set_primary_color(Settings.primary_color)
 		local_player.set_visor_color(Settings.visor_color)
 		local_player.set_accent_color(Settings.accent_color)
+		local_player.set_armor_loadout(Settings.armor_loadout)
 	if not _online:
 		# Offline from the menu: our name on the scoreboard. Run directly: untouched.
 		if Net.match_running:
@@ -176,6 +177,7 @@ func _setup_host_player() -> void:
 		"color": _roster_color(host_team, Net.players.get(1, {}).get("color", "")),
 		"visor": Net.players.get(1, {}).get("visor", ""),
 		"accent": Net.players.get(1, {}).get("accent", ""),
+		"armor": Net.players.get(1, {}).get("armor", ""),
 		"kind": 0,
 		"team": host_team,
 	}
@@ -353,6 +355,8 @@ func _make_puppet(id: int, info: Dictionary, host_side: bool) -> Player:
 		puppet.set_accent_color(
 			Color.from_string(str(info.accent), PlayerColor.default_accent())
 		)
+	if info.has("armor") and puppet.has_method(&"set_armor_loadout"):  # bots: default armor
+		puppet.set_armor_loadout(ArmorLoadout.decode(str(info.armor)))
 	entities[id] = puppet
 	NetAnim.make_remote(puppet)
 	return puppet
@@ -559,6 +563,7 @@ func _rpc_client_ready() -> void:
 		"color": _roster_color(team, info.get("color", "")),
 		"visor": info.get("visor", ""),
 		"accent": info.get("accent", ""),
+		"armor": info.get("armor", ""),
 		"kind": KIND_HUMAN,
 		"team": team,
 	}

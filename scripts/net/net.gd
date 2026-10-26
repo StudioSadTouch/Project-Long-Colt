@@ -51,7 +51,9 @@ const MAX_CLIENTS := GameMode.MAX_PLAYERS_ANY - 1
 ## 16: custom (Level Editor) levels: map ids "custom:<name>"; the host sends the level (_rpc_level,
 ## compressed JSON) to each client before _rpc_load_match. Custom levels' placed enemies
 ## replicate like Horde's (LevelEnemies/Enemies, a NetEnemies).
-const PROTOCOL := 16
+## 17: Hospitaller armor loadout ("armor", ArmorLoadout string) on _rpc_register /
+## _rpc_update_info and in the player info.
+const PROTOCOL := 17
 ## Largest custom level a client accepts from a host (uncompressed JSON).
 const MAX_LEVEL_BYTES := 4 * 1024 * 1024
 const GAME_TAG := "PLC"
@@ -59,7 +61,8 @@ const MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 const CONNECT_TIMEOUT := 8.0
 
 var mode: Mode = Mode.OFFLINE
-## peer id -> {"name": String, "color", "visor", "accent": String (html)}. Host-authoritative.
+## peer id -> {"name": String, "color", "visor", "accent": String (html), "armor": String
+## (ArmorLoadout)}. Host-authoritative.
 var players: Dictionary = {}
 ## Host: spawn Settings.bot_count bots, capped by the empty slots. Off spawns none.
 var bot_fill: bool = true
@@ -351,7 +354,7 @@ func update_my_info() -> void:
 		_broadcast_players()
 	elif mode == Mode.CLIENT and players.has(my_id()):
 		var info := _my_info()
-		_rpc_update_info.rpc_id(1, info.name, info.color, info.visor, info.accent)
+		_rpc_update_info.rpc_id(1, info.name, info.color, info.visor, info.accent, info.armor)
 
 
 # ------------------------------------------------------------------ multiplayer callbacks
@@ -372,7 +375,7 @@ func _on_peer_disconnected(peer_id: int) -> void:
 func _on_connected_to_server() -> void:
 	var info := _my_info()
 	_rpc_register.rpc_id(
-		1, info.name, info.color, PROTOCOL, info.visor, _join_password, info.accent
+		1, info.name, info.color, PROTOCOL, info.visor, _join_password, info.accent, info.armor
 	)
 
 
@@ -398,7 +401,7 @@ func _fail_join(reason: String) -> void:
 
 # ------------------------------------------------------------------ RPCs
 
-## Client -> host: join request. visor_html, password and accent_html come last (with
+## Client -> host: join request. visor_html, password, accent_html and armor come last (with
 ## defaults) so an older client's shorter call still arrives and gets the version-mismatch
 ## rejection.
 @rpc("any_peer", "call_remote", "reliable")
@@ -408,7 +411,8 @@ func _rpc_register(
 	protocol: int,
 	visor_html: String = "",
 	password: String = "",
-	accent_html: String = ""
+	accent_html: String = "",
+	armor: String = ""
 ) -> void:
 	if mode != Mode.HOST:
 		return
@@ -430,6 +434,7 @@ func _rpc_register(
 		"color": _clean_color(color_html),
 		"visor": _clean_color(visor_html, PlayerColor.default_visor()),
 		"accent": _clean_color(accent_html, PlayerColor.default_accent()),
+		"armor": ArmorLoadout.encode(ArmorLoadout.decode(armor)),
 	}
 	if dedicated:
 		print("[Server] %s joined (%d/%d)" % [name_of(sender), players.size(), max_players()])
@@ -441,7 +446,11 @@ func _rpc_register(
 
 @rpc("any_peer", "call_remote", "reliable")
 func _rpc_update_info(
-	player_name: String, color_html: String, visor_html: String, accent_html: String
+	player_name: String,
+	color_html: String,
+	visor_html: String,
+	accent_html: String,
+	armor: String = ""
 ) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if mode != Mode.HOST or not players.has(sender):
@@ -451,6 +460,7 @@ func _rpc_update_info(
 		"color": _clean_color(color_html),
 		"visor": _clean_color(visor_html, PlayerColor.default_visor()),
 		"accent": _clean_color(accent_html, PlayerColor.default_accent()),
+		"armor": ArmorLoadout.encode(ArmorLoadout.decode(armor)),
 	}
 	_broadcast_players()
 
@@ -542,6 +552,7 @@ func _my_info() -> Dictionary:
 		"color": Settings.primary_color.to_html(false),
 		"visor": Settings.visor_color.to_html(false),
 		"accent": Settings.accent_color.to_html(false),
+		"armor": ArmorLoadout.encode(Settings.armor_loadout),
 	}
 
 

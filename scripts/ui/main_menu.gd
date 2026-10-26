@@ -64,6 +64,8 @@ var _colour_tab: ColourSlot = ColourSlot.ARMOR
 var _colour_grids: Array = []
 var _colour_tabs: Array[Button] = []
 var _colour_picker: ColorPickerButton
+## Armor piece pickers: slot -> the Label showing the chosen variant.
+var _armor_labels: Dictionary = {}
 ## Keybinds page: action -> Array[Button] (one per Keybinds.SLOTS).
 var _bind_buttons: Dictionary = {}
 var _bind_status: Label
@@ -449,6 +451,7 @@ func _build_customization() -> Control:
 	for grid: Control in _colour_grids:
 		column.add_child(grid)
 	column.add_child(_colour_picker)
+	_armor_rows(column)
 	column.add_child(MenuTheme.button("Back", _back))
 
 	var preview_column := VBoxContainer.new()
@@ -461,12 +464,56 @@ func _build_customization() -> Control:
 	preview_column.add_child(MenuTheme.label("Drag to turn", 16, MenuTheme.TEXT_DIM))
 	_preview.set_visor_color(Settings.visor_color)
 	_preview.set_accent_color(Settings.accent_color)
+	_preview.set_armor_loadout(Settings.armor_loadout)
 	_mark_swatch(Settings.primary_color)
 	_mark_accent_swatch(Settings.accent_color)
 	_mark_visor_swatch(Settings.visor_color)
 	_show_colour_tab(ColourSlot.ARMOR)
 	_first_focus[Page.CUSTOMIZATION] = tabs.get_child(0)
 	return page
+
+
+## One row per armor slot: < variant >. Saved with the other profile settings on Back.
+func _armor_rows(column: VBoxContainer) -> void:
+	for slot: String in ArmorLoadout.SLOTS:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override(&"separation", 8)
+		column.add_child(row)
+		var slot_name := String(ArmorLoadout.SLOT_NAMES[slot]).to_upper()
+		var title := MenuTheme.label(slot_name, 18, MenuTheme.TEXT_DIM)
+		title.custom_minimum_size = Vector2(130, 0)
+		row.add_child(title)
+		var prev := Button.new()
+		prev.text = "<"
+		prev.custom_minimum_size = Vector2(44, 40)
+		prev.focus_mode = Control.FOCUS_ALL
+		prev.pressed.connect(_cycle_armor.bind(slot, -1))
+		row.add_child(prev)
+		var value := MenuTheme.label("", 18)
+		value.custom_minimum_size = Vector2(190, 0)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_child(value)
+		_armor_labels[slot] = value
+		var next := Button.new()
+		next.text = ">"
+		next.custom_minimum_size = Vector2(44, 40)
+		next.focus_mode = Control.FOCUS_ALL
+		next.pressed.connect(_cycle_armor.bind(slot, 1))
+		row.add_child(next)
+	_refresh_armor_labels()
+
+
+func _cycle_armor(slot: String, step: int) -> void:
+	Settings.armor_loadout = ArmorLoadout.cycle(Settings.armor_loadout, slot, step)
+	if _preview != null:
+		_preview.set_armor_loadout(Settings.armor_loadout)
+	_refresh_armor_labels()
+
+
+func _refresh_armor_labels() -> void:
+	var loadout := ArmorLoadout.sanitize(Settings.armor_loadout)
+	for slot: String in _armor_labels:
+		(_armor_labels[slot] as Label).text = ArmorLoadout.variant_name(slot, loadout[slot])
 
 
 ## 8-wide grid of preset swatches. Pressing one sets that slot's colour; focusing one

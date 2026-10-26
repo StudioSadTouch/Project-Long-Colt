@@ -1,7 +1,9 @@
 // Long Colt player armor (primary, tintable) with triplanar micro-texture support.
 shader_type spatial;
 
-instance uniform vec3 primary_color : source_color = vec3(0.290196, 0.313725, 0.223529);
+// Own instance_index: a mesh can mix armor, accent and visor surfaces, and instance
+// uniforms of different shaders on one instance share slot 0 unless told apart.
+instance uniform vec3 primary_color : source_color, instance_index(0) = vec3(0.290196, 0.313725, 0.223529);
 
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap;
 uniform float roughness : hint_range(0.0, 1.0) = 0.8;

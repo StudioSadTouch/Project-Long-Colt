@@ -1,0 +1,6 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+resource_name = "mat_bdu"
+albedo_color = Color(0.204, 0.212, 0.176, 1)
+roughness = 0.95

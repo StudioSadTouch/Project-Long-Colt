@@ -1,7 +1,9 @@
 // Long Colt player team accent with triplanar detail support.
 shader_type spatial;
 
-instance uniform vec3 accent_color : source_color = vec3(0.701961, 0.149020, 0.117647);
+// Own instance_index: a mesh can mix armor, accent and visor surfaces, and instance
+// uniforms of different shaders on one instance share slot 0 unless told apart.
+instance uniform vec3 accent_color : source_color, instance_index(1) = vec3(0.701961, 0.149020, 0.117647);
 
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap;
 uniform float roughness : hint_range(0.0, 1.0) = 0.8;

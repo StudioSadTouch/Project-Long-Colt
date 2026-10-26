@@ -23,6 +23,7 @@ var _idle_left: float = 0.0
 var _color: Color = PlayerColor.default_color()
 var _visor: Color = PlayerColor.default_visor()
 var _accent: Color = PlayerColor.default_accent()
+var _armor: Dictionary = ArmorLoadout.default_loadout()
 
 
 func _init() -> void:
@@ -108,6 +109,7 @@ func _ready() -> void:
 	set_color(_color)
 	set_visor_color(_visor)
 	set_accent_color(_accent)
+	set_armor_loadout(_armor)
 
 
 ## Tint the preview body (call on every swatch / picker change). Safe before _ready.
@@ -129,6 +131,13 @@ func set_accent_color(color: Color) -> void:
 	_accent = color
 	if _body != null:
 		PlayerColor.apply_accent(_body, color)
+
+
+## Show armor modules on the preview body (ArmorLoadout). Safe before _ready.
+func set_armor_loadout(loadout: Dictionary) -> void:
+	_armor = loadout.duplicate()
+	if _body != null:
+		ArmorLoadout.apply(_body, loadout)
 
 
 func _process(delta: float) -> void:
